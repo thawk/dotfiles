@@ -1,0 +1,7 @@
+application/vnd.openxmlformats-officedocument.wordprocessingml.document   docx
+application/vnd.openxmlformats-officedocument.wordprocessingml.template   dotx
+application/vnd.openxmlformats-officedocument.presentationml.presentation pptx
+application/vnd.openxmlformats-officedocument.presentationml.slideshow    ppsx
+application/vnd.openxmlformats-officedocument.presentationml.template     potx
+application/vnd.openxmlformats-officedocument.spreadsheetml.sheet         xlsx
+application/vnd.openxmlformats-officedocument.spreadsheetml.template      xltx
