@@ -1,0 +1,66 @@
+#~/bin/sh
+PROGRAM_ROOTS=($HOME/program $HOME/workspace)
+
+if [ ! -d "${BOOST_ROOT}" ]
+then
+    for i in $(seq 0 $((${#PROGRAM_ROOTS[*]} - 1)))
+    do
+        PROGRAM_ROOT="${PROGRAM_ROOTS[$i]}"
+        if [ ! -d "${PROGRAM_ROOT}" ]
+        then
+            continue
+        fi
+
+        BOOST_ROOT=$(find "${PROGRAM_ROOT}/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
+        if [ -d "${BOOST_ROOT}" ]
+        then
+            break
+        fi
+    done
+fi
+
+if [ ! -d "${BOOST_ROOT}" ]
+then
+    echo "boost ('${BOOST_ROOT}') not found or not executable! "
+    exit 1
+fi
+
+if [ ! -d "${BOOST_BUILD_PATH}" ]
+then
+    if [ -d "${BOOST_ROOT}/tools/build/src" ]
+    then    # 新版boost.build放在src目录下
+        BOOST_BUILD_PATH="${BOOST_ROOT}/tools/build/src"
+    else    # 旧版的目录结果是有v2子目录的
+        BOOST_BUILD_PATH="${BOOST_ROOT}/tools/build/v2"
+    fi
+fi
+
+B2=${BOOST_ROOT}/b2
+
+if [ ! -x "${B2}" ]
+then
+    if [ -x "${BOOST_ROOT}/bootstrap.sh" ]
+    then
+        CURCWD=${PWD}
+        cd "${BOOST_ROOT}"
+        ./bootstrap.sh
+        cd "${CURCWD}"
+    fi
+fi
+
+if [ ! -x "${B2}" ]
+then
+    echo "b2 ('${B2}') not found or not executable! "
+    exit 1
+fi
+
+export BOOST_ROOT
+export BOOST_BUILD_PATH
+
+cpu_count=$(grep "processor" /proc/cpuinfo | wc -l)
+[ $cpu_count -ge 1 ] || cpu_count=1
+# CPU数较多时，不全占完
+[ $cpu_count -ge 5 ] && cpu_count=$((cpu_count - 2))
+
+${B2} -j${cpu_count} "$@"
+
