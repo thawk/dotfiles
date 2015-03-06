@@ -1,0 +1,2 @@
+#!/bin/sh
+java -jar ~/libexec/jing/bin/jing.jar -c $1 $2

@@ -1,6 +1,6 @@
 #source /etc/screenrc
 
-term screen
+term screen-256color
 
 bind j focus down
 bind k focus up
@@ -35,6 +35,7 @@ hardstatus off
 attrcolor b ".I"
 termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm'
 defbce "on"
+#defbce "off"
 
 # Variants on Sven's custom messages.
 activity "%c activity -> %n%f %t"

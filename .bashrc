@@ -1,7 +1,14 @@
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+	. /etc/bashrc
+fi
+
+export CDPATH=:$HOME/workspace
+
+# User specific aliases and functions
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 
-export CDPATH=.:$HOME/workspace:$HOME/workspace/stsv5/cs/trunk
 #export GREP_OPTIONS="--color"
 
 export HISTIGNORE='&:ls:ll:[bf]g:exit'
@@ -9,12 +16,15 @@ export HISTIGNORE='&:ls:ll:[bf]g:exit'
 export HISTIGNORE='$HISTIGNORE:[ 	]*'
 export HISTCONTROL=earsedups:ignorespace
 
+# 文件名补全时，忽略.svn目录
+export FIGNORE=.svn
+
 # prevent accident press ctrl-d to exit the shell
 export IGNOREEOF=1
 
 export MC_SKIN=solarized
 
-[ -e $HOME/workspace/stsv5/cs/trunk/cfg ] && export STSV5_HOME=$HOME/workspace/stsv5/cs/trunk/cfg
+export GTAGSFORCECPP=
 
 # use dir_colors
 [ -f ~/.dir_colors ] && eval `dircolors -b ~/.dir_colors` 
@@ -29,10 +39,6 @@ alias tmux='tmux -2'
 #/usr/bin/keychain -Q -q ~/.ssh/id_rsa
 #[[ -f $HOME/.keychain/$HOSTNAME-sh ]] && source $HOME/.keychain/$HOSTNAME-sh
 
-[ -d $HOME/my/doc/viki ] && viki=$HOME/my/doc/viki
-[ -d $HOME/my/doc/pkm ]  && pkm=$HOME/my/doc/pkm
-[ -d $HOME/my/doc/blog ]  && blog=$HOME/my/doc/blog
-
 shopt -s histappend
 shopt -s histverify
 
@@ -43,10 +49,10 @@ fi
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 vi=$(which vi 2> /dev/null)
 vim=$(which vim 2> /dev/null)
-if [ ! -z $vim ]; then
+if [ ! -z "$vim" ]; then
     export EDITOR="$vim"
-    [ -z $vi ] && alias vi=vim
-elif [ ! -z $vi ]; then
+    [ -z "$vi" ] && alias vi=vim
+elif [ ! -z "$vi" ]; then
     export EDITOR="vi"
 fi
 
@@ -67,32 +73,32 @@ if [ -d $USER_BASH_COMPLETION_DIR -a -r $USER_BASH_COMPLETION_DIR -a \
 	done
 fi
 
-#if [ -f /etc/bash_completion ]; then
-#    . /etc/bash_completion
-#fi
-#
+timestamp() {
+    while [ $# -gt 0 ]
+    do
+        timestamp=$1
+        date -d @$((timestamp / 1000000)) +"%Y-%m-%d %T".$((timestamp % 1000000))
+        shift
+    done
+}
 
-# todo.sh
-#export TODO_DIR=~/my/archive/todo
-#alias t='todo.py -t dark'
-#if [ ! -z `type -t _todo_sh` ]
-#then
-#    complete -F _todo_sh -o default t
-#fi
+epochtime() {
+    while [ $# -gt 0 ]
+    do
+        epochtime=$1
+        date -d @$((epochtime / 1000)) +"%Y-%m-%d %T".$((epochtime % 1000))
+        shift
+    done
+}
 
-# task
-#if [ -d "$HOME/my/archive/task" ]
-#then
-#    alias th="task rc:$HOME/my/archive/task/home/taskrc"
-#    alias tw="task rc:$HOME/my/archive/task/work/taskrc"
-#
-#    . $HOME/my/archive/task/task_completer.sh
-#    complete -F _task_sh -o default th tw task
-#fi
-
-#PROMPT_COMMAND='RET=$?; if [[ $RET = 0 ]]; then echo -ne "\033[0;32m$RET\033[0m"; else echo -ne "\033[0;31m$RET\033[0m"; fi; echo -n " "'
-#PROMPT_COMMAND='RET=$?; if [[ $RET != 0 ]]; then echo -e "RET=\033[0;31m$RET\033[0m"; fi'
-#PROMPT_COMMAND='if [[ $? != 0 ]]; then PS1="\033[0;31m[\u@\u \W]\$ \033[0m"; else PS1="[\u@\h \W]\$ "; fi'
+time_t() {
+    while [ $# -gt 0 ]
+    do
+        time_t=$1
+        date -d @$((time_t)) +"%Y-%m-%d %T"
+        shift
+    done
+}
 
 grepp() {
   if test -z "$1"; then
@@ -100,7 +106,13 @@ grepp() {
   elif test -z "$2"; then
     perl -00ne "print if /$1/i"
   else
-    perl -00ne "print if /$1/i" < $2
+    term=$1
+    shift
+    while ! test -z "$1"
+    do
+        perl -00ne "print if /$term/i" < $1
+        shift
+    done
   fi 
 }
 
@@ -151,7 +163,7 @@ vman () {
 dec2hex() {
     while [ ! -z "$1" ]
     do
-        printf "%x\n" "$1"
+        echo "obase=16; ibase=10; $1" | bc
         shift
     done
 }
@@ -164,25 +176,41 @@ hex2dec() {
     done
 }
 
-[ -f "$HOME/libexec/svn.bash" ] && source "$HOME/libexec/svn.bash"
-[ -f "$HOME/libexec/stsv5_llm_path.sh" ] && source "$HOME/libexec/stsv5_llm_path.sh"
-
-#if [ "$SSH_CONNECTION" ]; then
-#    if [ -z "$STY" ]; then
-#        # Screen is not currently running, but we are in SSH, so start a session
-#        #exec screen -U -d -R ssh
-#        screen -U -d -R ssh
-#    fi
-#fi
-
-# http://savannah.nongnu.org/projects/ranger
-# This changes the directory after you close ranger
-function ranger-cd {
-  before="$(pwd)"
-  ranger --fail-unless-cd "$@" || return 0
-  after="$(grep \^\' ~/.config/ranger/bookmarks | cut -b3-)"
-  if [[ "$before" != "$after" ]]; then
-    cd "$after"
-  fi
+b362dec() {
+    while [ ! -z "$1" ]
+    do
+        echo $((36#$1))
+        shift
+    done
 }
-alias rcd=ranger-cd
+
+dec2b36() {
+    b36arr=($(echo {0..9} {A..Z}))
+    while [ ! -z "$1" ]
+    do
+        for i in $(echo "obase=36; $1" | bc)
+        do
+            echo -n ${b36arr[${i#0}]}
+        done
+        echo
+        shift
+    done
+}
+
+if [ -d "$HOME/libexec" ]
+then
+    for f in "$HOME/libexec/"*.bash
+    do
+        source "$f"
+    done
+
+    if find "$HOME/libexec" -name "*.so" -quit
+    then
+        if [ -z "$LD_LIBRARY_PATH" ]
+        then
+            export LD_LIBRARY_PATH="$HOME/libexec"
+        else
+            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$HOME/libexec"
+        fi
+    fi
+fi
