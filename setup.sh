@@ -10,4 +10,5 @@ ln -sf "${SCRIPT_DIR}/.mime.types" ~/
 ln -sf "${SCRIPT_DIR}/.bashrc" ~/
 ln -sf "${SCRIPT_DIR}/.ctags" ~/
 ln -sf "${SCRIPT_DIR}/.bash_profile" ~/
+[ -e ~/libexec ] || ln -sf "${SCRIPT_DIR}/libexec" ~/
 

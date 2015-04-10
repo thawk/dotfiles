@@ -24,8 +24,6 @@ export IGNOREEOF=1
 
 export MC_SKIN=solarized
 
-export GTAGSFORCECPP=
-
 # use dir_colors
 [ -f ~/.dir_colors ] && eval `dircolors -b ~/.dir_colors` 
 
