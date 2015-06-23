@@ -3,6 +3,9 @@ if [ -f /etc/bashrc ]; then
 	. /etc/bashrc
 fi
 
+# Disable flow control
+stty -ixon
+
 export CDPATH=:$HOME/workspace
 
 # User specific aliases and functions
