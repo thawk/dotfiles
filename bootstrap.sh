@@ -9,6 +9,7 @@ ln -sf "${SCRIPT_DIR}/.inputrc" ~/
 ln -sf "${SCRIPT_DIR}/.mime.types" ~/
 ln -sf "${SCRIPT_DIR}/.bashrc" ~/
 ln -sf "${SCRIPT_DIR}/.ctags" ~/
+ln -sf "${SCRIPT_DIR}/.minttyrc" ~/
 ln -sf "${SCRIPT_DIR}/.bash_profile" ~/
 ln -sf "${SCRIPT_DIR}/.bash_completion" ~/
 [ -e ~/.bash_completion.d ] || mkdir ~/.bash_completion.d
