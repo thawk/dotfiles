@@ -1,6 +1,9 @@
 BoldAsFont=no
 Font=Powerline Consolas
 FontHeight=13
+Term=xterm-256color
+BackgroundColour=0,43,54
+ForeroundColour=147,161,161
 Black=0,43,54
 BoldBlack=101,123,131
 Red=220,50,47
@@ -17,5 +20,3 @@ Cyan=42,161,152
 BoldCyan=211,54,130
 White=147,161,161
 BoldWhite=253,246,227
-Locale=C
-Charset=UTF-8
