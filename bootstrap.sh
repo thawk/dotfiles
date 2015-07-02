@@ -12,6 +12,11 @@ ln -sf "${SCRIPT_DIR}/.ctags" ~/
 ln -sf "${SCRIPT_DIR}/.minttyrc" ~/
 ln -sf "${SCRIPT_DIR}/.bash_profile" ~/
 ln -sf "${SCRIPT_DIR}/.bash_completion" ~/
+
 [ -e ~/.bash_completion.d ] || mkdir ~/.bash_completion.d
 [ -e ~/libexec ] || ln -sf "${SCRIPT_DIR}/libexec" ~/
-
+[ -e ~/bin ] || mkdir ~/bin
+for i in "${SCRIPT_DIR}/bin/"*
+do
+    ln -sf "$i" ~/bin/
+done
