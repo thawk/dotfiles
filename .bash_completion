@@ -1,7 +1,7 @@
 # ~/.bash_completion
  
 USER_BASH_COMPLETION_COMPAT_DIR="$HOME/.bash_completion.d/"
-readonly USER_BASH_COMPLETION_COMPAT_DIR
+#readonly USER_BASH_COMPLETION_COMPAT_DIR
  
 # source compat completion directory definitions
 if [[ -d $USER_BASH_COMPLETION_COMPAT_DIR && -r $USER_BASH_COMPLETION_COMPAT_DIR && \
