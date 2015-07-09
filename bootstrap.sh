@@ -14,6 +14,11 @@ ln -sf "${SCRIPT_DIR}/.bash_profile" ~/
 ln -sf "${SCRIPT_DIR}/.bash_completion" ~/
 
 [ -e ~/.bash_completion.d ] || mkdir ~/.bash_completion.d
+for i in "${SCRIPT_DIR}/.bash_completion.d/"*
+do
+    ln -sf "$i" ~/.bash_completion.d/
+done
+
 [ -e ~/libexec ] || ln -sf "${SCRIPT_DIR}/libexec" ~/
 [ -e ~/bin ] || mkdir ~/bin
 for i in "${SCRIPT_DIR}/bin/"*

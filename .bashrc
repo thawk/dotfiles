@@ -47,6 +47,10 @@ if [ -d ~/bin ]; then
     export PATH=~/bin:"$PATH"
 fi
 
+if [ -d ~/.vim/bundle/base16-shell ]; then
+    export PATH="$PATH":~/.vim/bundle/base16-shell
+fi
+    
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 vi=$(which vi 2> /dev/null)
 vim=$(which vim 2> /dev/null)
