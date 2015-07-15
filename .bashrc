@@ -17,7 +17,7 @@ export LANG=en_US.UTF-8
 export HISTIGNORE='&:ls:ll:[bf]g:exit'
 # ignore line begin with spaces
 export HISTIGNORE='$HISTIGNORE:[ 	]*'
-export HISTCONTROL=earsedups:ignorespace
+export HISTCONTROL=erasedups:ignorespace
 
 # 文件名补全时，忽略.svn目录
 export FIGNORE=.svn
