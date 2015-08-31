@@ -36,6 +36,12 @@ alias wine='env LANG=zh_CN.UTF-8 wine'
 alias xpop='xprop | grep --color=none "WM_CLASS\|^WM_NAME" | xmessage -file -'
 alias tmux='tmux -2'
 
+if [ `uname -o` = "Cygwin" ]
+then
+    alias cyg='apt-cyg mirror http://mirrors.163.com/cygwin/'
+    alias cyp='apt-cyg mirror http://mirrors.kernel.org/sources.redhat.com/cygwinports/'
+fi
+
 # 使用了pam_ssh，不再需要keychain
 #/usr/bin/keychain -Q -q ~/.ssh/id_rsa
 #[[ -f $HOME/.keychain/$HOSTNAME-sh ]] && source $HOME/.keychain/$HOSTNAME-sh
