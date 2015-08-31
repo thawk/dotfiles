@@ -1,21 +1,32 @@
 #~/bin/sh
-PROGRAM_ROOTS=($HOME/program $HOME/workspace)
 
 if [ ! -d "${BOOST_ROOT}" ]
 then
-    for i in $(seq 0 $((${#PROGRAM_ROOTS[*]} - 1)))
+    dir=$(pwd)
+    while [ -d "${dir}" ]
     do
-        PROGRAM_ROOT="${PROGRAM_ROOTS[$i]}"
-        if [ ! -d "${PROGRAM_ROOT}" ]
-        then
-            continue
-        fi
-
-        BOOST_ROOT=$(find "${PROGRAM_ROOT}/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
+        BOOST_ROOT=$(find "${dir}" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
         if [ -d "${BOOST_ROOT}" ]
         then
             break
         fi
+
+        if [ -d "${dir}/lib/cppf/common/3rd" ]
+        then
+            BOOST_ROOT=$(find "${dir}/lib/cppf/common/3rd/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
+            if [ -d "${BOOST_ROOT}" ]
+            then
+                break
+            fi
+        fi
+
+        parent=$(dirname "${dir}")
+        if [ "${parent}" = "${dir}" ]
+        then
+            break
+        fi
+
+        dir=${parent}
     done
 fi
 
