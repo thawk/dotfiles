@@ -1,24 +1,21 @@
-#~/bin/sh
+#!/bin/sh
 
 if [ ! -d "${BOOST_ROOT}" ]
 then
     dir=$(pwd)
     while [ -d "${dir}" ]
     do
-        BOOST_ROOT=$(find "${dir}" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
-        if [ -d "${BOOST_ROOT}" ]
-        then
-            break
-        fi
-
-        if [ -d "${dir}/lib/cppf/common/3rd" ]
-        then
-            BOOST_ROOT=$(find "${dir}/lib/cppf/common/3rd/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
-            if [ -d "${BOOST_ROOT}" ]
+        for d in . lib 3rd lib/cppf/common/3rd
+        do
+            if [ -d "${dir}/${d}" ]
             then
-                break
+                BOOST_ROOT=$(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
+                if [ -d "${BOOST_ROOT}" ]
+                then
+                    break 2
+                fi
             fi
-        fi
+        done
 
         parent=$(dirname "${dir}")
         if [ "${parent}" = "${dir}" ]
