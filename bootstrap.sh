@@ -2,6 +2,12 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+if [ -x git ]
+then
+    git config --global core.autocrlf false
+    git config --global core.eol lf
+fi
+
 ln -sf "${SCRIPT_DIR}/.tmux.conf" ~/
 ln -sf "${SCRIPT_DIR}/.screenrc" ~/
 ln -sf "${SCRIPT_DIR}/.dir_colors" ~/
