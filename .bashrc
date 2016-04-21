@@ -172,19 +172,35 @@ vman () {
 }
 
 dec2hex() {
-    while [ ! -z "$1" ]
-    do
-        echo "obase=16; ibase=10; $1" | bc
-        shift
-    done
+    if [ $# -eq 0 ]
+    then    # 从stdin读取
+        while read i
+        do
+            dec2hex $i
+        done
+    else    # 从命令行读取
+        while [ ! -z "$1" ]
+        do
+            echo "obase=16; ibase=10; $1" | bc
+            shift
+        done
+    fi
 }
 
 hex2dec() {
-    while [ ! -z "$1" ]
-    do
-        echo $((0x$1))
-        shift
-    done
+    if [ $# -eq 0 ]
+    then    # 从stdin读取
+        while read i
+        do
+            hex2dec $i
+        done
+    else    # 从命令行读取
+        while [ ! -z "$1" ]
+        do
+            echo $((0x$1))
+            shift
+        done
+    fi
 }
 
 b362dec() {
