@@ -12,7 +12,8 @@ calc_heap_entry_code() {
     heapEntryAddress="0x$3"
     heapEntrySize="0x$4"
 
-    echo "obase=16; ibase=10; $((((($heapEntryAddress)/8) ^ $rtlpLFHKey ^ $heap ^ $heapEntrySize) + 4))" | bc
+    echo -n "Subsegment: "
+    echo "obase=16; ibase=10; $((((($heapEntryAddress)/8) ^ $rtlpLFHKey ^ $heap ^ $heapEntrySize)))" | bc
 }
 
 heap_entry_code() {
