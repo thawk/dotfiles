@@ -86,10 +86,10 @@ source $ZSH/oh-my-zsh.sh
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-alias tw="task +work"
-alias th="task -work"
 
-if [ -f $HOME/.autojump/share/autojump/autojump.zsh ]
+if [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]]
 then
-    . $HOME/.autojump/share/autojump/autojump.zsh
+    source $HOME/.autojump/etc/profile.d/autojump.sh
+    autoload -U compinit && compinit -u
 fi
+

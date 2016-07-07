@@ -101,3 +101,7 @@ then
         fi
     fi
 fi
+
+[[ -s /home/tanht/.autojump/etc/profile.d/autojump.sh ]] && source /home/tanht/.autojump/etc/profile.d/autojump.sh
+
+
