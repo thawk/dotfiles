@@ -96,7 +96,7 @@ fi
 
 if [ ! -z "$MSYSTEM" ]
 then    # MSYS2
-    alias ping="/bin/win ping"
-    alias netstat="/bin/win netstat"
-    alias nslookup="/bin/win nslookup"
+    alias ping="/bin/winpty ping"
+    alias netstat="/bin/winpty netstat"
+    alias nslookup="/bin/winpty nslookup"
 fi
