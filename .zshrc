@@ -53,7 +53,8 @@ DISABLE_AUTO_UPDATE="true"
 plugins=(gitfast pip python tmux taskwarrior)
 
 # User configuration
-  export PATH="$HOME/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:$HOME/.vim/bundle/base16-shell:$HOME/.vim/bundle/base16-shell"
+#  export PATH="$HOME/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:$HOME/.vim/bundle/base16-shell:$HOME/.vim/bundle/base16-shell"
+export PATH="$HOME/bin:$PATH"
 # export MANPATH="/usr/local/man:$MANPATH"
 
   export SHELL=/usr/bin/zsh
@@ -93,3 +94,9 @@ then
     autoload -U compinit && compinit -u
 fi
 
+if [ ! -z "$MSYSTEM" ]
+then    # MSYS2
+    alias ping="/bin/win ping"
+    alias netstat="/bin/win netstat"
+    alias nslookup="/bin/win nslookup"
+fi
