@@ -2,7 +2,7 @@
 cdd() {
     if type tmux &> /dev/null
     then
-        cd "$(tmux display-message -p '#S')"
+        cd "$HOME/workspace/$(tmux display-message -p '#S')"
     fi
 }
 
@@ -146,3 +146,12 @@ dec2b36() {
     done
 }
 
+# 打开指定名称的session
+tm() {
+    first_session="$1"
+
+    while [ ! -z "$1" ]
+    do
+        # 记录
+    done
+}
