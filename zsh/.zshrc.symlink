@@ -54,7 +54,6 @@ plugins=(gitfast pip python tmux taskwarrior)
 
 # User configuration
 #  export PATH="$HOME/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:$HOME/.vim/bundle/base16-shell:$HOME/.vim/bundle/base16-shell"
-export PATH="$HOME/bin:$PATH"
 # export MANPATH="/usr/local/man:$MANPATH"
 
   export SHELL=/usr/bin/zsh
@@ -88,25 +87,48 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-if [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]]
-then
-    source $HOME/.autojump/etc/profile.d/autojump.sh
-    autoload -U compinit && compinit -u
-fi
+# DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
+DOTFILES_ROOT="$HOME/.dotfiles"
 
-if [ ! -z "$MSYSTEM" ]
-then    # MSYS2
-    alias ping="/bin/winpty ping"
-    alias netstat="/bin/winpty netstat"
-    alias nslookup="/bin/winpty nslookup"
-    alias ipconfig="/bin/winpty ipconfig"
+# Stash your environment variables in ~/.localrc. This means they'll stay out
+# of your main dotfiles repository (which may be public), but you'll have access
+# to them in your scripts.
+[[ -a ~/.localrc ]] && source ~/.localrc
+[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
-    # complete hard drives in msys2
-    drives=$(mount | sed -rn 's#^[A-Z]: on /([a-z]).*#\1#p' | tr '\n' ' ')
-    zstyle ':completion:*' fake-files /: "/:$drives"
-    unset drives
-fi
+# Append all bin directory to $PATH
+typeset -U bin_dirs
+bin_dirs=($DOTFILES_ROOT/*/bin)
+for d in $bin_dirs
+do
+    export PATH="$PATH:$d"
+done
+unset bin_dirs
 
-# 为base16生成必要的信息
-BASE16_SHELL=$HOME/.vim/bundle/base16-shell
-[ -n "$PS1" ] && [ -s $BASE16_SHELL/profile_helper.sh ] && eval "$($BASE16_SHELL/profile_helper.sh)"
+# all of our zsh files
+typeset -U config_files
+config_files=($DOTFILES_ROOT/*/(*.zsh|*.sh))
+
+# load the path files
+for file in ${(M)config_files:#*/path.(sh|zsh)}
+do
+  source $file
+done
+
+# load everything but the path and completion files
+for file in ${${config_files:#*/path.(sh|zsh)}:#*/completion.(sh|zsh)}
+do
+  source $file
+done
+
+# initialize autocomplete here, otherwise functions won't be loaded
+autoload -U compinit
+compinit
+
+# load every completion after autocomplete loads
+for file in ${(M)config_files:#*/completion(|_*).(sh|zsh)}
+do
+  source $file
+done
+
+unset config_files

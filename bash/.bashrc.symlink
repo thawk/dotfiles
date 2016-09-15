@@ -1,0 +1,59 @@
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# 使用了pam_ssh，不再需要keychain
+#/usr/bin/keychain -Q -q ~/.ssh/id_rsa
+#[[ -f $HOME/.keychain/$HOSTNAME-sh ]] && source $HOME/.keychain/$HOSTNAME-sh
+
+PS1='[\u@\h \W]\$ '
+
+DOTFILES_ROOT="$HOME/.dotfiles"
+
+shopt -s nullglob
+shopt -s extglob
+
+typeset -a bin_dirs
+bin_dirs=($DOTFILES_ROOT/*/bin)
+for d in ${bin_dirs[@]}
+do
+    export PATH="$PATH:$d"
+done
+unset bin_dirs
+
+# all of our sh files
+typeset -a config_files
+config_files=( $DOTFILES_ROOT/*/*.bash $DOTFILES_ROOT/*/*.sh )
+
+# load the path files
+for file in "${config_files[@]}"
+do
+    if [[ "$file" =~ .*/path\.(bash|sh)$ ]]
+    then
+        echo sourcing path: $file
+        source $file
+    fi
+done
+
+# load everything but the path and completion files
+for file in "${config_files[@]}"
+do
+    if [[ ! "$file" =~ .*/(path|completion(_[^/]*)?)\.(bash|sh)$ ]]
+    then
+        echo sourcing others: $file
+        source $file
+    fi
+done
+
+# load every completion after autocomplete loads
+for file in "${config_files[@]}"
+do
+    if [[ "$file" =~ .*/completion(_[^/]*)?\.(bash|sh)$ ]]
+    then
+        echo sourcing completion: $file
+        source $file
+    fi
+done
+
+unset config_files
