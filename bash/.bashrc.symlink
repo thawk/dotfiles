@@ -1,3 +1,9 @@
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
     . /etc/bashrc
@@ -7,53 +13,67 @@ fi
 #/usr/bin/keychain -Q -q ~/.ssh/id_rsa
 #[[ -f $HOME/.keychain/$HOSTNAME-sh ]] && source $HOME/.keychain/$HOSTNAME-sh
 
-PS1='[\u@\h \W]\$ '
+# set variable identifying the chroot you work in (used in the prompt below)
+if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
 
 DOTFILES_ROOT="$HOME/.dotfiles"
 
-shopt -s nullglob
 shopt -s extglob
 
-typeset -a bin_dirs
+typeset -a bin_dirs config_files
+
+shopt -s nullglob
 bin_dirs=($DOTFILES_ROOT/*/bin)
+config_files=( $DOTFILES_ROOT/*/*.bash $DOTFILES_ROOT/*/*.sh )
+shopt -u nullglob
+
 for d in ${bin_dirs[@]}
 do
     export PATH="$PATH:$d"
 done
-unset bin_dirs
-
-# all of our sh files
-typeset -a config_files
-config_files=( $DOTFILES_ROOT/*/*.bash $DOTFILES_ROOT/*/*.sh )
+unset d bin_dirs
 
 # load the path files
-for file in "${config_files[@]}"
+for f in "${config_files[@]}"
 do
-    if [[ "$file" =~ .*/path\.(bash|sh)$ ]]
+    if [[ "$f" =~ .*/path\.(bash|sh)$ ]]
     then
-        echo sourcing path: $file
-        source $file
+        source $f
     fi
 done
+unset f
 
 # load everything but the path and completion files
-for file in "${config_files[@]}"
+for f in "${config_files[@]}"
 do
-    if [[ ! "$file" =~ .*/(path|completion(_[^/]*)?)\.(bash|sh)$ ]]
+    if [[ ! "$f" =~ .*/(path|completion(_[^/]*)?)\.(bash|sh)$ ]]
     then
-        echo sourcing others: $file
-        source $file
+        source $f
     fi
 done
+unset f
+
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
 
 # load every completion after autocomplete loads
-for file in "${config_files[@]}"
+for f in "${config_files[@]}"
 do
-    if [[ "$file" =~ .*/completion(_[^/]*)?\.(bash|sh)$ ]]
+    if [[ "$f" =~ .*/completion(_[^/]*)?\.(bash|sh)$ ]]
     then
-        echo sourcing completion: $file
-        source $file
+        source $f
     fi
 done
+unset f
 
 unset config_files

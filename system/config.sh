@@ -1,8 +1,12 @@
 # Disable flow control
 stty -ixon
 
-export HISTIGNORE='&:ls:ll:[bf]g:exit'
+HISTIGNORE='&:ls:ll:[bf]g:exit'
 # ignore line begin with spaces
-export HISTIGNORE='$HISTIGNORE:[ 	]*'
-export HISTCONTROL=erasedups:ignorespace
+HISTIGNORE='$HISTIGNORE:[ 	]*'
+HISTCONTROL=erasedups:ignorespace
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
 

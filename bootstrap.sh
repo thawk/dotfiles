@@ -24,6 +24,16 @@ fail () {
     exit
 }
 
+relpath() {
+    if type python > /dev/null
+    then
+        python -c "import os.path; print(os.path.relpath('$1','${2:-$PWD}'))"
+    elif type realpath &> /dev/null
+    then
+        realpath --relative-to="${2:-$PWD}" "$1"
+    fi
+}
+
 setup_gitconfig () {
     if ! [ -f $DOTFILES_ROOT/git/.gitconfig.local.symlink ]
     then
@@ -160,7 +170,7 @@ install_dotfiles () {
 
     for src in $(find -H "$DOTFILES_ROOT" -name '*.symlink' -not -path '*.git')
     do
-        rel=$(realpath --relative-to "$DOTFILES_ROOT" "$src")
+        rel=$(relpath "$src" "$DOTFILES_ROOT")
         dst="$TARGET/${rel#*/}"
         dst="${dst%.symlink}"
         link_file "$src" "$dst"
