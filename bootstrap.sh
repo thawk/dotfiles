@@ -174,19 +174,19 @@ Usage: $(basename "$0") [options]
 
   Options:
       -h [ --help ]                show this screen
-      --dry-run                    print command instead of execute it
+      --apply                      apply modify instead of print it
       -t [ --target=<TARGET_DIR> ] target directory, defaults to \$HOME
 " >&2
 }
 
-TEMP=$(getopt -o h,t: --long help,dry-run,target: -- "$@")
+TEMP=$(getopt -o h,t: --long help,apply,target: -- "$@")
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!
 eval set -- "$TEMP"
 
-DRY_RUN=
+DRY_RUN=yes
 TARGET=$HOME
 
 while true ; do
@@ -195,8 +195,8 @@ while true ; do
             EchoUsage
             exit 1
             ;;
-        --dry-run)
-            DRY_RUN=yes
+        --apply)
+            DRY_RUN=no
             shift 1
             ;;
         -t|--target)

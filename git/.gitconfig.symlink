@@ -6,3 +6,5 @@
 [core]
         eol = lf
         autocrlf = false
+        filemode = false
+
