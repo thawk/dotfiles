@@ -11,6 +11,10 @@ then
     #ssh_auth_tmpdir=`mktemp --tmpdir --directory keeagent-ssh.XXXXXXXXXX`
     #export SSH_AUTH_SOCK="${ssh_auth_tmpdir}/agent.$$"
     export SSH_AUTH_SOCK="/tmp/keeagent.sock"
+    SSH_AUTH_LOCK_FILE=/var/lock/keeagent.lock
 
-    (socat -L/var/lock/keeagent.lock UNIX-LISTEN:${SSH_AUTH_SOCK},mode=0600,fork,shut-down TCP:127.0.0.1:${SSH_AUTH_KEEAGENT_PORT},connect-timeout=2 </dev/null >/dev/null 2>/dev/null &) &
+    # remove sock file if only sock exists, and lock file is not exists.
+    [ ! -e "${SSH_AUTH_LOCK_FILE}" ] && [ -e "${SSH_AUTH_SOCK}" ] && rm "${SSH_AUTH_SOCK}"
+
+    (socat -L"${SSH_AUTH_LOCK_FILE}" UNIX-LISTEN:"${SSH_AUTH_SOCK}",mode=0600,fork,shut-down TCP:127.0.0.1:${SSH_AUTH_KEEAGENT_PORT},connect-timeout=2 </dev/null >/dev/null 2>/dev/null &) &
 fi
