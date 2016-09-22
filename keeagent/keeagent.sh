@@ -14,7 +14,12 @@ then
     SSH_AUTH_LOCK_FILE=/var/lock/keeagent.lock
 
     # remove sock file if only sock exists, and lock file is not exists.
-    [ ! -e "${SSH_AUTH_LOCK_FILE}" ] && [ -e "${SSH_AUTH_SOCK}" ] && rm "${SSH_AUTH_SOCK}"
+    if [ ! -e "${SSH_AUTH_LOCK_FILE}" ]
+    then
+        [ -e "${SSH_AUTH_SOCK}" ] && rm "${SSH_AUTH_SOCK}"
 
-    (socat -L"${SSH_AUTH_LOCK_FILE}" UNIX-LISTEN:"${SSH_AUTH_SOCK}",mode=0600,fork,shut-down TCP:127.0.0.1:${SSH_AUTH_KEEAGENT_PORT},connect-timeout=2 </dev/null >/dev/null 2>/dev/null &) &
+        (socat -L"${SSH_AUTH_LOCK_FILE}" UNIX-LISTEN:"${SSH_AUTH_SOCK}",mode=0600,fork,shut-down TCP:127.0.0.1:${SSH_AUTH_KEEAGENT_PORT},connect-timeout=2 </dev/null >/dev/null 2>/dev/null &) &
+    fi
+
+    unset SSH_AUTH_LOCK_FILE
 fi
