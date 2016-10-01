@@ -5,7 +5,7 @@ set -g default-terminal "screen-256color"
 # By default, default-command is empty, which means tmux will create a login
 # shell using the value of the default-shell option.
 # Set default-command option to not empty prevents tmux using a login shell.
-set -g default-command $SHELL
+#set -g default-command $SHELL
 
 # Change prefix key to Ctrl+a
 unbind C-b
