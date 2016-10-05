@@ -226,6 +226,15 @@ done
 
 echo ''
 
+if [ "${DRY_RUN}" = 'yes' ]
+then
+    echo "!!! DRY RUN !!!"
+    echo ''
+else
+    echo "!!! Apply mode !!!"
+    echo ''
+fi
+
 setup_gitconfig
 install_dotfiles
 
