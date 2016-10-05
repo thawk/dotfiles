@@ -35,4 +35,7 @@ then
     fi
 
     unset SSH_AUTH_LOCK_FILE
+    unset SSH_AUTH_KEEAGENT_PORT
 fi
+
+unset SSH_AUTH_KEEAGENT_SOCK
