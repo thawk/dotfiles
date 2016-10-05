@@ -63,6 +63,24 @@ setup_gitconfig () {
 }
 
 
+setup_taskrc () {
+    if ! [ -f $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink ]
+    then
+        info 'setup taskrc'
+
+        if [ "${DRY_RUN}" = 'yes' ]
+        then
+            echo taskwarrior/.taskrc.local.symlink
+            cat $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink.example
+        else
+            cp $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink.example $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink
+        fi
+
+        success 'taskrc'
+    fi
+}
+
+
 link_file () {
     local src=$1 dst=$2
 
@@ -236,6 +254,7 @@ else
 fi
 
 setup_gitconfig
+setup_taskrc
 install_dotfiles
 
 echo ''
