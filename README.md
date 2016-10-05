@@ -2,7 +2,7 @@
 
 自用的Linux/cygwin/MSYS2配置文件。
 
-参考了 [holman](https://github.com/holman/dotfiles)] 的配置。
+参考了 [holman](https://github.com/holman/dotfiles) 的配置。
 
 ## 文件组织
 
@@ -39,3 +39,9 @@ cd ~/.dotfiles
 ```
 
 由于在.zshrc中在$0不是~/.zshrc，无法确定dotfiles目录在位置，所以在zsh/.zshrc.symlink和bash/.bashrc.symlink中都显式指定dotfiles的位置，因此只能clone到~/.dotfiles
+
+如果使用zsh，建议clone oh-my-zsh：
+
+```sh
+git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
+```
