@@ -1,5 +1,47 @@
 #!/usr/bin/env sh
 
+EchoUsage()
+{
+    echo "
+Usage: $(basename "$0") [options]
+
+  Options:
+      -h [ --help ]            show this screen
+      -f [ --force ]           force execution
+" >&2
+}
+
+TEMP=$(getopt -o h,f --long help,force -- "$@")
+
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+
+# Note the quotes around `$TEMP': they are essential!
+eval set -- "$TEMP"
+
+force=
+
+while true ; do
+    case "$1" in
+        -h|--help)
+            EchoUsage
+            exit 1
+            ;;
+        -f|--force)
+            force=yes
+            shift 1
+            break
+            ;;
+        --)
+            shift 1
+            break
+            ;;
+        *) 
+            echo "Unknown parameter '$1'!"
+            exit 1
+            ;;
+    esac
+done
+
 # only needed for WSL
 if ! [ "$(uname -s)" = "Linux" ] || ! grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null
 then
@@ -10,7 +52,7 @@ fi
 SSH_AUTH_KEEAGENT_SOCK=/mnt/c/Users/$USER/keepass.sock
 
 # Don't overwrite SSH_AUTH_SOCK
-if [ -n "${SSH_AUTH_SOCK}" ]
+if [ ${force} != "yes" ] && [ -n "${SSH_AUTH_SOCK}" ] && [ -e "${SSH_AUTH_SOCK}" ]
 then
     unset SSH_AUTH_KEEAGENT_SOCK
     exit 0
