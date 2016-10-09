@@ -64,16 +64,15 @@ setup_gitconfig () {
 
 
 setup_taskrc () {
-    if ! [ -f $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink ]
+    if ! [ -f $DOTFILES_ROOT/taskwarrior/.taskrc.symlink ]
     then
         info 'setup taskrc'
 
         if [ "${DRY_RUN}" = 'yes' ]
         then
-            echo taskwarrior/.taskrc.local.symlink
-            cat $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink.example
+            echo taskwarrior/.taskrc.symlink
         else
-            cp $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink.example $DOTFILES_ROOT/taskwarrior/.taskrc.local.symlink
+            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_ROOT/taskwarrior/.taskrc.symlink
         fi
 
         success 'taskrc'

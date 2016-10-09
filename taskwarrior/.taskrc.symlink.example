@@ -1,6 +1,11 @@
+# Files
+data.location=~/.task
+
+include ~/.task/taskrc
+
+# private information
 # taskd.server=server.3322.org:465
 # taskd.key=~/.task/home/client.key.pem
 # taskd.certificate=~/.task/home/client.cert.pem
 # taskd.ca=~/.task/home/ca.cert.pem
 # taskd.credentials=My/client/UUID
-
