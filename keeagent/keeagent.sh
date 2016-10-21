@@ -52,7 +52,7 @@ fi
 SSH_AUTH_KEEAGENT_SOCK=/mnt/c/Users/$USER/keepass.sock
 
 # Don't overwrite SSH_AUTH_SOCK
-if [ ${force} != "yes" ] && [ -n "${SSH_AUTH_SOCK}" ] && [ -e "${SSH_AUTH_SOCK}" ]
+if [ "${force}" != "yes" ] && [ -n "${SSH_AUTH_SOCK}" ] && [ -e "${SSH_AUTH_SOCK}" ]
 then
     unset SSH_AUTH_KEEAGENT_SOCK
     exit 0
