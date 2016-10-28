@@ -13,7 +13,7 @@ Usage: $(basename "$0") [options]
 
 TEMP=$(getopt -o h,f --long help,force -- "$@")
 
-if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; return 1 ; fi
 
 # Note the quotes around `$TEMP': they are essential!
 eval set -- "$TEMP"
@@ -24,7 +24,7 @@ while true ; do
     case "$1" in
         -h|--help)
             EchoUsage
-            exit 1
+            return 1
             ;;
         -f|--force)
             force=yes
@@ -37,7 +37,7 @@ while true ; do
             ;;
         *) 
             echo "Unknown parameter '$1'!"
-            exit 1
+            return 1
             ;;
     esac
 done
@@ -45,7 +45,7 @@ done
 # only needed for WSL
 if ! [ "$(uname -s)" = "Linux" ] || ! grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null
 then
-    exit 0
+    return 0
 fi
 
 # If MSYSGIT socket in keeagent is set as c:\Users/foo/Documents/ssh_auth_msysgit
@@ -55,7 +55,7 @@ SSH_AUTH_KEEAGENT_SOCK=/mnt/c/Users/$USER/keepass.sock
 if [ "${force}" != "yes" ] && [ -n "${SSH_AUTH_SOCK}" ] && [ -e "${SSH_AUTH_SOCK}" ]
 then
     unset SSH_AUTH_KEEAGENT_SOCK
-    exit 0
+    return 0
 fi
 
 # export SSH_AUTH_SOCK even SSH_AUTH_KEEAGENT_SOCK does not exist.
