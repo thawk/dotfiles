@@ -201,7 +201,7 @@ Usage: $(basename "$0") [options]
 
   Options:
       -h [ --help ]                show this screen
-      --apply                      apply modify instead of print it
+      --dry-run                    print modify instead of apply it
       -t [ --target=<TARGET_DIR> ] target directory, defaults to \$HOME
 " >&2
 }
@@ -213,7 +213,7 @@ if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 # Note the quotes around `$TEMP': they are essential!
 eval set -- "$TEMP"
 
-DRY_RUN=yes
+DRY_RUN=no
 TARGET=$HOME
 
 while true ; do
@@ -222,8 +222,8 @@ while true ; do
             EchoUsage
             exit 1
             ;;
-        --apply)
-            DRY_RUN=no
+        --dry-run)
+            DRY_RUN=yes
             shift 1
             ;;
         -t|--target)
