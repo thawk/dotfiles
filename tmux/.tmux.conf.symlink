@@ -158,4 +158,6 @@ set -g visual-activity on
 # Clock
 setw -g clock-mode-style 24
 
+set -g update-environment -r
+
 # vim: set fenc=utf-8 foldmethod=marker

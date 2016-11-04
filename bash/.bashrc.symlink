@@ -18,6 +18,13 @@ if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
+# Fix problem that SSH_AUTH_SOCK not updated in tmux
+if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
+    unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+    ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+fi
+
 DOTFILES_ROOT="$HOME/.dotfiles"
 
 shopt -s extglob

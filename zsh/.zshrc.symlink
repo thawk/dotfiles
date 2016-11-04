@@ -60,6 +60,13 @@ plugins=(gitfast pip python tmux)
   export ZSH_TMUX_AUTOSTART="true"
   export ZSH_TMUX_AUTOQUIT="false"
 
+# Fix problem that SSH_AUTH_SOCK not updated in tmux
+if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
+    unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+    ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+fi
+
 [ -e $ZSH/oh-my-zsh.sh ] && source $ZSH/oh-my-zsh.sh
 
 # You may need to manually set your language environment
