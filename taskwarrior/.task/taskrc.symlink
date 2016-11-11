@@ -41,6 +41,12 @@ report.home.sort=urgency-
 
 urgency.user.tag.maybe.coefficient=-100.0
 
+# default to priority M. L to lower priority
+urgency.uda.priority.H.coefficient=6.0
+urgency.uda.priority.M.coefficient=0.0
+urgency.uda.priority.L.coefficient=-6.0
+
+
 # using "task context work" or "task context home" to using specified context. "task context none" to remove current context
 context.work=+work
 context.home=-work
