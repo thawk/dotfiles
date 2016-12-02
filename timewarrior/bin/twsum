@@ -28,9 +28,9 @@ def main(**kwargs):
     tracked['start'] = pd.to_datetime(tracked['start'])
     tracked['date'] = tracked['start'].dt.date
     tracked['end'] = pd.to_datetime(tracked['end'])
-    tracked['duration'] = ((tracked['end'] - tracked['start']) / pd.Timedelta('1h')).ceil(1)
+    tracked['duration'] = ((tracked['end'] - tracked['start']) / pd.Timedelta('1h')).apply(lambda v: np.ceil(v * 100)/100)
     pt = tracked.pivot_table('duration', columns='date', index=['tags'], aggfunc=np.sum, margins=True)
-    print pt.fillna('-').to_csv(sep='\t', float_format='%g')
+    print pt.fillna('-').to_csv(sep='\t', float_format='%.2f')
 
 if __name__ == '__main__':
     reload(sys)
