@@ -4,6 +4,11 @@
 sod()
 {
     date +'%Y-%m-%d %H:%M:%S'
+    if which task > /dev/null
+    then
+        task sync
+    fi
+
     for repo in ~/.timewarrior
     do
         if [ -d "${repo}" ]
@@ -20,6 +25,11 @@ sod()
 eod()
 {
     date +'%Y-%m-%d %H:%M:%S'
+    if which task > /dev/null
+    then
+        task sync
+    fi
+
     for repo in ~/.timewarrior
     do
         if [ -d "${repo}" ]
