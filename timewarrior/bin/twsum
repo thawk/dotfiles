@@ -12,7 +12,8 @@ import json
 import pandas as pd
 import numpy as np
 
-VERSION=u'20161128'
+VERSION = u'20161128'
+TIME_ZONE = 'Asia/Shanghai'
 
 def timewarrior_summary(options):
     output = subprocess.check_output(['timew', 'export'] + options).decode(locale.getpreferredencoding())
@@ -25,9 +26,9 @@ def main(**kwargs):
 
     tracked = pd.DataFrame(l)
 
-    tracked['start'] = pd.to_datetime(tracked['start'])
+    tracked['start'] = pd.to_datetime(tracked['start']).dt.tz_localize('UTC').dt.tz_convert(TIME_ZONE)
     tracked['date'] = tracked['start'].dt.date
-    tracked['end'] = pd.to_datetime(tracked['end'])
+    tracked['end'] = pd.to_datetime(tracked['end']).dt.tz_localize('UTC').dt.tz_convert(TIME_ZONE)
     tracked['duration'] = ((tracked['end'] - tracked['start']) / pd.Timedelta('1h')).apply(lambda v: np.ceil(v * 100)/100)
     pt = tracked.pivot_table('duration', columns='date', index=['tags'], aggfunc=np.sum, margins=True)
     print pt.fillna('-').to_csv(sep='\t', float_format='%.2f')
