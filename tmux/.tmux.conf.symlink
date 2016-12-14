@@ -74,7 +74,7 @@ set-window-option -g clock-mode-style 24
 
 set-option -g update-environment -r
 
-source .tmux-theme-base16.conf
-source .tmux-status.conf
+source ~/.tmux-theme-base16.conf
+source ~/.tmux-status.conf
 
-# vim: set-option fenc=utf-8 foldmethod=marker ft=tmux
+# vim: set fenc=utf-8 foldmethod=marker ft=tmux
