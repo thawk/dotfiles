@@ -9,7 +9,7 @@ sod()
         task sync
     fi
 
-    for repo in ~/.timewarrior
+    for repo in ~/.timewarrior ~/.vim ~/.dotfiles
     do
         if [ -d "${repo}" ]
         then
