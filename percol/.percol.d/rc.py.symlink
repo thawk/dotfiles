@@ -1,3 +1,7 @@
+percol.view.PROMPT = ur"<blue>Input:</blue> %q"
+percol.view.prompt_replacees["F"] = lambda self, **args: self.model.finder.get_name()
+percol.view.RPROMPT = ur"(%F) [%i/%I]"
+
 # Emacs like
 percol.import_keymap({
     "C-h" : lambda percol: percol.command.delete_backward_char(),
@@ -9,6 +13,8 @@ percol.import_keymap({
     "C-e" : lambda percol: percol.command.end_of_line(),
     "C-b" : lambda percol: percol.command.backward_char(),
     "C-f" : lambda percol: percol.command.forward_char(),
+    "C-s" : lambda percol: percol.command.toggle_mark_and_next(),
+    "M-s" : lambda percol: percol.command.toggle_mark_all(),
     "M-f" : lambda percol: percol.command.forward_word(),
     "M-b" : lambda percol: percol.command.backward_word(),
     "M-d" : lambda percol: percol.command.delete_forward_word(),
