@@ -56,9 +56,10 @@ plugins=(gitfast pip python tmux)
 #  export PATH="$HOME/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0/:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:$HOME/.vim/bundle/base16-shell:$HOME/.vim/bundle/base16-shell"
 # export MANPATH="/usr/local/man:$MANPATH"
 
-  #export SHELL=/usr/bin/zsh
-  export ZSH_TMUX_AUTOSTART="true"
-  export ZSH_TMUX_AUTOQUIT="false"
+# If current shell doesn't contains zsh, set to zsh
+[[ "$SHELL" =~ zsh ]] || export SHELL=$(which zsh)
+export ZSH_TMUX_AUTOSTART="true"
+export ZSH_TMUX_AUTOQUIT="false"
 
 # Fix problem that SSH_AUTH_SOCK not updated in tmux
 if [ ! -z "$SSH_AUTH_SOCK" -a -e "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
