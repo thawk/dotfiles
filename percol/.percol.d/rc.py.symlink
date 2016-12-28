@@ -1,6 +1,13 @@
-percol.view.PROMPT = ur"<blue>Input:</blue> %q"
+# percol.view.PROMPT = ur"<blue>Input:</blue> %q"
+percol.view.PROMPT = ur"<on_blue><black>Input \></black></on_blue>%q"
 percol.view.prompt_replacees["F"] = lambda self, **args: self.model.finder.get_name()
-percol.view.RPROMPT = ur"(%F) [%i/%I]"
+# percol.view.RPROMPT = ur"(%F) [%i/%I]"
+percol.view.RPROMPT = ur"<on_green><black>\< (%F) [%i/%I]</black></on_green>"
+
+percol.view.CANDIDATES_LINE_BASIC    = ("on_default", "default")
+percol.view.CANDIDATES_LINE_SELECTED = ("dim", "underline", "on_cyan", "black")
+percol.view.CANDIDATES_LINE_MARKED   = ("dim", "bold", "on_green", "black")
+percol.view.CANDIDATES_LINE_QUERY    = ("dim", "bold", "on_yellow", "black")
 
 # Emacs like
 percol.import_keymap({
