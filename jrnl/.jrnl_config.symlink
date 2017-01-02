@@ -3,7 +3,7 @@
   "linewrap": 79, 
   "encrypt": false, 
   "default_minute": 0, 
-  "tagsymbols": "+", 
+  "tagsymbols": "@", 
   "editor": "/usr/local/bin/vim", 
   "timeformat": "%Y-%m-%d %H:%M", 
   "highlight": true, 
