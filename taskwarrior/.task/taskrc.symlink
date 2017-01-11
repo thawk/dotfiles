@@ -30,14 +30,16 @@
 # can use project.not:proj_name to filter out tasks belongs to specified project
 report.work.columns=id,start.age,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description,urgency
 report.work.description=Tasks at work
-report.work.filter=status:pending (+work)
+report.work.filter=status:pending -BLOCKED -maybe (+work)
 report.work.labels=ID,Active,Age,Deps,P,Project,Tag,Recur,S,Due,Until,Description,Urg
 report.work.sort=urgency-
 report.home.columns=id,start.age,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description,urgency
 report.home.description=Tasks not at work
-report.home.filter=status:pending (-work)
+report.home.filter=status:pending -BLOCKED -maybe (-work)
 report.home.labels=ID,Active,Age,Deps,P,Project,Tag,Recur,S,Due,Until,Description,Urg
 report.home.sort=urgency-
+
+report.next.filter=status:pending limit:page -BLOCKED -maybe
 
 urgency.user.tag.maybe.coefficient=-100.0
 
