@@ -67,15 +67,15 @@ export ZSH_TMUX_AUTOQUIT="false"
 # 由于启用了tmux插件，在顶层zsh中是不会执行到oh-my-zsh.sh后面的内容的，所以专门source一些需要在顶层截稿的内容
 if [ "$SHLVL" -eq 1 ]
 then
-    # Fix problem that SSH_AUTH_SOCK not updated in tmux
-    if [ ! -z "$SSH_AUTH_SOCK" -a -e "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
-        unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
-        ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
-        export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
-    fi
-
     # 在顶层SHELL中恢复base16的配色
     [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
+fi
+
+# Fix problem that SSH_AUTH_SOCK not updated in tmux
+if [ ! -z "$SSH_AUTH_SOCK" -a -e "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
+    unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+    ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
 fi
 
 [ -e $ZSH/oh-my-zsh.sh ] && source $ZSH/oh-my-zsh.sh
