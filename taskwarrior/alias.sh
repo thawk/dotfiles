@@ -1,2 +1,2 @@
 alias t=task
-alias tw=timew
+alias tc="task add +work +@内网"
