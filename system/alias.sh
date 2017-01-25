@@ -1,19 +1,6 @@
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 my_os=$(uname -o)
 
-vi=$(which vi 2> /dev/null)
-vim=$(which vim 2> /dev/null)
-
-if [ ! -z "$vim" ]; then
-    export EDITOR="$vim"
-    [ -z "$vi" ] && alias vi=vim
-elif [ ! -z "$vi" ]; then
-    export EDITOR="vi"
-fi
-
-unset vim
-unset vi
-
 if [ "$my_os" = "FreeBSD" ]
 then
     alias ls='ls -G'

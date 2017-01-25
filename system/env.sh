@@ -10,3 +10,11 @@ export FIGNORE=.svn
 # prevent accident press ctrl-d to exit the shell
 export IGNOREEOF=1
 
+if which vim &> /dev/null ; then
+    export EDITOR="vim"
+    which vi &> /dev/null || alias vi=vim
+elif which vi &> /dev/null ; then
+    export EDITOR="vi"
+fi
+
+
