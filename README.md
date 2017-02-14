@@ -41,8 +41,4 @@ cd ~/.dotfiles
 
 由于在.zshrc中在$0不是~/.zshrc，无法确定dotfiles目录在位置，所以在zsh/.zshrc.symlink和bash/.bashrc.symlink中都显式指定dotfiles的位置，因此只能clone到~/.dotfiles
 
-如果使用zsh，建议clone oh-my-zsh：
-
-```sh
-git clone https://github.com/robbyrussell/oh-my-zsh.git ~/.oh-my-zsh
-```
+使用zgen管理zsh的插件。可以编辑zsh/.zshrc.symlink管理插件。
