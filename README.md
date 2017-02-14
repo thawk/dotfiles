@@ -20,6 +20,7 @@
         - **config.sh**: 可用于设置一些配置，如使用setopt
         - **functions.sh**: 可用于保存一些function
 - **\*.symlink**: 所有以.symlink结尾在文件或目录会被符号链接到$HOME
+- zsh-completion: 本目录将加入$fpath中，可用于存放zsh的补全脚本
 
 ## 本地配置文件
 

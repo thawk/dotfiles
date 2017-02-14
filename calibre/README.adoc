@@ -1,0 +1,43 @@
+* 找一个目录，创建 l.py
++
+[source,python]
+----
+#!/usr/bin/env python2
+
+"""
+This is the standard runscript for all of calibre's tools.
+Do not modify it unless you know what you are doing.
+"""
+
+import sys, os
+import logging
+
+log_format = u'%(asctime)s %(levelname)s %(message)s'
+logging.basicConfig(level=logging.DEBUG, format=log_format)
+
+path = os.environ.get('CALIBRE_PYTHON_PATH', '/usr/local/lib/calibre')
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+sys.resources_location = os.environ.get('CALIBRE_RESOURCES_PATH', '/usr/local/share/calibre')
+sys.extensions_location = os.environ.get('CALIBRE_EXTENSIONS_PATH', '/usr/local/lib/calibre/calibre/plugins')
+sys.executables_location = os.environ.get('CALIBRE_EXECUTABLES_PATH', '/usr/local/bin')
+
+
+from calibre.linux import main
+sys.exit(main())
+----
+
+* 创建 zsh 目录，以便生成 zsh 的 completion
++
+[source,sh]
+----
+mkdir -p stage/share/zsh/site-functions
+----
+
+* 生成相关文件
++
+[source,sh]
+----
+python l.py --root=stage
+----
