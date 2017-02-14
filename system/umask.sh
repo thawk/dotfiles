@@ -1,1 +1,1 @@
-umask 002
+umask 022
