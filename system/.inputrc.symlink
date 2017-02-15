@@ -2,7 +2,7 @@ $if mode=emacs
     # ctrl-o 补全下一项
     # 上、下键，按当前已输入的内容进行增量搜索
     "\C-o": menu-complete
-    "\e[A":history-search-backward
-    "\e[B":history-search-forward
+    # "\e[A":history-search-backward
+    # "\e[B":history-search-forward
 $endif
 
