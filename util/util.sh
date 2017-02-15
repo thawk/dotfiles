@@ -65,3 +65,9 @@ ansiesc() {
 vman () {
     vim +"set ft=man" +"Man $*"
 }
+
+function = 
+{
+      echo "$@" | bc -l
+}
+
