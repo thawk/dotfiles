@@ -1,9 +1,9 @@
 # 进程管理相关命令
 function ppgrep() {
     if [[ $1 == "" ]]; then
-        PERCOL=percol
+        PERCOL=peco
     else
-        PERCOL="percol --query $1"
+        PERCOL="peco --query $1"
     fi
     ps aux | eval $PERCOL | awk '{ print $2 }'
 }

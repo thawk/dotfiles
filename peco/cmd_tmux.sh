@@ -1,9 +1,9 @@
 # tmux相关命令
 function pattach() {
     if [[ $1 == "" ]]; then
-        PERCOL=percol
+        PERCOL=peco
     else
-        PERCOL="percol --query $1"
+        PERCOL="peco --query $1"
     fi
 
     sessions=$(tmux ls)
