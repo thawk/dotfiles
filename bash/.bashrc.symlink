@@ -52,7 +52,17 @@ do
 done
 unset f
 
-# load everything but the path and completion files
+# load the env files
+for f in "${config_files[@]}"
+do
+    if [[ "$f" =~ .*/env\.(bash|sh)$ ]]
+    then
+        source $f
+    fi
+done
+unset f
+
+# load everything but the env, path and completion files
 for f in "${config_files[@]}"
 do
     if [[ ! "$f" =~ .*/(path|completion(_[^/]*)?)\.(bash|sh)$ ]]

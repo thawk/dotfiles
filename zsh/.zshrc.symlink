@@ -92,8 +92,14 @@ _load_dotfiles() {
         source $file
     done
 
+    # load the env files
+    for file in ${(M)config_files:#*/env.(sh|zsh)}
+    do
+        source $file
+    done
+
     # load everything but the path and completion files
-    for file in ${${config_files:#*/path.(sh|zsh)}:#*/completion.(sh|zsh)}
+    for file in ${${${config_files:#*/path.(sh|zsh)}:#*/env.(sh|zsh)}:#*/completion.(sh|zsh)}
     do
         source $file
     done
