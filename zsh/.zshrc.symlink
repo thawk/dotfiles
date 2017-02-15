@@ -52,6 +52,8 @@ _load_plugins() {
         # <ESC><ESC>为当前命令加上sudo
         zgen load hcgraf/zsh-sudo
 
+        zgen load psprint/history-search-multi-word
+
         # Very cool plugin that generates zsh completion functions for commands
         # if they have getopt-style help text. It doesn't generate them on the fly,
         # you'll have to explicitly generate a completion, but it's still quite cool.
