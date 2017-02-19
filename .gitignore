@@ -1,2 +1,5 @@
-git/.gitconfig.local.symlink
-taskwarrior/.taskrc.symlink
+/git/.gitconfig.local.symlink
+/taskwarrior/.taskrc.symlink
+/links.txt
+/script.bash
+/script.zsh

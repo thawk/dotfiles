@@ -66,59 +66,6 @@ _load_plugins() {
     fi
 }
 
-_load_dotfiles() {
-    # Stash your environment variables in ~/.localrc. This means they'll stay out
-    # of your main dotfiles repository (which may be public), but you'll have access
-    # to them in your scripts.
-    [[ -a ~/.localrc ]] && source ~/.localrc
-    [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
-
-    # Append all bin directory to $PATH
-    typeset -U bin_dirs
-    bin_dirs=($DOTFILES_ROOT/*/bin)
-    for d in $bin_dirs
-    do
-        export PATH="$PATH:$d"
-    done
-    unset bin_dirs
-
-    # all of our zsh files
-    typeset -U config_files
-    config_files=($DOTFILES_ROOT/*/(*.zsh|*.sh))
-
-    # load the path files
-    for file in ${(M)config_files:#*/path.(sh|zsh)}
-    do
-        source $file
-    done
-
-    # load the env files
-    for file in ${(M)config_files:#*/env.(sh|zsh)}
-    do
-        source $file
-    done
-
-    # load everything but the path and completion files
-    for file in ${${${config_files:#*/path.(sh|zsh)}:#*/env.(sh|zsh)}:#*/completion.(sh|zsh)}
-    do
-        source $file
-    done
-
-    fpath=($DOTFILES_ROOT/*/zsh-completion(N) $fpath)
-
-    # initialize autocomplete here, otherwise functions won't be loaded
-    autoload -U compinit
-    compinit
-
-    # load every completion after autocomplete loads
-    # for file in ${(M)config_files:#*/completion(|_*).(sh|zsh)}
-    # do
-    #   source $file
-    # done
-
-    unset config_files
-}
-
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
 DOTFILES_ROOT="$HOME/.dotfiles"
 
@@ -162,6 +109,13 @@ then
     fi
 fi
 
+# Stash your environment variables in ~/.localrc. This means they'll stay out
+# of your main dotfiles repository (which may be public), but you'll have access
+# to them in your scripts.
+[[ -a ~/.localrc ]] && source ~/.localrc
+[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
+
 _load_plugins
-_load_dotfiles
+
+[ -f "$DOTFILES_ROOT/script.zsh" ] && source "$DOTFILES_ROOT/script.zsh"
 

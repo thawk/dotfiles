@@ -10,6 +10,7 @@
 
 在每个子目录下有以下特殊文件和目录：
 
+- **requirements.sh**: 如存在，则必须有可执行权限。在安装（bootstrap.sh）时，根据此脚本的返回结果决定是否启用本子目录。可用于判断目录所依赖的命令是否存在
 - **bin/**: bin目录会被加入$PATH以便随时可用
 - **{asterisk}.sh**: 子目录下的{asterisk}.sh（不含子目录）会被source进当前环境。{asterisk}.bash/{asterisk}.zsh只会被bash/zsh载入
     - **path.sh**: 子目录下的path.sh会先于其它脚本source进环境，可以在这个脚本中设置$PATH

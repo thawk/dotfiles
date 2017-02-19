@@ -6,24 +6,30 @@ DOTFILES_ROOT="$(dirname "$(readlink -f "$0")")"
 
 set -e
 
+debug () {
+    # printf "\r  [ \033[00;34m..\033[0m ] $1\n" > /dev/stderr
+    echo > /dev/null
+}
+
 info () {
-    printf "\r  [ \033[00;34m..\033[0m ] $1\n"
+    printf "\r  [ \033[00;34m..\033[0m ] $1\n" > /dev/stderr
 }
 
 user () {
-    printf "\r  [ \033[0;33m??\033[0m ] $1\n"
+    printf "\r  [ \033[0;33m??\033[0m ] $1\n" > /dev/stderr
 }
 
 success () {
-    printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n"
+    printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n" > /dev/stderr
 }
 
 skip () {
-    printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n"
+    # printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n" > /dev/stderr
+    echo > /dev/null
 }
 
 fail () {
-    printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n"
+    printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n" > /dev/stderr
     echo ''
     exit
 }
@@ -100,11 +106,8 @@ link_file () {
 
             if [ "$currentSrc" == "$src" ]
             then
-
                 skip=true;
-
             else
-
                 user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
                     [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
                 read -n 1 action
@@ -140,7 +143,7 @@ link_file () {
             else
                 rm -rf "$dst"
             fi
-            success "removed $dst"
+            success "  removed $dst"
         fi
 
         if [ "$backup" == "true" ]
@@ -156,7 +159,7 @@ link_file () {
 
         if [ "$skip" == "true" ]
         then
-            skip "skipped $src"
+            skip "  skipped $src"
         fi
     fi
 
@@ -180,21 +183,206 @@ link_file () {
         else
             ln -s "$1" "$2"
         fi
-        success "linked $1 to $2"
+        success "  linked $1 to $2"
     fi
+
+    unset src dst overwrite backup skip action
 }
 
-install_dotfiles () {
-    info 'installing dotfiles'
+get_symlinks() {
+    for dir in "$@"
+    do
+        for src in $(find -H "$dir" -name '*.symlink' -not -path '*.git')
+        do
+            rel=$(relpath "$src" "$DOTFILES_ROOT")
+            echo "$rel"
+        done
+    done
+
+    unset dir src
+}
+
+create_symlinks () {
+    local dir
+
+    for dir in $(get_addtional_paths "$@")
+    do
+        export PATH=$PATH:$dir
+    done
+
+    info 'Creating symbol links...'
 
     local overwrite_all=false backup_all=false skip_all=false
-
-    for src in $(find -H "$DOTFILES_ROOT" -name '*.symlink' -not -path '*.git')
+    local -A links
+    
+    for link in $(get_symlinks "$@")
     do
-        rel=$(relpath "$src" "$DOTFILES_ROOT")
-        dst="$TARGET/${rel#*/}"
+        links["$link"]="$link"
+    done
+
+    if [ -e "$DOTFILES_ROOT/links.txt" ]
+    then
+        for link in $( cat "$DOTFILES_ROOT/links.txt" )
+        do
+            if ! [ "${links["$link"]+isset}" ]
+            then
+                dst="$TARGET/${link#*/}"
+                dst="${dst%.symlink}"
+
+                if [ -e "$dst" ]
+                then
+                    if [ -h "$dst" -a "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
+                    then
+                        info "  rm outdated \"$dst\""
+                        if [ "${DRY_RUN}" = 'yes' ]
+                        then
+                            echo "      => rm \"$dst\""
+                        else
+                            rm "$dst"
+                        fi
+                    else
+                        skip "  $dst is not symlink, ignore removing"
+                    fi
+                else
+                    debug "  $dst not exists, no need to remove"
+                fi
+            fi
+        done
+    fi
+
+    cat /dev/null > "$DOTFILES_ROOT/links.txt"
+    for link in "${links[@]}"
+    do
+        echo "$link" >> "$DOTFILES_ROOT/links.txt"
+        dst="$TARGET/${link#*/}"
         dst="${dst%.symlink}"
-        link_file "$src" "$dst"
+        link_file "$DOTFILES_ROOT/$link" "$dst"
+    done
+}
+
+generate_source_list () {
+    shell="$1"
+
+    orig_nullglob=
+    shopt nullglob > /dev/null && orig_nullglob=1
+    shopt -s nullglob
+
+    typeset -a path_sh env_sh completion_sh others_sh
+
+    while [ $# -gt 1 ]
+    do
+        shift
+
+        dir=$1
+        debug "    Handling scripts in ${dir}..."
+
+        for f in "${dir}"/*.sh "${dir}"/*."${shell}"
+        do
+            if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
+                path_sh[${#path_sh[*]}]="$f"
+                debug "      Add $f ito path.sh..."
+            elif [[ "${f##*/}" =~ ^env\.[^.]*$ ]]; then
+                env_sh[${#env_sh[*]}]="$f"
+                debug "      Add $f ito env.sh..."
+            elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
+                completion_sh[${#completion_sh[*]}]="$f"
+                debug "      Add $f ito completion.sh..."
+            elif ! [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
+                others_sh[${#others_sh[*]}]="$f"
+                debug "      Add $f ito others.sh..."
+            else
+                debug "      Ignoring $f..."
+            fi
+        done
+    done
+
+    # reset nullglob if original value is false
+    [ -z "$orig_nullglob" ] && shopt -u nullglob
+
+    echo
+    echo "# set paths"
+    for f in "${path_sh[@]}"
+    do
+        echo "source \"$f\""
+    done | sort
+
+    echo
+    echo "# set environments"
+    for f in "${env_sh[@]}"
+    do
+        echo "source \"$f\""
+    done | sort
+
+    echo
+    echo "# others scripts"
+    for f in "${others_sh[@]}"
+    do
+        echo "source \"$f\""
+    done | sort
+
+    echo
+    echo "# completion scripts"
+    for f in "${completion_sh[@]}"
+    do
+        echo "source \"$f\""
+    done | sort
+
+    unset f shell path_sh env_sh completion_sh others_sh orig_nullglob
+}
+
+function join_by {
+    local d=$1
+    shift
+    echo -n "$1"
+    shift
+    printf "%s" "${@/#/$d}"
+}
+
+get_enabled_dir() {
+    info "Checking disabled directory..."
+    for dir in $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort)
+    do
+        if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh"
+        then
+            info "  Disable ${dir}"
+            continue
+        fi
+
+        debug "  Enable ${dir}"
+        echo ${dir}
+
+    done
+
+    unset dir
+}
+
+get_addtional_paths() {
+    local dir=
+
+    for dir in "$@"
+    do
+        [ -d "${dir}/bin" ] && echo "${dir}/bin"
+    done
+}
+
+generate_script_file() {
+    local dir= shell= script_name=
+
+    for shell in bash zsh
+    do
+        script_name=script.${shell}
+        info "Generating ${script_name} for ${shell}"
+
+        cat /dev/null > "$script_name"
+
+        echo -n "export PATH=\$PATH" >> "$script_name"
+
+        for dir in $(get_addtional_paths "$@")
+        do
+            echo -n ":${dir}" >> "$script_name"
+        done
+        echo >> "$script_name"
+        generate_source_list $shell "$@" >> "$script_name"
     done
 }
 
@@ -256,9 +444,16 @@ else
     echo ''
 fi
 
+typeset -a dirs
+
+dirs=( $(get_enabled_dir) )
+
 setup_gitconfig
 setup_taskrc
-install_dotfiles
+generate_script_file "${dirs[@]}"
+create_symlinks "${dirs[@]}"
+
+unset dirs
 
 echo ''
 echo '  All installed!'
