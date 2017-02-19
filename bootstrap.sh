@@ -24,7 +24,7 @@ success () {
 }
 
 skip () {
-    # printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n" > /dev/stderr
+    printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n" > /dev/stderr
     echo > /dev/null
 }
 
@@ -159,7 +159,7 @@ link_file () {
 
         if [ "$skip" == "true" ]
         then
-            skip "  skipped $src"
+            debug "  skipped $src"
         fi
     fi
 
@@ -224,14 +224,16 @@ create_symlinks () {
     then
         for link in $( cat "$DOTFILES_ROOT/links.txt" )
         do
-            if ! [ "${links["$link"]+isset}" ]
+            echo dst=$dst link=$link "${links["$link"]+isset}"
+            if [ -z "${links[$link]+isset}" ]
             then
                 dst="$TARGET/${link#*/}"
                 dst="${dst%.symlink}"
 
-                if [ -e "$dst" ]
+                if [ -h "$dst" ]
                 then
-                    if [ -h "$dst" -a "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
+                    echo yes: dst=$dst link=$link
+                    if [ "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
                     then
                         info "  rm outdated \"$dst\""
                         if [ "${DRY_RUN}" = 'yes' ]
@@ -241,10 +243,10 @@ create_symlinks () {
                             rm "$dst"
                         fi
                     else
-                        skip "  $dst is not symlink, ignore removing"
+                        skip "  $dst is not point to original position, don't need to be remove"
                     fi
                 else
-                    debug "  $dst not exists, no need to remove"
+                    skip "  $dst is not exists, or not a symbol link, don't need to be remove"
                 fi
             fi
         done
