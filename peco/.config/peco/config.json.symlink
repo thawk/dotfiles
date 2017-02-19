@@ -1,0 +1,24 @@
+{
+    "StickySelection": true,
+    "Keymap": {
+        "M-f": "peco.ForwardWord",
+        "M-b": "peco.BackwardWord",
+        "M-d": "peco.DeleteForwardWord",
+        "M-h": "peco.DeleteBackwardWord",
+        "M-v": "peco.ScrollPageUp",
+        "C-v": "peco.ScrollPageDown",
+        "C-s": "peco.ToggleSelectionAndSelectNext",
+        "Insert": "peco.ToggleSelectionAndSelectNext",
+        "M-s": "peco.InvertSelection",
+        "C-g": "peco.Cancel",
+        "M-Space": "peco.ToggleRangeMode",
+        "M-c": "peco.CancelRangeMode"
+    },
+    "Style": {
+        "Basic": ["on_default", "default"],
+        "Matched": ["red"],
+        "Query": ["default"],
+        "SavedSelection": ["on_green", "black"],
+        "Selected": ["underline", "on_cyan", "black"]
+    }
+}
