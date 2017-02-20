@@ -224,7 +224,6 @@ create_symlinks () {
     then
         for link in $( cat "$DOTFILES_ROOT/links.txt" )
         do
-            echo dst=$dst link=$link "${links["$link"]+isset}"
             if [ -z "${links[$link]+isset}" ]
             then
                 dst="$TARGET/${link#*/}"
@@ -232,7 +231,6 @@ create_symlinks () {
 
                 if [ -h "$dst" ]
                 then
-                    echo yes: dst=$dst link=$link
                     if [ "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
                     then
                         info "  rm outdated \"$dst\""
