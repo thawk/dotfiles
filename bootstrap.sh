@@ -339,8 +339,18 @@ function join_by {
 }
 
 get_enabled_dir() {
+    local dir
+    local old_path=$PATH
+    local -a dirs=( $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort) ) 
+
     info "Checking disabled directory..."
-    for dir in $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort)
+
+    for dir in "${dirs[@]}"
+    do
+        [ -d "$dir/bin" ] && PATH=$PATH:"$dir/bin"
+    done
+
+    for dir in "${dirs[@]}"
     do
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh"
         then
@@ -353,7 +363,7 @@ get_enabled_dir() {
 
     done
 
-    unset dir
+    PATH=$old_path
 }
 
 get_addtional_paths() {
