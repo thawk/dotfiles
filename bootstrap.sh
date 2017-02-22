@@ -260,21 +260,31 @@ create_symlinks () {
     done
 }
 
+get_zsh_completions() {
+    local dir=
+
+    for dir in "$@"
+    do
+        [ -d "${dir}/zsh-completion" ] && echo "${dir}/zsh-completion"
+    done
+}
+
 generate_source_list () {
+    local f dir shell orig_nullglob
+    local -a path_sh env_sh completion_sh others_sh
+
     shell="$1"
 
     orig_nullglob=
     shopt nullglob > /dev/null && orig_nullglob=1
     shopt -s nullglob
 
-    typeset -a path_sh env_sh completion_sh others_sh
-
     while [ $# -gt 1 ]
     do
         shift
 
         dir=$1
-        debug "    Handling scripts in ${dir}..."
+        debug "    Handling subdir ${dir}..."
 
         for f in "${dir}"/*.sh "${dir}"/*."${shell}"
         do
@@ -326,8 +336,6 @@ generate_source_list () {
     do
         echo "source \"$f\""
     done | sort
-
-    unset f shell path_sh env_sh completion_sh others_sh orig_nullglob
 }
 
 function join_by {
@@ -392,6 +400,18 @@ generate_script_file() {
             echo -n ":${dir}" >> "$script_name"
         done
         echo >> "$script_name"
+
+        if [ "$shell" == "zsh" ]
+        then
+            echo -n "export fpath=(\$fpath" >> "$script_name"
+            for dir in $(get_zsh_completions "$@")
+            do
+                echo -n " ${dir}" >> "$script_name"
+            done
+            echo ")" >> "$script_name"
+            echo >> "$script_name"
+        fi
+
         generate_source_list $shell "$@" >> "$script_name"
     done
 }
