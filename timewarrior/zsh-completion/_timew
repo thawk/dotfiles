@@ -1,0 +1,76 @@
+#compdef timew
+
+local state line
+
+_arguments -C \
+  '1: :->cmds' \
+  '*:: :->args' && ret=0
+
+case $state in
+    cmds)
+        _values "taskw command" \
+            "cancel[If there is an open interval, it is abandoned]" \
+            "config[Setting and removing configuration values]" \
+            "continue[Resumes tracking the most recently closed interval]" \
+            "day[Shows a chart depicting a single day (today by default)]" \
+            "delete[Deletes an interval]" \
+            "diagnostics[Shows details about Timewarrior]" \
+            "export[Exports all the tracked time in JSON format]" \
+            "extensions[Shows each extention and its status]" \
+            "gaps[Displays a summary of time that is neither tracked nor excluded from tracking]" \
+            "get[Validates the DOM reference, then obtains the value and displays it]" \
+            "help[Show detailed descriptions]" \
+            "join[Joins two intervals]" \
+            "lengthen[Defer the end date of a closed interval]" \
+            "month[Shows a chart depicting a single month]" \
+            "move[Reposition an interval at a new start time]" \
+            "report[Runs an extension report]" \
+            "shorten[Advance the end date of a closed interval]" \
+            "show[Displays the effective configuration in hierarchical form]" \
+            "split[Splits an interval into two equally sized adjacent intervals]" \
+            "start[Begins tracking using the current time]" \
+            "stop[Stops tracking time]" \
+            "summary[Displays a report summarizing tracked and untracked time]" \
+            "tag[Add a tag to an interval]" \
+            "tags[Displays all the tags that have been used]" \
+            "track[Add tracked time in the past]" \
+            "untag[Remove a tag from an interval]" \
+            "week[Shows a chart depicting a single week]"
+        ret=0
+        ;;
+    args)
+        case $line[1] in
+            help)
+                _values 'commands' \
+                    "cancel[If there is an open interval, it is abandoned]" \
+                    "config[Setting and removing configuration values]" \
+                    "continue[Resumes tracking the most recently closed interval]" \
+                    "day[Shows a chart depicting a single day (today by default)]" \
+                    "delete[Deletes an interval]" \
+                    "diagnostics[Shows details about Timewarrior]" \
+                    "export[Exports all the tracked time in JSON format]" \
+                    "extensions[Shows each extention and its status]" \
+                    "gaps[Displays a summary of time that is neither tracked nor excluded from tracking]" \
+                    "get[Validates the DOM reference, then obtains the value and displays it]" \
+                    "help[Show detailed descriptions]" \
+                    "join[Joins two intervals]" \
+                    "lengthen[Defer the end date of a closed interval]" \
+                    "month[Shows a chart depicting a single month]" \
+                    "move[Reposition an interval at a new start time]" \
+                    "report[Runs an extension report]" \
+                    "shorten[Advance the end date of a closed interval]" \
+                    "show[Displays the effective configuration in hierarchical form]" \
+                    "split[Splits an interval into two equally sized adjacent intervals]" \
+                    "start[Begins tracking using the current time]" \
+                    "stop[Stops tracking time]" \
+                    "summary[Displays a report summarizing tracked and untracked time]" \
+                    "tag[Add a tag to an interval]" \
+                    "tags[Displays all the tags that have been used]" \
+                    "track[Add tracked time in the past]" \
+                    "untag[Remove a tag from an interval]" \
+                    "week[Shows a chart depicting a single week]"
+                ret=0
+                ;;
+        esac
+        ;;
+esac
