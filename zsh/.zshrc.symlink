@@ -16,6 +16,8 @@ _load_plugins() {
 
     # if the init scipt doesn't exist
     if ! zgen saved; then
+        zgen load mafredri/zsh-async
+
         # specify plugins here
         zgen oh-my-zsh
 
@@ -31,7 +33,9 @@ _load_plugins() {
 
         zgen load zlsun/solarized-man
         zgen load zsh-users/zsh-completions src
-        zgen load zsh-users/zsh-autosuggestions
+
+        # 与zsh-autosuggestions冲突
+        # zgen load makeitjoe/incr.zsh
 
         # ZAW
         zgen load zsh-users/zaw
@@ -50,6 +54,8 @@ _load_plugins() {
 
         zgen load jreese/zsh-titles
 
+        zgen load sparsick/asciidoctor-zsh
+
         # <ESC><ESC>为当前命令加上sudo
         zgen load hcgraf/zsh-sudo
 
@@ -63,6 +69,10 @@ _load_plugins() {
 
         # themes
         zgen oh-my-zsh themes/agnoster
+
+        # 自动建议
+        # zgen load hchbaw/auto-fu.zsh
+        zgen load zsh-users/zsh-autosuggestions
 
         # generate the init script from plugins above
         zgen save
@@ -120,5 +130,8 @@ fi
 
 _load_plugins
 
-[ -f "$DOTFILES_ROOT/script.zsh" ] && source "$DOTFILES_ROOT/script.zsh"
+[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh"
 
+# compsys initialization
+autoload -U compinit
+compinit

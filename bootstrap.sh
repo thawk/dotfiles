@@ -388,7 +388,7 @@ generate_script_file() {
 
     for shell in bash zsh
     do
-        script_name=script.${shell}
+        script_name="$DOTFILES_ROOT/boot.${shell}"
         info "Generating ${script_name} for ${shell}"
 
         cat /dev/null > "$script_name"
@@ -400,6 +400,7 @@ generate_script_file() {
             echo -n ":${dir}" >> "$script_name"
         done
         echo >> "$script_name"
+        echo >> "$script_name"
 
         if [ "$shell" == "zsh" ]
         then
@@ -409,6 +410,7 @@ generate_script_file() {
                 echo -n " ${dir}" >> "$script_name"
             done
             echo ")" >> "$script_name"
+            echo >> "$script_name"
             echo >> "$script_name"
         fi
 

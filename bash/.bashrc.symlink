@@ -38,4 +38,4 @@ if ! shopt -oq posix; then
   fi
 fi
 
-[ -f "$DOTFILES_ROOT/script.bash" ] && source "$DOTFILES_ROOT/script.bash"
+[ -f "$DOTFILES_ROOT/boot.bash" ] && source "$DOTFILES_ROOT/boot.bash"
