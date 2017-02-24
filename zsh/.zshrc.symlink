@@ -32,7 +32,6 @@ _load_plugins() {
         zgen oh-my-zsh plugins/safe-paste
 
         zgen load zlsun/solarized-man
-        zgen load zsh-users/zsh-completions src
 
         # 与zsh-autosuggestions冲突
         # zgen load makeitjoe/incr.zsh
@@ -73,6 +72,9 @@ _load_plugins() {
         # 自动建议
         # zgen load hchbaw/auto-fu.zsh
         zgen load zsh-users/zsh-autosuggestions
+
+        zgen load zsh-users/zsh-completions src
+        zgen load zsh-users/zsh-syntax-highlighting
 
         # generate the init script from plugins above
         zgen save
