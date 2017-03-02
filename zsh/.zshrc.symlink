@@ -16,63 +16,68 @@ _load_plugins() {
 
     # if the init scipt doesn't exist
     if ! zgen saved; then
-        zgen load mafredri/zsh-async
-
-        # specify plugins here
+        # OhMyZsh global plugin
         zgen oh-my-zsh
 
+        # Tmux
         zgen oh-my-zsh plugins/tmux
+
+        # util used by some plugins
+        zgen load mafredri/zsh-async
 
         # 一些缺省值
         zgen load willghatch/zsh-saneopt
 
-        zgen oh-my-zsh plugins/gitfast
+        # Python
         zgen oh-my-zsh plugins/pip
         zgen oh-my-zsh plugins/python
-        zgen oh-my-zsh plugins/safe-paste
+        # mkvenv创建virtualenv，在cd时自动切换
+        zgen oh-my-zsh plugins/virtualenvwrapper
+        zgen load MichaelAquilina/zsh-autoswitch-virtualenv
+        # 用pip-app安装的每个pip都有自己的virtualenv
+        zgen load sharat87/pip-app
 
-        zgen load zlsun/solarized-man
-
-        # 与zsh-autosuggestions冲突
-        # zgen load makeitjoe/incr.zsh
+        # Javascript
+        zgen oh-my-zsh plugins/npm
 
         # ZAW
         zgen load zsh-users/zaw
         zgen load junkblocker/calibre-zaw-source
 
-        # mkvenv创建virtualenv，在cd时自动切换
-        zgen load MichaelAquilina/zsh-autoswitch-virtualenv
-
-        # 用pip-app安装的每个pip都有自己的virtualenv
-        zgen load sharat87/pip-app
+        # Misc
+        zgen oh-my-zsh plugins/safe-paste
+        # <ESC><ESC>为当前命令加上sudo
+        zgen load hcgraf/zsh-sudo
 
         # 如果使用的命令有定义alias，会进行提醒
         zgen load djui/alias-tips
 
+        # VCS 
+        zgen oh-my-zsh plugins/gitfast
+
+        # GeekNote: cmdline for evernote
         zgen load s7anley/zsh-geeknote
 
-        zgen load jreese/zsh-titles
-
+        # Asciidoctor
         zgen load sparsick/asciidoctor-zsh
 
-        # <ESC><ESC>为当前命令加上sudo
-        zgen load hcgraf/zsh-sudo
+        # 外观调整
+        zgen load zlsun/solarized-man
+        zgen load jreese/zsh-titles
 
-        zgen load psprint/history-search-multi-word
+        # themes
+        zgen oh-my-zsh themes/agnoster
 
+        # 自动建议、补全
         # Very cool plugin that generates zsh completion functions for commands
         # if they have getopt-style help text. It doesn't generate them on the fly,
         # you'll have to explicitly generate a completion, but it's still quite cool.
         # 用gencomp命令生成补全文件。
         zgen load RobSis/zsh-completion-generator
 
-        # themes
-        zgen oh-my-zsh themes/agnoster
-
-        # 自动建议
+        zgen load psprint/history-search-multi-word
         # zgen load hchbaw/auto-fu.zsh
         zgen load zsh-users/zsh-autosuggestions
-
         zgen load zsh-users/zsh-completions src
         zgen load zsh-users/zsh-syntax-highlighting
 
@@ -86,6 +91,8 @@ DOTFILES_ROOT="$HOME/.dotfiles"
 
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
+
+VIRTUALENVWRAPPER_PYTHON=$(which python3)
 
 # Uncomment the following line to use hyphen-insensitive completion. Case
 # sensitive completion must be off. _ and - will be interchangeable.

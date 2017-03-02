@@ -18,6 +18,7 @@
     - **completion.sh**/**completion_{asterisk}.sh**: 子目录下的completion.sh会被最后载入，可以在这个脚本中设置自动补全
     - 其它脚本可以随意命名，但有一些建议
         - **aliases.sh**: 可用于设置alias
+        - **bindkey.sh**: 可用于设置key binding
         - **config.sh**: 可用于设置一些配置，如使用setopt
         - **functions.sh**: 可用于保存一些function
 - **{asterisk}.symlink**: 所有以.symlink结尾在文件或目录会被符号链接到$HOME
