@@ -1,0 +1,124 @@
+#!/usr/bin/env python2
+# vim: set fileencoding=utf-8 tabstop=4 expandtab shiftwidth=4 softtabstop=4:
+
+import locale
+import sys
+import json
+import datetime
+import codecs
+import pandas as pd
+import numpy as np
+import pytz
+from wcwidth import wcswidth
+
+VERSION = u'20170111'
+TIME_ZONE = pytz.timezone('Asia/Shanghai')
+
+def _parse_input(input):
+    # Extract the conf settings.
+    header = True
+    conf = dict()
+    body = ''
+    for line in input:
+        if header:
+            if line == '\n':
+                header = False
+            else:
+                fields = line.strip().split(': ', 2)
+                if len(fields) == 2:
+                    conf[fields[0]] = fields[1]
+                else:
+                    conf[fields[0]] = ''
+        else:
+            body += line
+
+    return (conf, body)
+
+
+def _load_data(input):
+    conf, body = _parse_input(input)
+    j = json.loads(body)
+
+    for t in j:
+        t['tags'] = u','.join(t['tags'])
+
+    tracked = pd.DataFrame(j)
+
+    tracked['start'] = pd.to_datetime(tracked['start']).dt.tz_localize('UTC').dt.tz_convert(TIME_ZONE)
+    tracked['date'] = tracked['start'].dt.date
+    tracked['end'] = pd.to_datetime(tracked['end']).dt.tz_localize('UTC').dt.tz_convert(TIME_ZONE)
+    tracked['duration'] = ((tracked['end'] - tracked['start']) / pd.Timedelta('1s')).apply(np.round)
+
+    return conf, tracked
+
+
+def col_width(df):
+    col_widths = list()
+
+    for i in xrange(len(df.columns)):
+        col_widths.append(   # 追加列头和内容的最大显示宽度
+            max(
+                df.iloc[:, i].apply(wcswidth).max(),
+                wcswidth(df.columns[i])))
+
+    return col_widths
+
+
+def _print_row(conf, row, col_widths):
+    columns = []
+    for i in xrange(0, len(col_widths)):
+        padding = u' ' * (col_widths[i] - wcswidth(row[i]))
+        if i > 1:   # 右对齐
+            columns.append(padding + row[i])
+        else:
+            columns.append(row[i] + padding)
+
+    print u' '.join(columns)
+
+
+def _print_sep_line(conf, col_widths):
+    print u' '.join(u'-' * w for w in col_widths[0:])
+
+
+def report(date, conf, df):
+    col_widths = col_width(df)
+
+    if len(col_widths) > 0:
+        # Compose report header.
+        print u'\n{}\n'.format(date)
+
+        # Compose table header.
+        _print_row(conf, df.columns, col_widths)
+        _print_sep_line(conf, col_widths)
+
+        for idx, row in df.iterrows():
+            _print_row(conf, row, col_widths)
+    else:
+        print u'No data in the range %s - %s' % (start, end)
+
+
+def timewarrior_summary(input):
+    conf, tracked = _load_data(input)
+
+    for date, df in tracked.groupby('date'):
+        pt = df.groupby('tags').sum()
+        pt = pt.dropna()
+        pt = pt.reset_index()
+        pt = pt.append(
+            {'tags': u'小计', 'duration': pt['duration'].sum()},
+            ignore_index=True)
+        pt = pt.applymap(
+            lambda seconds: '%.1f' % np.round(seconds / 3600, 1) if isinstance(seconds, float) else seconds)
+
+        pt.columns = [ unicode(v) for v in pt.columns ]
+
+        report(date, conf, pt)
+
+
+if __name__ == '__main__':
+    reload(sys)
+    sys.stdout = codecs.getwriter(locale.getpreferredencoding())(sys.stdout)
+    sys.stderr = codecs.getwriter(locale.getpreferredencoding())(sys.stderr)
+    sys.setdefaultencoding(locale.getpreferredencoding())
+
+    timewarrior_summary(sys.stdin)
