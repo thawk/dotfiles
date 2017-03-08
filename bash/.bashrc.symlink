@@ -4,6 +4,8 @@ case $- in
       *) return;;
 esac
 
+[[ "$SHELL" =~ bash ]] || export SHELL=$(which bash)
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
     . /etc/bashrc
