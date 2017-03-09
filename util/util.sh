@@ -66,8 +66,7 @@ vman () {
     vim +"set ft=man" +"Man $*"
 }
 
-function = 
-{
-      echo "$@" | bc -l
+function = {
+    echo "result=($@);print('{0}\t0x{0:X}\t0o{0:o}\t0b{0:b}'.format(result))" | python -
 }
 
