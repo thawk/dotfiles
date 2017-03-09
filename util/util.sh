@@ -67,6 +67,16 @@ vman () {
 }
 
 function = {
-    echo "result=($@);print('{0}\t0x{0:X}\t0o{0:o}\t0b{0:b}'.format(result))" | python -
+    python - << EOD
+import math
+result=($@)
+bytes=int(math.ceil(len('{:b}'.format(result))/8.0))
+print('    '.join((
+    '{0}'.format(result),
+    '0x{0:0>{1}X}'.format(result, bytes*2),
+    '0o{0:0>{1}o}'.format(result, 1),
+    '0b{0:0>{1}b}'.format(result, bytes*8),
+    )))
+EOD
 }
 
