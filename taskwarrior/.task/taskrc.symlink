@@ -48,8 +48,10 @@ urgency.uda.priority.H.coefficient=6.0
 urgency.uda.priority.M.coefficient=0.0
 urgency.uda.priority.L.coefficient=-6.0
 
-
 # using "task context work" or "task context home" to using specified context. "task context none" to remove current context
 context.work=+work
 context.home=-work
 
+alias.chain=exec taskchain
+alias.gtdnext=exec gtdnext.sh
+alias.gn=gtdnext
