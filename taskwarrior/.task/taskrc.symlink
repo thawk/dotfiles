@@ -55,3 +55,5 @@ context.home=-work
 alias.chain=exec taskchain
 alias.gtdnext=exec gtdnext.sh
 alias.gn=gtdnext
+
+include ~/.dotfiles/taskwarrior/base16-dark.theme
