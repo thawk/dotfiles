@@ -1,0 +1,12 @@
+*.swp
+*~
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+.venv
+*.pyc
+*.pyo
+Thumbs.db
+ehthumbs.db

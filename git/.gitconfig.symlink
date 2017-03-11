@@ -1,20 +1,23 @@
 # Local/private config goes in the include
 [include]
-        path = ~/.gitconfig.local
+path = ~/.gitconfig.local
+
 [push]
-        default = simple
+default = simple
+
 [core]
-        eol = lf
-        autocrlf = false
-        filemode = false
+eol = lf
+autocrlf = false
+filemode = false
 
 [alias]
-        co = checkout
-        ci = commit
-        st = status -s
-        br = branch
-        hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
-        type = cat-file -t
-        dump = cat-file -p
+co = checkout
+ci = commit
+st = status -s
+br = branch
+hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+type = cat-file -t
+dump = cat-file -p
+
 [branch]
-	autosetuprebase = always
+autosetuprebase = always

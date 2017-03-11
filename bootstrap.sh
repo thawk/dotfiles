@@ -233,13 +233,13 @@ create_symlinks () {
                 then
                     if [ "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
                     then
-                        info "  rm outdated \"$dst\""
                         if [ "${DRY_RUN}" = 'yes' ]
                         then
                             echo "      => rm \"$dst\""
                         else
                             rm "$dst"
                         fi
+                        success "  remove outdated \"$dst\""
                     else
                         skip "  $dst is not point to original position, don't need to be remove"
                     fi
