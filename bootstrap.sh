@@ -23,9 +23,13 @@ success () {
     printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n" > /dev/stderr
 }
 
+warn () {
+    printf "\r\033[2K  [\033[00;33mWARN\033[0m] $1\n" > /dev/stderr
+}
+
 skip () {
     printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n" > /dev/stderr
-    echo > /dev/null
+    # echo > /dev/null
 }
 
 fail () {
@@ -362,7 +366,7 @@ get_enabled_dir() {
     do
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh"
         then
-            info "  Disable ${dir}"
+            warn "  Disable ${dir}"
             continue
         fi
 

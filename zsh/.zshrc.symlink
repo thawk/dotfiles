@@ -37,6 +37,8 @@ _load_plugins() {
         # 用pip-app安装的每个pip都有自己的virtualenv
         zgen load sharat87/pip-app
 
+        zgen jeffwalter/zsh-plugin-rvm-auto
+
         # Javascript
         zgen oh-my-zsh plugins/npm
 
@@ -137,6 +139,9 @@ fi
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
+# Disable oh-my-zsh autoupdate
+DISABLE_AUTO_UPDATE=true
+
 _load_plugins
 
 [ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh"
@@ -144,3 +149,4 @@ _load_plugins
 # compsys initialization
 autoload -U compinit
 compinit
+
