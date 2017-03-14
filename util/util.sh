@@ -23,21 +23,24 @@ grepp() {
 }
 
 urlencode() {
-    if [ $# -gt 0 ];
+    if [ $# -gt 0 ]
     then
-        echo "$@" | perl -MURI::Escape -lne 'print uri_escape($_)'
-    else
-        perl -MURI::Escape -lne 'print uri_escape($_)'
+        echo "$*" | urlencode
+        return
     fi
+
+    perl -lpe 's/([^A-Za-z0-9.])/sprintf("%%%02X", ord($1))/seg'
 }
 
 urldecode() {
-    if [ $# -gt 0 ];
+    if [ $# -gt 0 ]
     then
-        echo "$@" | perl -MURI::Escape -lne 'print uri_unescape($_)'
-    else
-        perl -MURI::Escape -lne 'print uri_unescape($_)'
+        echo "$*" | urldecode
+        return
     fi
+
+    local data=${1//+/ }
+    printf '%b' "${data//\%/\\x}"
 }
 
 htmlencode() {
