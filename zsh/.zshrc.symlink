@@ -20,6 +20,15 @@ _load_plugins() {
     # 一些缺省值
     zplug "willghatch/zsh-saneopt"
 
+    # Load completion library for those sweet [tab] squares
+    zplug "lib/completion", from:oh-my-zsh
+    # Up -> History search!
+    zplug "lib/key-bindings", from:oh-my-zsh
+    # History defaults
+    zplug "lib/history", from:oh-my-zsh
+    # Adds useful aliases for things dealing with directories
+    zplug "lib/directories", from:oh-my-zsh
+
     # util used by some plugins
     zplug "mafredri/zsh-async"
 
