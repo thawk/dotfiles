@@ -15,69 +15,70 @@ _load_plugins() {
     source "${HOME}/.zplug/init.zsh"
 
     # Tmux
-    zplug plugins/tmux, from:oh-my-zsh
-
-    # util used by some plugins
-    zplug mafredri/zsh-async
+    zplug "plugins/tmux", from:oh-my-zsh, if:"type tmux"
 
     # 一些缺省值
-    zplug willghatch/zsh-saneopt
+    zplug "willghatch/zsh-saneopt"
+
+    # util used by some plugins
+    zplug "mafredri/zsh-async"
 
     # Python
-    zplug plugins/pip, from:oh-my-zsh
-    zplug plugins/python, from:oh-my-zsh
+    zplug "plugins/pip", from:oh-my-zsh, if:"type pip"
+    zplug "plugins/python", from:oh-my-zsh, if:"type python"
     # mkvenv创建virtualenv，在cd时自动切换
-    zplug plugins/virtualenvwrapper, from:oh-my-zsh
-    zplug MichaelAquilina/zsh-autoswitch-virtualenv
+    zplug "plugins/virtualenvwrapper", from:oh-my-zsh
+    zplug "MichaelAquilina/zsh-autoswitch-virtualenv"
     # 用pip-app安装的每个pip都有自己的virtualenv
-    zplug sharat87/pip-app
+    zplug "sharat87/pip-app", if:"type pip"
 
-    zplug jeffwalter/zsh-plugin-rvm-auto
+    zplug "jeffwalter/zsh-plugin-rvm-auto", if:"[ -f ~/.rvm/bin/rvm ]"
 
     # Javascript
-    zplug plugins/npm, from:oh-my-zsh
+    zplug "plugins/npm", from:oh-my-zsh, if:"type npm"
 
     # ZAW
-    zplug zsh-users/zaw
-    zplug junkblocker/calibre-zaw-source
+    zplug "zsh-users/zaw"
+    zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb"
 
     # Misc
-    zplug plugins/safe-paste, from:oh-my-zsh
+    zplug "plugins/safe-paste", from:oh-my-zsh
     # <ESC><ESC>为当前命令加上sudo
-    zplug hcgraf/zsh-sudo
+    zplug "hcgraf/zsh-sudo"
 
     # 如果使用的命令有定义alias，会进行提醒
-    zplug djui/alias-tips
+    zplug "djui/alias-tips"
 
     # VCS 
-    zplug plugins/gitfast, from:oh-my-zsh
+    zplug "plugins/gitfast", from:oh-my-zsh, if:"type git"
 
     # GeekNote: cmdline for evernote
-    zplug s7anley/zsh-geeknote
+    zplug "s7anley/zsh-geeknote", if:"type geeknote"
 
     # Asciidoctor
-    zplug sparsick/asciidoctor-zsh
+    zplug "sparsick/asciidoctor-zsh"
 
     # 外观调整
-    zplug zlsun/solarized-man
-    zplug jreese/zsh-titles
-
-    # themes
-    zplug themes/agnoster, from:oh-my-zsh
+    zplug "zlsun/solarized-man"
+    zplug "jreese/zsh-titles"
 
     # 自动建议、补全
     # Very cool plugin that generates zsh completion functions for commands
     # if they have getopt-style help text. It doesn't generate them on the fly,
     # you'll have to explicitly generate a completion, but it's still quite cool.
     # 用gencomp命令生成补全文件。
-    zplug RobSis/zsh-completion-generator
+    zplug "RobSis/zsh-completion-generator"
 
-    zplug psprint/history-search-multi-word
-    # zplug hchbaw/auto-fu.zsh
-    zplug zsh-users/zsh-autosuggestions
-    zplug zsh-users/zsh-completions
-    zplug zsh-users/zsh-syntax-highlighting
+    zplug "psprint/history-search-multi-word"
+    # zplug "hchbaw/auto-fu.zsh"
+    zplug "zsh-users/zsh-autosuggestions"
+    zplug "zsh-users/zsh-completions"
+    zplug "zsh-users/zsh-syntax-highlighting", defer:2
 
+    # themes
+    zplug "themes/agnoster", from:oh-my-zsh, as:theme
+
+    # zplug 'zplug/zplug', hook-build:'zplug --self-manage'
 
     # Install plugins if there are plugins that have not been installed
     if ! zplug check --verbose; then
@@ -145,9 +146,9 @@ fi
 # Disable oh-my-zsh autoupdate
 DISABLE_AUTO_UPDATE=true
 
-_load_plugins
-
 [ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh"
+
+_load_plugins
 
 # compsys initialization
 autoload -U compinit
