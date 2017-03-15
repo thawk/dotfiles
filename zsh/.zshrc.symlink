@@ -1,18 +1,20 @@
-if [ ! -f ${HOME}/.zplug/init.zsh ]
+export ZPLUG_HOME="${HOME}/.zplug"
+if [ ! -f ${ZPLUG_HOME}/repos/zplug/zplug/init.zsh ]
 then
     echo 'Cloning zplug...'
-    git clone https://github.com/zplug/zplug.git "${HOME}/.zplug"
+    mkdir -p "${ZPLUG_HOME}/repos/zplug"
+    git clone https://github.com/zplug/zplug.git "${ZPLUG_HOME}/repos/zplug/zplug"
     if [ "$?" -ne "0" ]; then
         echo "Failed to clone zplug!"
         echo 'Execute the following command get zplug:' > /dev/stderr
-        echo '    git clone https://github.com/zplug/zplug.git "${HOME}/.zplug"' > /dev/stderr
+        echo "    git clone https://github.com/zplug/zplug.git '${ZPLUG_HOME}/repos/zplug/zplug'" > /dev/stderr
         return 1
     fi
 fi
 
 _load_plugins() {
     # load zplug
-    source "${HOME}/.zplug/init.zsh"
+    source "${ZPLUG_HOME}/repos/zplug/zplug/init.zsh"
 
     # Tmux
     zplug "plugins/tmux", from:oh-my-zsh, if:"type tmux"
@@ -48,7 +50,7 @@ _load_plugins() {
 
     # ZAW
     zplug "zsh-users/zaw"
-    zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb"
+    zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb", defer:1
 
     # Misc
     zplug "plugins/safe-paste", from:oh-my-zsh
@@ -83,11 +85,12 @@ _load_plugins() {
     zplug "zsh-users/zsh-autosuggestions"
     zplug "zsh-users/zsh-completions"
     zplug "zsh-users/zsh-syntax-highlighting", defer:2
+    zplug "zsh-users/zsh-history-substring-search", defer:2
 
     # themes
     zplug "themes/agnoster", from:oh-my-zsh, as:theme
 
-    # zplug 'zplug/zplug', hook-build:'zplug --self-manage'
+    zplug 'zplug/zplug', hook-build:'zplug --self-manage'
 
     # Install plugins if there are plugins that have not been installed
     if ! zplug check --verbose; then
@@ -99,6 +102,19 @@ _load_plugins() {
 
     # Then, source plugins and add commands to $PATH
     zplug load
+
+    # Bind UP and DOWN arrow keys for subsstring search.
+    if zplug check zsh-users/zsh-history-substring-search; then
+        zmodload zsh/terminfo
+        bindkey "$terminfo[cuu1]" history-substring-search-up
+        bindkey "$terminfo[cud1]" history-substring-search-down
+
+        bindkey -M emacs '^P' history-substring-search-up
+        bindkey -M emacs '^N' history-substring-search-down
+
+        bindkey -M vicmd 'k' history-substring-search-up
+        bindkey -M vicmd 'j' history-substring-search-down
+    fi
 }
 
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
