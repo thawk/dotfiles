@@ -49,8 +49,8 @@ _load_plugins() {
     zplug "plugins/npm", from:oh-my-zsh, if:"type npm"
 
     # ZAW
-    zplug "zsh-users/zaw"
-    zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb", defer:1
+    # zplug "zsh-users/zaw", use:zaw.zsh
+    # zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb", defer:1
 
     # Misc
     zplug "plugins/safe-paste", from:oh-my-zsh
@@ -78,7 +78,7 @@ _load_plugins() {
     # if they have getopt-style help text. It doesn't generate them on the fly,
     # you'll have to explicitly generate a completion, but it's still quite cool.
     # 用gencomp命令生成补全文件。
-    zplug "RobSis/zsh-completion-generator"
+    # zplug "RobSis/zsh-completion-generator"
 
     zplug "psprint/history-search-multi-word"
     # zplug "hchbaw/auto-fu.zsh"
