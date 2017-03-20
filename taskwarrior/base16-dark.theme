@@ -6,69 +6,69 @@ rule.color.merge=on
 color.label=
 color.label.sort=
 color.alternate=on color18
-color.header=color4
-color.footnote=color6
-color.warning=color0 on color3
-color.error=color6
-color.debug=color6
+color.header=blue
+color.footnote=cyan
+color.warning=black on yellow
+color.error=cyan
+color.debug=cyan
 
 # Task state
 color.completed=
 color.deleted=
 color.active=bold red
-color.recurring=color4
+color.recurring=blue
 color.scheduled=
 color.until=
-color.blocked=color0 on color10
-color.blocking=color1 on color15
+color.blocked=black on green
+color.blocking=red on bright white
 
 # Project
 color.project.none=
 
 # Priority
-color.uda.priority.H=bold blue #color14
-color.uda.priority.M=bold yellow #color12
-color.uda.priority.L=bold green #color11
+color.uda.priority.H=bold blue
+color.uda.priority.M=bold yellow
+color.uda.priority.L=bold green
 
 # Tags
 color.tag.next=bold yellow
 color.tag.none=
-color.tagged=color10
+color.tagged=green
 
 # Due
-color.due=color9
-color.due.today=color1
-color.overdue=color5
+color.due=red
+color.due.today=bold red
+color.overdue=magenta
 
 # Report: burndown
-color.burndown.done=color0 on color6
-color.burndown.pending=color0 on color1
-color.burndown.started=color0 on color3
+color.burndown.done=black on cyan
+color.burndown.pending=black on red
+color.burndown.started=black on yellow
 
 # Report: history
-color.history.add=color0 on color1
-color.history.delete=color0 on color3
-color.history.done=color0 on color6
+color.history.add=black on red
+color.history.delete=black on yellow
+color.history.done=black on cyan
 
 # Report: summary
-color.summary.background=on color0
-color.summary.bar=color0 on color6
+color.summary.background=on black
+color.summary.bar=black on cyan
 
 # Command: calendar
-color.calendar.due=color0 on color9
-color.calendar.due.today=color0 on color1
-color.calendar.holiday=color0 on color3
-color.calendar.overdue=color0 on color5
-color.calendar.today=color0 on color4
-color.calendar.weekend=on color0
-color.calendar.weeknumber=color4
+color.calendar.due=black on red
+color.calendar.due.today=bold white on red
+color.calendar.holiday=black on yellow
+color.calendar.overdue=black on magenta
+color.calendar.today=black on blue
+color.calendar.weekend=on black
+color.calendar.weeknumber=blue
 
 # Command: sync
-color.sync.added=color14
-color.sync.changed=color9
-color.sync.rejected=color13
+color.sync.added=cyan
+color.sync.changed=red
+color.sync.rejected=magenta
 
 # Command: undo
-color.undo.after=color2
-color.undo.before=color1
+color.undo.after=green
+color.undo.before=red
 
