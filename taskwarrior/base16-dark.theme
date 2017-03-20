@@ -1,6 +1,7 @@
-rule.precedence.color=deleted,completed,active,keyword.,tag.,project.,overdue,scheduled,due.today,due,blocked,blocking,recurring,tagged,uda.
+#rule.precedence.color=deleted,completed,active,keyword.,tag.,project.,overdue,scheduled,due.today,due,blocked,blocking,recurring,tagged,uda.
+rule.precedence.color=deleted,completed,active,keyword.,blocking,tag.,project.,overdue,scheduled,due.today,due,blocked,recurring,tagged,uda.
 
-rule.color.merge=on
+rule.color.merge=yes
 
 # General decoration
 color.label=
