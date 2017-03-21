@@ -54,7 +54,7 @@ context.home=-work
 
 alias.chain=exec taskchain
 alias.gtdnext=exec gtdnext.sh
-alias.gn=gtdnext
+alias.gtd=gtdnext
 alias.chart=exec tchart.py
 
 include ~/.dotfiles/taskwarrior/base16-dark.theme
