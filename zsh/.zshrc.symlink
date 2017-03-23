@@ -166,7 +166,6 @@ fi
 # of your main dotfiles repository (which may be public), but you'll have access
 # to them in your scripts.
 [[ -a ~/.localrc ]] && source ~/.localrc
-[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # Disable oh-my-zsh autoupdate
 DISABLE_AUTO_UPDATE=true
@@ -174,6 +173,8 @@ DISABLE_AUTO_UPDATE=true
 [ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh"
 
 _load_plugins
+
+[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # compsys initialization
 autoload -U compinit
