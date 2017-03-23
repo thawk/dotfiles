@@ -32,13 +32,13 @@ echo 'Finding most urgent tasks in each project...'
 UUIDS=
 
 # Enumerate pending task UUIDs having no project.
-for uuid in $(task status='pending' and project='' "$@" _uuids)
+for uuid in $(task status='pending' and project='' "$@" _unique uuid)
 do
   UUIDS="$UUIDS $uuid"
 done
 
 # Enumerate the project names for all active projects.
-for project in $(task rc.list.all.projects=0 "$@" _projects)
+for project in $(task status='pending' "$@" _unique project)
 do
   # Temporarily override the 'next' report output to yield only UUID, and only
   # one task.
