@@ -18,7 +18,7 @@ _load_plugins() {
     source "${ZPLUG_HOME}/repos/zplug/zplug/init.zsh"
 
     # Tmux
-    zplug "plugins/tmux", from:oh-my-zsh, if:"type tmux"
+    zplug "plugins/tmux", from:oh-my-zsh, if:"(( $+commands[tmux] ))"
 
     # 一些缺省值
     zplug "willghatch/zsh-saneopt"
@@ -36,22 +36,22 @@ _load_plugins() {
     zplug "mafredri/zsh-async"
 
     # Python
-    zplug "plugins/pip", from:oh-my-zsh, if:"type pip"
-    zplug "plugins/python", from:oh-my-zsh, if:"type python"
+    zplug "plugins/pip", from:oh-my-zsh, if:"(( $+commands[pip] ))"
+    zplug "plugins/python", from:oh-my-zsh, if:"(( $+commands[python] ))"
     # mkvenv创建virtualenv，在cd时自动切换
-    zplug "plugins/virtualenvwrapper", from:oh-my-zsh
+    # zplug "plugins/virtualenvwrapper", from:oh-my-zsh, if:"[[ -d $HOME/.virtualenvs ]]"
     zplug "MichaelAquilina/zsh-autoswitch-virtualenv"
     # 用pip-app安装的每个pip都有自己的virtualenv
-    zplug "sharat87/pip-app", if:"type pip"
+    zplug "sharat87/pip-app", if:"(( $+commands[pip] ))"
 
     # zplug "jeffwalter/zsh-plugin-rvm-auto", if:"[ -f ~/.rvm/bin/rvm ]"
 
     # Javascript
-    zplug "plugins/npm", from:oh-my-zsh, if:"type npm"
+    zplug "plugins/npm", from:oh-my-zsh, if:"(( $+commands[npm] ))"
 
     # ZAW
     # zplug "zsh-users/zaw", use:zaw.zsh
-    # zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"type calibredb", defer:1
+    # zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"(( $+commands[calibredb] ))", defer:1
 
     # Misc
     zplug "plugins/safe-paste", from:oh-my-zsh
@@ -62,10 +62,10 @@ _load_plugins() {
     zplug "djui/alias-tips"
 
     # VCS 
-    zplug "plugins/gitfast", from:oh-my-zsh, if:"type git"
+    zplug "plugins/gitfast", from:oh-my-zsh, if:"(( $+commands[git] ))"
 
     # GeekNote: cmdline for evernote
-    zplug "s7anley/zsh-geeknote", if:"type geeknote"
+    zplug "s7anley/zsh-geeknote", if:"(( $+commands[geeknote] ))"
 
     # Asciidoctor
     zplug "sparsick/asciidoctor-zsh"
@@ -91,6 +91,11 @@ _load_plugins() {
 
     # themes
     zplug "themes/agnoster", from:oh-my-zsh, as:theme
+
+    zplug "b4b4r07/httpstat", \
+        as:command, \
+        use:'(*).sh', \
+        rename-to:'$1'
 
     zplug 'zplug/zplug', hook-build:'zplug --self-manage'
 
@@ -164,10 +169,10 @@ then
     fi
 fi
 
-# Stash your environment variables in ~/.localrc. This means they'll stay out
+# Stash your environment variables in ~/.zshrc.local. This means they'll stay out
 # of your main dotfiles repository (which may be public), but you'll have access
 # to them in your scripts.
-[[ -a ~/.localrc ]] && source ~/.localrc
+[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
 # Disable oh-my-zsh autoupdate
 DISABLE_AUTO_UPDATE=true
