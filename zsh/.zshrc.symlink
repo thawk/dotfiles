@@ -1,3 +1,4 @@
+# zmodload zsh/zprof
 export ZPLUG_HOME="${HOME}/.zplug"
 if [ ! -f ${ZPLUG_HOME}/repos/zplug/zplug/init.zsh ]
 then
@@ -43,7 +44,7 @@ _load_plugins() {
     # 用pip-app安装的每个pip都有自己的virtualenv
     zplug "sharat87/pip-app", if:"type pip"
 
-    zplug "jeffwalter/zsh-plugin-rvm-auto", if:"[ -f ~/.rvm/bin/rvm ]"
+    # zplug "jeffwalter/zsh-plugin-rvm-auto", if:"[ -f ~/.rvm/bin/rvm ]"
 
     # Javascript
     zplug "plugins/npm", from:oh-my-zsh, if:"type npm"
@@ -80,7 +81,8 @@ _load_plugins() {
     # 用gencomp命令生成补全文件。
     # zplug "RobSis/zsh-completion-generator"
 
-    zplug "psprint/history-search-multi-word"
+    # 放到oh-my-zsh/lib/key-bindings后面执行，以便保证能绑定<C-R>
+    zplug "psprint/history-search-multi-word", defer:1
     # zplug "hchbaw/auto-fu.zsh"
     zplug "zsh-users/zsh-autosuggestions"
     zplug "zsh-users/zsh-completions"
