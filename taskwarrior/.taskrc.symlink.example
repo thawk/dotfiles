@@ -9,3 +9,6 @@ include ~/.task/taskrc
 # taskd.certificate=~/.task/home/client.cert.pem
 # taskd.ca=~/.task/home/ca.cert.pem
 # taskd.credentials=My/client/UUID
+
+# taskd.trust=ignore hostname
+# taskd.trust=allow all
