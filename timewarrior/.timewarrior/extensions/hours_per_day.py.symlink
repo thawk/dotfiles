@@ -100,6 +100,12 @@ def report(date, conf, df):
 def timewarrior_summary(input):
     conf, tracked = _load_data(input)
 
+    if 'worktime.scale' in conf:
+        time_scale = float(conf['worktime.scale'])
+        print u'工时放大倍数：{}'.format(time_scale)
+        # 补工时差
+        tracked['duration'] = tracked['duration'] * float(time_scale)
+
     for date, df in tracked.groupby('date'):
         pt = df.groupby('tags').sum()
         pt = pt.dropna()
