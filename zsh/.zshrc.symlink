@@ -90,7 +90,8 @@ _load_plugins() {
     zplug "zsh-users/zsh-history-substring-search", defer:2
 
     # themes
-    zplug "themes/agnoster", from:oh-my-zsh, as:theme
+    # zplug "themes/agnoster", from:oh-my-zsh, as:theme
+    zplug "janernsting/dotfiles", use:"zsh/custom/themes/custom-agnoster.zsh-theme", as:theme
 
     zplug "b4b4r07/httpstat", \
         as:command, \
