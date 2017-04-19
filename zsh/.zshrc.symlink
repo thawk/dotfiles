@@ -39,7 +39,7 @@ _load_plugins() {
     zplug "plugins/pip", from:oh-my-zsh, if:"(( $+commands[pip] ))"
     zplug "plugins/python", from:oh-my-zsh, if:"(( $+commands[python] ))"
     # mkvenv创建virtualenv，在cd时自动切换
-    # zplug "plugins/virtualenvwrapper", from:oh-my-zsh, if:"[[ -d $HOME/.virtualenvs ]]"
+    zplug "plugins/virtualenvwrapper", from:oh-my-zsh, if:"[[ -d $HOME/.virtualenvs ]]"
     # zplug "MichaelAquilina/zsh-autoswitch-virtualenv"
     # 用pip-app安装的每个pip都有自己的virtualenv
     zplug "sharat87/pip-app", if:"(( $+commands[pip] ))"
