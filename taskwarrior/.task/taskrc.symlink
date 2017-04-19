@@ -49,14 +49,21 @@ urgency.uda.priority.M.coefficient=0.0
 urgency.uda.priority.L.coefficient=-6.0
 
 # using "task context work" or "task context home" to using specified context. "task context none" to remove current context
+# 有外网和TC的办公室
 context.office=-@home -@car (+@office or +@内网 or +@computer or +@online)
+# 家里
 context.home=-@office -@car (+@home or +@computer or +@online)
+# 只有手机
 context.mobile=-@computer -@内网
+# 只有TC，没有外网电脑
+context.tc=-@car -@computer -@home (+@内网 or +@online)
 
 alias.chain=exec taskchain
 alias.gtdnext=exec gtdnext.sh
 alias.gtd=gtdnext
 alias.gn=gtdnext
 alias.chart=exec tchart.py
+
+alias.shop=add proj:购物
 
 include ~/.dotfiles/taskwarrior/base16-dark.theme
