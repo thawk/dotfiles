@@ -69,20 +69,15 @@ vman () {
     vim +"set ft=man" +"Man $*"
 }
 
-function = {
-    python - << EOD
-import math
-result=($@)
-if isinstance(result, int):
-    bytes=int(math.ceil(len('{:b}'.format(result))/8.0))
-    print('    '.join((
-    '{0}'.format(result),
-    '0x{0:0>{1}X}'.format(result, bytes*2),
-    '0o{0:0>{1}o}'.format(result, 1),
-    '0b{0:0>{1}b}'.format(result, bytes*8),
-    )))
-else:
-    print(result)
-EOD
+# join , a b c => a,b,c
+join_by () {
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+# acut 2 3 打印第2和第3个字段。可以支持空格、tab等空白字符
+acut () {
+    awk "{print $(join_by , ${*/#/\$})}" | column -t
 }
 
