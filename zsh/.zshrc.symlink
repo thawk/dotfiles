@@ -42,7 +42,7 @@ _load_plugins() {
     zplug "plugins/virtualenvwrapper", from:oh-my-zsh, if:"[[ -d $HOME/.virtualenvs ]]"
     # zplug "MichaelAquilina/zsh-autoswitch-virtualenv"
     # 用pip-app安装的每个pip都有自己的virtualenv
-    zplug "sharat87/pip-app", if:"(( $+commands[pip] ))"
+    zplug "sharat87/pip-app", use:pip-app.sh, if:"(( $+commands[pip] ))"
 
     # zplug "jeffwalter/zsh-plugin-rvm-auto", if:"[ -f ~/.rvm/bin/rvm ]"
 
