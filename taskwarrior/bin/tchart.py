@@ -3,9 +3,8 @@
 # Read task output and organise by day
 
 import json
-import commands
+import subprocess
 import argparse
-import snack  # On Ubuntu do apt-get install python-newt to get snack module
 from datetime import datetime, timedelta, date
 from blessings import Terminal
 from operator import itemgetter
@@ -35,29 +34,29 @@ class TaskReport(object):
                             help='a string specifying the task filter')
         args = parser.parse_args()
 
-        self.consoleline = "rc.json.array=on "
+        self.consoleline = ['task']
 
         if args.filter:
-            self.consoleline = self.consoleline + " ".join(args.filter)
-            self.consoleline = (self.consoleline + ' status:pending') \
-                if self.consoleline.find('status:pending') < 0 \
-                else self.consoleline
-            self.consoleline = (self.consoleline + ' export') \
-                if self.consoleline.find('export') < 0 \
-                else self.consoleline
-            self.consoleline = 'task ' + self.consoleline
+            self.consoleline.append("rc.json.array=on")
+            self.consoleline.extend(args.filter)
+            if not 'status:pending' in self.consoleline:
+                self.consoleline.append('status:pending')
+            if not 'export' in self.consoleline:
+                self.consoleline.append('export')
         else:
             # When no arguments are given.
-            self.consoleline = 'task due.any: status:pending export'
+            self.consoleline.append('due.any:')
+            self.consoleline.append('status:pending')
+            self.consoleline.append('export')
 
-        print self.consoleline
-        print
+        print(' '.join(self.consoleline))
+        print('')
 
     def load_tasks(self):
         """
         Load and sort the task list
         """
-        tstring = commands.getoutput(self.consoleline)
+        tstring = subprocess.Popen(self.consoleline, stdout=subprocess.PIPE).communicate()[0]
         # tstring = '[' + tstring + ']'  # Adds brackets to comply with Json
         tasks = json.loads(tstring)
 
@@ -109,6 +108,7 @@ class TaskReport(object):
 
         # Compile the day header sting (includes newlines)
         dayheader = ''
+        rainbows = [term.red, term.yellow, term.blue]
         for lineNo in range(letters):
             for index, day in enumerate(wdays * self.weeks):
                 #  add the letter and spacing to indent for each day and makes mondays bold
@@ -117,7 +117,8 @@ class TaskReport(object):
                     ch = term.bold(ch)
 
                 if (self.weekstart + timedelta(days=index) == date.today()):
-                    ch = term.red(ch)
+                    ch = term.bold(ch)
+                    ch = rainbows[lineNo % len(rainbows)](ch)
 
                 dayheader = dayheader + ch + ' ' * (indent - 1)
             dayheader = dayheader + '\n'
@@ -137,7 +138,7 @@ class TaskReport(object):
 
         # Removes lines that will not fit onto screen
         terminal_lines = ''.join(taskstring.splitlines(True)[0:taskspace])
-        print dateline + '\n' + dayheader + terminal_lines
+        print(dateline + '\n' + dayheader + terminal_lines)
 
 
     def compile_taskline(self, task):
