@@ -48,6 +48,8 @@ _load_plugins() {
 
     # Javascript
     zplug "plugins/npm", from:oh-my-zsh, if:"(( $+commands[npm] ))"
+    export NVM_LAZY_LOAD=true
+    zplug "lukechilds/zsh-nvm"
 
     # ZAW
     # zplug "zsh-users/zaw", use:zaw.zsh
@@ -188,3 +190,5 @@ _load_plugins
 autoload -U compinit
 compinit
 
+
+eval $(thefuck --alias)

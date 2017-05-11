@@ -7,9 +7,9 @@ esac
 [[ "$SHELL" =~ bash ]] || export SHELL=$(which bash)
 
 # Source global definitions
-if [ -f /etc/bashrc ]; then
-    . /etc/bashrc
-fi
+[ -f /etc/bashrc ] && . /etc/bashrc
+
+[ -f ~/.bashrc.local ] && . ~/bashrc.local
 
 # 使用了pam_ssh，不再需要keychain
 #/usr/bin/keychain -Q -q ~/.ssh/id_rsa
