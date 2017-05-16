@@ -190,5 +190,3 @@ _load_plugins
 autoload -U compinit
 compinit
 
-
-eval $(thefuck --alias)

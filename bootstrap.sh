@@ -196,7 +196,7 @@ link_file () {
 get_symlinks() {
     for dir in "$@"
     do
-        for src in $(find -H "$dir" -name '*.symlink' -not -path '*.git')
+        for src in $(find -H "${DOTFILES_ROOT}/$dir" -name '*.symlink' -not -path '*.git')
         do
             rel=$(relpath "$src" "$DOTFILES_ROOT")
             echo "$rel"
@@ -290,7 +290,7 @@ generate_source_list () {
         dir=$1
         debug "    Handling subdir ${dir}..."
 
-        for f in "${dir}"/*.sh "${dir}"/*."${shell}"
+        for f in "${DOTFILES_ROOT}/${dir}"/*.sh "${DOTFILES_ROOT}/${dir}"/*."${shell}"
         do
             if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
                 path_sh[${#path_sh[*]}]="$f"
@@ -366,16 +366,60 @@ get_enabled_dir() {
     do
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh"
         then
-            warn "  Disable ${dir}"
             continue
         fi
 
-        debug "  Enable ${dir}"
-        echo ${dir}
-
+        echo $(basename ${dir})
     done
 
     PATH=$old_path
+}
+
+generate_files() {
+    local -A old_enabled
+    local d
+
+    if [ -e "$DOTFILES_ROOT/enabled.txt" ]
+    then
+        for d in $( cat "$DOTFILES_ROOT/enabled.txt" )
+        do
+            old_enabled["$d"]="0"
+        done
+    fi
+
+    cat /dev/null > "$DOTFILES_ROOT/enabled.txt"
+
+    for dir in "$@"
+    do
+        if [ -z "${old_enabled[$dir]+isset}" ]
+        then
+            info "  Enable ${dir}"
+        else
+            old_enabled["$d"]="1"
+            debug "  Enable ${dir}"
+        fi
+
+        if [ "${dir}" == "git" ]
+        then
+            setup_gitconfig
+        elif [ "${dir}" == "taskwarrior" ]
+        then
+            setup_taskrc
+        fi
+
+        echo "${dir}" >> "$DOTFILES_ROOT/enabled.txt"
+    done
+
+    for d in "${old_enabled[@]}"
+    do
+        if [ "${old_enabled[$d]}" == "0" ]
+        then
+            info "  Disable ${dir}"
+        fi
+    done
+
+    generate_script_file "$@"
+    create_symlinks "$@"
 }
 
 get_addtional_paths() {
@@ -401,7 +445,7 @@ generate_script_file() {
 
         for dir in $(get_addtional_paths "$@")
         do
-            echo -n ":${dir}" >> "$script_name"
+            echo -n ":${DOTFILES_ROOT}/${dir}" >> "$script_name"
         done
         echo >> "$script_name"
         echo >> "$script_name"
@@ -411,7 +455,7 @@ generate_script_file() {
             echo -n "export fpath=(\$fpath" >> "$script_name"
             for dir in $(get_zsh_completions "$@")
             do
-                echo -n " ${dir}" >> "$script_name"
+                echo -n " ${DOTFILES_ROOT}/${dir}" >> "$script_name"
             done
             echo ")" >> "$script_name"
             echo >> "$script_name"
@@ -483,11 +527,7 @@ fi
 typeset -a dirs
 
 dirs=( $(get_enabled_dir) )
-
-setup_gitconfig
-setup_taskrc
-generate_script_file "${dirs[@]}"
-create_symlinks "${dirs[@]}"
+generate_files "${dirs[@]}"
 
 unset dirs
 
