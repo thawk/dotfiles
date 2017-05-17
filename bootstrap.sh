@@ -427,7 +427,7 @@ get_addtional_paths() {
 
     for dir in "$@"
     do
-        [ -d "${dir}/bin" ] && echo "${dir}/bin"
+        [ -d "${DOTFILES_ROOT}/${dir}/bin" ] && echo "${DOTFILES_ROOT}/${dir}/bin"
     done
 }
 
@@ -445,7 +445,7 @@ generate_script_file() {
 
         for dir in $(get_addtional_paths "$@")
         do
-            echo -n ":${DOTFILES_ROOT}/${dir}" >> "$script_name"
+            echo -n ":${dir}" >> "$script_name"
         done
         echo >> "$script_name"
         echo >> "$script_name"
