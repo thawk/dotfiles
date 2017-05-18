@@ -1,9 +1,9 @@
 function = {
     python - << EOD
-import math
+from math import *
 result=($@)
 if isinstance(result, int):
-    bytes=int(math.ceil(len('{:b}'.format(result))/8.0))
+    bytes=int(ceil(len('{:b}'.format(result))/8.0))
     print('    '.join((
     '{0}'.format(result),
     '0x{0:0>{1}X}'.format(result, bytes*2),
