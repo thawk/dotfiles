@@ -364,7 +364,7 @@ get_enabled_dir() {
 
     for dir in "${dirs[@]}"
     do
-        if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh"
+        if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
         then
             continue
         fi
