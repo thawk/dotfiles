@@ -452,14 +452,20 @@ generate_script_file() {
 
         if [ "$shell" == "zsh" ]
         then
-            echo -n "export fpath=(\$fpath" >> "$script_name"
-            for dir in $(get_zsh_completions "$@")
-            do
-                echo -n " ${DOTFILES_ROOT}/${dir}" >> "$script_name"
-            done
-            echo ")" >> "$script_name"
-            echo >> "$script_name"
-            echo >> "$script_name"
+
+            local zsh_completions=( $(get_zsh_completions "$@") )
+            if [ ${#zsh_completions[*]} -gt 0 ]
+            then
+                echo -n "export fpath=(\$fpath" >> "$script_name"
+                for dir in "${zsh_completions[@]}"
+                do
+                    echo -n " ${DOTFILES_ROOT}/${dir}" >> "$script_name"
+                done
+                echo ")" >> "$script_name"
+                echo >> "$script_name"
+                echo >> "$script_name"
+            fi
+
         fi
 
         generate_source_list $shell "$@" >> "$script_name"
