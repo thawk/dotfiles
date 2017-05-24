@@ -58,7 +58,7 @@ _load_plugins() {
     # Misc
     zplug "plugins/safe-paste", from:oh-my-zsh
     # <ESC><ESC>为当前命令加上sudo
-    zplug "hcgraf/zsh-sudo"
+    zplug "hcgraf/zsh-sudo", if:"(( $+commands[sudo] ))"
 
     # 如果使用的命令有定义alias，会进行提醒
     zplug "djui/alias-tips"
@@ -70,7 +70,7 @@ _load_plugins() {
     zplug "s7anley/zsh-geeknote", if:"(( $+commands[geeknote] ))"
 
     # Asciidoctor
-    zplug "sparsick/asciidoctor-zsh"
+    zplug "sparsick/asciidoctor-zsh", if:"(( $+commands[asciidoctor] ))"
 
     # 外观调整
     zplug "zlsun/solarized-man"
