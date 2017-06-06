@@ -1,0 +1,10 @@
+set-option -g history-limit 50000
+set-option -g default-terminal "screen-256color"
+unbind-key C-b
+bind-key C-a send-prefix
+bind-key a last-window
+bind-key C-p previous-window
+bind-key C-n next-window
+bind-key R run-shell ' \
+    tmux source-file ~/.tmux.conf > /dev/null; \
+    tmux display-message "Sourced .tmux.conf!"'

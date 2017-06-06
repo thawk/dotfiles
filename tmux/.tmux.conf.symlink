@@ -40,5 +40,7 @@ set-option -g update-environment -r
 source ~/.tmux/tmux-theme-base16.conf
 source ~/.tmux/tmux-status.conf
 source ~/.tmux/tmux-plugins.conf
+# if can't run tpm, use tmux-fallback.conf
+#source ~/.tmux/tmux-fallback.conf
 
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux
