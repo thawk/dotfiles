@@ -7,6 +7,3 @@
 [submodule "taskwarrior/.task/hooks/task.default-date-time.symlink"]
 	path = taskwarrior/.task/hooks/task.default-date-time.symlink
 	url = https://github.com/tbabej/task.default-date-time.git
-[submodule "tmux/.tmux/plugins/tpm.symlink"]
-	path = tmux/.tmux/plugins/tpm.symlink
-	url = https://github.com/tmux-plugins/tpm
