@@ -39,8 +39,12 @@ urldecode() {
         return
     fi
 
-    local data=${1//+/ }
-    printf '%b' "${data//\%/\\x}"
+    local data
+    while read data
+    do
+        data=${data//+/ }
+        printf '%b\n' "${data//\%/\\x}"
+    done
 }
 
 htmlencode() {
