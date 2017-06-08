@@ -1,0 +1,1 @@
+dynamic-colors/completions/dynamic-colors.bash
