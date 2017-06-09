@@ -90,6 +90,8 @@ function print_blocks {
     done
 }
 
+echo "Forecolor: \"\e[38;5;{i}m\" Background: \"\e[48;5;{i}m\" Reset: \"\e[0m\""
+echo
 print_run 0 16 # The first 16 colours are spread over the whole spectrum
 printf "\n"
 print_blocks 16 231 6 6 3 # 6x6x6 colour cube between 16 and 231 inclusive
