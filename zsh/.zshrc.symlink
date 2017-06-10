@@ -175,17 +175,17 @@ fi
 # Disable oh-my-zsh autoupdate
 DISABLE_AUTO_UPDATE=true
 
-[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage1
-
-_load_plugins
-
-[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage2
-
 # Stash your environment variables in ~/.zshrc.local. This means they'll stay out
 # of your main dotfiles repository (which may be public), but you'll have access
 # to them in your scripts.
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
+
+[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage1
+
+_load_plugins
+
+[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage2
 
 # compsys initialization
 autoload -U compinit

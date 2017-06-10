@@ -57,7 +57,7 @@ cd {tilde}/.dotfiles
 - **{tilde}/.bashrc.local**: 会在.bashrc中载入
 - **{tilde}/.zshrc.local**: 会在.zshrc中载入
 
-NOTE: 这几个配置文件会在``zsh``载入插件后再行载入。
+NOTE: 这几个配置文件会在``zsh``载入插件前载入。
 
 除了各个插件或系统自带的选项外，还可以设置下列以``DOTFILES_``开头的本配置专用的变量:
 

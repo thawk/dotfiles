@@ -8,5 +8,5 @@
 	path = taskwarrior/.task/hooks/task.default-date-time.symlink
 	url = https://github.com/tbabej/task.default-date-time.git
 [submodule "dynamic-colors/dynamic-colors"]
-	path = dynamic-colors/dynamic-colors
+	path = solarized/dynamic-colors
 	url = https://github.com/sos4nt/dynamic-colors.git
