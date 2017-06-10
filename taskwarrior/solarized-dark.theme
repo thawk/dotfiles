@@ -6,7 +6,7 @@ rule.color.merge=yes
 # General decoration
 color.label=
 color.label.sort=
-color.alternate=on color0
+color.alternate=on black
 color.header=blue
 color.footnote=cyan
 color.warning=black on yellow
