@@ -1,0 +1,75 @@
+#rule.precedence.color=deleted,completed,active,keyword.,tag.,project.,overdue,scheduled,due.today,due,blocked,blocking,recurring,tagged,uda.
+rule.precedence.color=deleted,completed,active,keyword.,blocking,tag.,project.,overdue,scheduled,due.today,due,blocked,recurring,tagged,uda.
+
+rule.color.merge=yes
+
+# General decoration
+color.label=
+color.label.sort=
+color.alternate=on color0
+color.header=blue
+color.footnote=cyan
+color.warning=black on yellow
+color.error=cyan
+color.debug=cyan
+
+# Task state
+color.completed=
+color.deleted=
+color.active=bold red
+color.recurring=blue
+color.scheduled=
+color.until=
+color.blocked=black on green
+color.blocking=red on bright white
+
+# Project
+color.project.none=
+
+# Priority
+color.uda.priority.H=bold blue
+color.uda.priority.M=bold yellow
+color.uda.priority.L=bold green
+
+# Tags
+color.tag.next=bold yellow
+color.tag.none=
+color.tagged=green
+
+# Due
+color.due=red
+color.due.today=bold red
+color.overdue=magenta
+
+# Report: burndown
+color.burndown.done=black on cyan
+color.burndown.pending=black on red
+color.burndown.started=black on yellow
+
+# Report: history
+color.history.add=black on red
+color.history.delete=black on yellow
+color.history.done=black on cyan
+
+# Report: summary
+color.summary.background=on black
+color.summary.bar=black on cyan
+
+# Command: calendar
+color.calendar.due=black on red
+color.calendar.due.today=bold white on red
+color.calendar.holiday=black on yellow
+color.calendar.overdue=black on magenta
+color.calendar.today=black on blue
+color.calendar.weekend=on black
+color.calendar.weeknumber=blue
+
+# Command: sync
+color.sync.added=cyan
+color.sync.changed=red
+color.sync.rejected=magenta
+
+# Command: undo
+color.undo.after=green
+color.undo.before=red
+

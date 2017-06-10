@@ -66,4 +66,5 @@ alias.chart=exec tchart.py
 
 alias.shop=add proj:购物
 
-include ~/.dotfiles/taskwarrior/base16-dark.theme
+# include ~/.dotfiles/taskwarrior/base16-dark.theme
+include ~/.dotfiles/taskwarrior/solarized-dark.theme

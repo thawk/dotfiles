@@ -1,1 +1,1 @@
-export DYNAMIC_COLORS_ROOT="$(dirname "$(readlink -f "$0")")/dynamic-colors"
+export DYNAMIC_COLORS_ROOT="${DOTFILES_ROOT}/dynamic-colors/dynamic-colors"
