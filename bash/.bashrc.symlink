@@ -9,6 +9,7 @@ esac
 # Source global definitions
 [ -f /etc/bashrc ] && . /etc/bashrc
 
+[ -f ~/.localrc ] && . ~/.localrc
 [ -f ~/.bashrc.local ] && . ~/.bashrc.local
 
 # 使用了pam_ssh，不再需要keychain
