@@ -2,3 +2,4 @@
 /boot.bash
 /boot.zsh
 enabled.txt
+localrc

@@ -49,7 +49,7 @@ relpath() {
 }
 
 setup_gitconfig () {
-    if ! [ -f $DOTFILES_ROOT/git/.gitconfig.local.symlink ]
+    if ! [ -f $DOTFILES_ROOT/localrc/.gitconfig.local.symlink ]
     then
         info 'setup gitconfig'
 
@@ -66,10 +66,11 @@ setup_gitconfig () {
 
         if [ "${DRY_RUN}" = 'yes' ]
         then
-            echo git/.gitconfig.local.symlink
+            echo localrc/.gitconfig.local.symlink
             sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example
         else
-            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example > $DOTFILES_ROOT/git/.gitconfig.local.symlink
+            mkdir -p "$DOTFILES_ROOT/localrc"
+            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example > $DOTFILES_ROOT/localrc/.gitconfig.local.symlink
         fi
 
         success 'gitconfig'
@@ -78,15 +79,16 @@ setup_gitconfig () {
 
 
 setup_taskrc () {
-    if ! [ -f $DOTFILES_ROOT/taskwarrior/.taskrc.symlink ]
+    if ! [ -f $DOTFILES_ROOT/localrc/.taskrc.symlink ]
     then
         info 'setup taskrc'
 
         if [ "${DRY_RUN}" = 'yes' ]
         then
-            echo taskwarrior/.taskrc.symlink
+            echo localrc/.taskrc.symlink
         else
-            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_ROOT/taskwarrior/.taskrc.symlink
+            mkdir -p "$DOTFILES_ROOT/localrc"
+            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_ROOT/localrc/.taskrc.symlink
         fi
 
         success 'taskrc'
@@ -224,9 +226,9 @@ create_symlinks () {
         links["$link"]="$link"
     done
 
-    if [ -e "$DOTFILES_ROOT/links.txt" ]
+    if [ -e "$DOTFILES_ROOT/localrc/links.txt" ]
     then
-        for link in $( cat "$DOTFILES_ROOT/links.txt" )
+        for link in $( cat "$DOTFILES_ROOT/localrc/links.txt" )
         do
             if [ -z "${links[$link]+isset}" ]
             then
@@ -254,10 +256,11 @@ create_symlinks () {
         done
     fi
 
-    cat /dev/null > "$DOTFILES_ROOT/links.txt"
+    mkdir -p "$DOTFILES_ROOT/localrc"
+    cat /dev/null > "$DOTFILES_ROOT/localrc/links.txt"
     for link in "${links[@]}"
     do
-        echo "$link" >> "$DOTFILES_ROOT/links.txt"
+        echo "$link" >> "$DOTFILES_ROOT/localrc/links.txt"
         dst="$TARGET/${link#*/}"
         dst="${dst%.symlink}"
         link_file "$DOTFILES_ROOT/$link" "$dst"
@@ -388,15 +391,16 @@ generate_files() {
     local -A old_enabled
     local d
 
-    if [ -e "$DOTFILES_ROOT/enabled.txt" ]
+    if [ -e "$DOTFILES_ROOT/localrc/enabled.txt" ]
     then
-        for d in $( cat "$DOTFILES_ROOT/enabled.txt" )
+        for d in $( cat "$DOTFILES_ROOT/localrc/enabled.txt" )
         do
             old_enabled["$d"]="0"
         done
     fi
 
-    cat /dev/null > "$DOTFILES_ROOT/enabled.txt"
+    mkdir -p "$DOTFILES_ROOT/localrc"
+    cat /dev/null > "$DOTFILES_ROOT/localrc/enabled.txt"
 
     for dir in "$@"
     do
@@ -416,7 +420,7 @@ generate_files() {
             setup_taskrc
         fi
 
-        echo "${dir}" >> "$DOTFILES_ROOT/enabled.txt"
+        echo "${dir}" >> "$DOTFILES_ROOT/localrc/enabled.txt"
     done
 
     for d in "${old_enabled[@]}"
