@@ -10,5 +10,5 @@ if [ $? -ne 2 ]
 then
     # if use history-search-multi-word，change the highlight color
     # so it will be visible under solarized
-    zstyle ":history-search-multi-word" highlight-color "bold,fg=white,bg=blue"
+    zstyle ":history-search-multi-word" highlight-color "fg=white,bg=blue"
 fi

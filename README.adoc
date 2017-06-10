@@ -24,6 +24,8 @@
 - **{asterisk}.symlink**: 所有以.symlink结尾在文件或目录会被符号链接到$HOME
 - zsh-completion: 本目录将加入$fpath中，可用于存放zsh的补全脚本
 
+对于``zsh``，**path.sh**和**env.sh**会在插件载入前加载，其他脚本则会在插件载入后再进行加载。
+
 == 本地配置文件
 
 一些含有私有信息的文件将不会放入github中，而是单独存放：

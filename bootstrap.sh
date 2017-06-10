@@ -313,33 +313,42 @@ generate_source_list () {
     # reset nullglob if original value is false
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
-    echo
-    echo "# set paths"
+    echo "# empty stage or stage1"
+    echo 'if [[ -z "$1" ]] || [[ "$1" == stage1 ]]; then'
+
+    echo "    # set paths"
     for f in "${path_sh[@]}"
     do
-        echo "source \"$f\""
+        echo "    source \"$f\""
     done | sort
 
     echo
-    echo "# set environments"
+    echo "    # set environments"
     for f in "${env_sh[@]}"
     do
-        echo "source \"$f\""
+        echo "    source \"$f\""
     done | sort
 
+    echo "fi"
     echo
-    echo "# others scripts"
+
+    echo "# empty stage or stage2"
+    echo 'if [[ -z "$1" ]] || [[ "$1" == stage2 ]]; then'
+
+    echo "    # others scripts"
     for f in "${others_sh[@]}"
     do
-        echo "source \"$f\""
+        echo "    source \"$f\""
     done | sort
 
     echo
-    echo "# completion scripts"
+    echo "    # completion scripts"
     for f in "${completion_sh[@]}"
     do
-        echo "source \"$f\""
+        echo "    source \"$f\""
     done | sort
+
+    echo "fi"
 }
 
 function join_by {

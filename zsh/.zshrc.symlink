@@ -84,7 +84,7 @@ _load_plugins() {
     # zplug "RobSis/zsh-completion-generator"
 
     # 放到oh-my-zsh/lib/key-bindings后面执行，以便保证能绑定<C-R>
-    zplug "psprint/history-search-multi-word", defer:1
+    zplug "zdharma/history-search-multi-word", defer:1
     # zplug "hchbaw/auto-fu.zsh"
     zplug "zsh-users/zsh-autosuggestions"
     zplug "zsh-users/zsh-completions"
@@ -113,7 +113,7 @@ _load_plugins() {
     # Then, source plugins and add commands to $PATH
     zplug load
 
-    # Bind UP and DOWN arrow keys for subsstring search.
+    # Bind UP and DOWN arrow keys for substring search.
     if zplug check zsh-users/zsh-history-substring-search; then
         zmodload zsh/terminfo
         bindkey "$terminfo[cuu1]" history-substring-search-up
@@ -180,9 +180,11 @@ fi
 # Disable oh-my-zsh autoupdate
 DISABLE_AUTO_UPDATE=true
 
-[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh"
+[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage1
 
 _load_plugins
+
+[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage2
 
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
