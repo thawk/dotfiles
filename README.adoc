@@ -32,14 +32,16 @@
 ----
 git clone https://github.com/thawk/dotfiles.git {tilde}/.dotfiles
 cd {tilde}/.dotfiles
-./bootstrap
+./bootstrap.sh
 ----
 
 由于在.zshrc中在$0不是{tilde}/.zshrc，无法确定dotfiles目录在位置，所以在zsh/.zshrc.symlink和bash/.bashrc.symlink中都显式指定dotfiles的位置，因此只能clone到{tilde}/.dotfiles
 
 使用zgen管理zsh的插件。可以编辑zsh/.zshrc.symlink管理插件。
 
-如果要进行升级，建议直接升级。如果需要删除再重新创建``{tilde}/.dotfiles``，应先把``{tilde}/.dotfiles/localrc/``目录进行备份，过后恢复，以保证配置的延续性。
+一些运行时产生的中间文件会存放到``{tilde}/.dotfiles.local/``下，因此也可以删除并重建``{tilde}/.dotfiles``以进行升级。
+
+升级后应再次运行``{tilde}/.dotfiles/bootstrap.sh``
 
 == 配置
 

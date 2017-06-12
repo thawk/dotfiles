@@ -3,6 +3,7 @@
 # bootstrap installs things.
 
 DOTFILES_ROOT="$(dirname "$(readlink -f "$0")")"
+DOTFILES_LOCAL="${HOME}/.dotfiles.local"
 
 set -e
 
@@ -49,7 +50,7 @@ relpath() {
 }
 
 setup_gitconfig () {
-    if ! [ -f $DOTFILES_ROOT/localrc/.gitconfig.local.symlink ]
+    if ! [ -f $DOTFILES_LOCAL/.gitconfig.local.symlink ]
     then
         info 'setup gitconfig'
 
@@ -66,11 +67,11 @@ setup_gitconfig () {
 
         if [ "${DRY_RUN}" = 'yes' ]
         then
-            echo localrc/.gitconfig.local.symlink
+            echo .gitconfig.local.symlink
             sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example
         else
-            mkdir -p "$DOTFILES_ROOT/localrc"
-            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example > $DOTFILES_ROOT/localrc/.gitconfig.local.symlink
+            mkdir -p "$DOTFILES_LOCAL"
+            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example > $DOTFILES_LOCAL/.gitconfig.local.symlink
         fi
 
         success 'gitconfig'
@@ -79,16 +80,16 @@ setup_gitconfig () {
 
 
 setup_taskrc () {
-    if ! [ -f $DOTFILES_ROOT/localrc/.taskrc.symlink ]
+    if ! [ -f $DOTFILES_LOCAL/.taskrc.symlink ]
     then
         info 'setup taskrc'
 
         if [ "${DRY_RUN}" = 'yes' ]
         then
-            echo localrc/.taskrc.symlink
+            echo .taskrc.symlink
         else
-            mkdir -p "$DOTFILES_ROOT/localrc"
-            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_ROOT/localrc/.taskrc.symlink
+            mkdir -p "$DOTFILES_LOCAL"
+            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_LOCAL/.taskrc.symlink
         fi
 
         success 'taskrc'
@@ -196,11 +197,14 @@ link_file () {
 }
 
 get_symlinks() {
+    LINK_BASE="$1"
+    shift 1
+
     for dir in "$@"
     do
-        for src in $(find -H "${DOTFILES_ROOT}/$dir" -name '*.symlink' -not -path '*.git')
+        for src in $(find -H "${LINK_BASE}/$dir" -name '*.symlink' -not -path '*.git')
         do
-            rel=$(relpath "$src" "$DOTFILES_ROOT")
+            rel=$(relpath "$src" "$LINK_BASE")
             echo "$rel"
         done
     done
@@ -211,24 +215,22 @@ get_symlinks() {
 create_symlinks () {
     local dir
 
-    for dir in $(get_addtional_paths "$@")
-    do
-        export PATH=$PATH:$dir
-    done
+    LINK_BASE="$1"
+    LINK_FILE="$2"
+    shift 2
 
-    info 'Creating symbol links...'
+    info "Creating symbol links for ${LINK_BASE} into ${LINK_FILE}..."
 
-    local overwrite_all=false backup_all=false skip_all=false
     local -A links
     
-    for link in $(get_symlinks "$@")
+    for link in $(get_symlinks "$LINK_BASE" "$@")
     do
         links["$link"]="$link"
     done
 
-    if [ -e "$DOTFILES_ROOT/localrc/links.txt" ]
+    if [ -e "$DOTFILES_LOCAL/$LINK_FILE" ]
     then
-        for link in $( cat "$DOTFILES_ROOT/localrc/links.txt" )
+        for link in $( cat "$DOTFILES_LOCAL/$LINK_FILE" )
         do
             if [ -z "${links[$link]+isset}" ]
             then
@@ -237,7 +239,7 @@ create_symlinks () {
 
                 if [ -h "$dst" ]
                 then
-                    if [ "$DOTFILES_ROOT/$link" == "$(readlink $dst)" ]
+                    if [ "$LINK_BASE/$link" == "$(readlink $dst)" ]
                     then
                         if [ "${DRY_RUN}" = 'yes' ]
                         then
@@ -256,14 +258,14 @@ create_symlinks () {
         done
     fi
 
-    mkdir -p "$DOTFILES_ROOT/localrc"
-    cat /dev/null > "$DOTFILES_ROOT/localrc/links.txt"
+    mkdir -p "$DOTFILES_LOCAL"
+    cat /dev/null > "$DOTFILES_LOCAL/$LINK_FILE"
     for link in "${links[@]}"
     do
-        echo "$link" >> "$DOTFILES_ROOT/localrc/links.txt"
+        echo "$link" >> "$DOTFILES_LOCAL/$LINK_FILE"
         dst="$TARGET/${link#*/}"
         dst="${dst%.symlink}"
-        link_file "$DOTFILES_ROOT/$link" "$dst"
+        link_file "$LINK_BASE/$link" "$dst"
     done
 }
 
@@ -391,16 +393,16 @@ generate_files() {
     local -A old_enabled
     local d
 
-    if [ -e "$DOTFILES_ROOT/localrc/enabled.txt" ]
+    if [ -e "$DOTFILES_LOCAL/enabled.txt" ]
     then
-        for d in $( cat "$DOTFILES_ROOT/localrc/enabled.txt" )
+        for d in $( cat "$DOTFILES_LOCAL/enabled.txt" )
         do
             old_enabled["$d"]="0"
         done
     fi
 
-    mkdir -p "$DOTFILES_ROOT/localrc"
-    cat /dev/null > "$DOTFILES_ROOT/localrc/enabled.txt"
+    mkdir -p "$DOTFILES_LOCAL"
+    cat /dev/null > "$DOTFILES_LOCAL/enabled.txt"
 
     for dir in "$@"
     do
@@ -420,7 +422,7 @@ generate_files() {
             setup_taskrc
         fi
 
-        echo "${dir}" >> "$DOTFILES_ROOT/localrc/enabled.txt"
+        echo "${dir}" >> "$DOTFILES_LOCAL/enabled.txt"
     done
 
     for d in "${old_enabled[@]}"
@@ -432,7 +434,11 @@ generate_files() {
     done
 
     generate_script_file "$@"
-    create_symlinks "$@"
+
+    local overwrite_all=false backup_all=false skip_all=false
+
+    create_symlinks "${DOTFILES_ROOT}" "links.txt" "$@"
+    create_symlinks "${DOTFILES_LOCAL}" "links_local.txt" .
 }
 
 get_addtional_paths() {
