@@ -378,6 +378,11 @@ get_enabled_dir() {
 
     for dir in "${dirs[@]}"
     do
+        if [ -e "${dir}/disabled" ]
+        then
+            continue
+        fi
+
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
         then
             continue
