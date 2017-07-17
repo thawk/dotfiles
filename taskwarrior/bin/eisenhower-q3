@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ $# -lt 1 ]; then
+    task eisenhower.q3
+else
+    task $* mod prio:L +urg
+    task inbox
+fi
