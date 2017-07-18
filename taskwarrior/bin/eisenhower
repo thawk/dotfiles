@@ -7,10 +7,10 @@ if [ "$?" != "0" ]; then
 	tmux split-window -t 'eisenhower:0.1' -c / -h /bin/sh
 	tmux split-window -t 'eisenhower:0.0' -c / -h /bin/sh
 fi
-tmux send-keys -t 'eisenhower:0.0' ' clear; task eisenhower.q1' Enter
-tmux send-keys -t 'eisenhower:0.1' ' clear; task eisenhower.q2' Enter
-tmux send-keys -t 'eisenhower:0.2' ' clear; task eisenhower.q3' Enter
-tmux send-keys -t 'eisenhower:0.3' ' clear; task eisenhower.q4' Enter
+tmux send-keys -t 'eisenhower:0.0' C-u ' clear; task eisenhower.q1' Enter 'task eisenhower'
+tmux send-keys -t 'eisenhower:0.1' C-u ' clear; task eisenhower.q2' Enter
+tmux send-keys -t 'eisenhower:0.2' C-u ' clear; task eisenhower.q3' Enter
+tmux send-keys -t 'eisenhower:0.3' C-u ' clear; task eisenhower.q4' Enter
 tmux select-pane -t 'eisenhower:0.0'
 
 if [ -z "$TMUX" ]

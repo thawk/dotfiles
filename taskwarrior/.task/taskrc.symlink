@@ -33,11 +33,18 @@ report.work.description=Tasks at work
 report.work.filter=status:pending -BLOCKED -maybe (+work)
 report.work.labels=ID,Active,Age,Deps,P,Project,Tag,Recur,S,Due,Until,Description,Urg
 report.work.sort=urgency-
+
 report.home.columns=id,start.age,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description,urgency
 report.home.description=Tasks not at work
 report.home.filter=status:pending -BLOCKED -maybe (-work)
 report.home.labels=ID,Active,Age,Deps,P,Project,Tag,Recur,S,Due,Until,Description,Urg
 report.home.sort=urgency-
+
+report.maybe.description=MAYBE report
+report.maybe.filter=limit:page dep: status:pending +maybe
+report.maybe.columns=id,project,description,entry.age,tags
+report.maybe.labels=ID,Proj,Description,Age,Tags
+report.maybe.sort=entry+
 
 report.next.filter=status:pending limit:page -BLOCKED -maybe
 
@@ -65,6 +72,8 @@ alias.gn=gtdnext
 alias.chart=exec tchart.py
 
 alias.shop=add proj:购物
+
+alias.tc=add +work +@内网
 
 include ~/.dotfiles/taskwarrior/eisenhower.conf
 
