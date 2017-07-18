@@ -49,6 +49,7 @@ report.maybe.sort=entry+
 report.next.filter=status:pending limit:page -BLOCKED -maybe
 
 urgency.user.tag.maybe.coefficient=-100.0
+urgency.user.tag.urg.coefficient=6
 
 # default to priority M. L to lower priority
 urgency.uda.priority.H.coefficient=6.0
