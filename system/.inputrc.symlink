@@ -6,3 +6,5 @@ $if mode=emacs
     # "\e[B":history-search-forward
 $endif
 
+# 在粘贴时，需要确认后才执行
+set enable-bracketed-paste on

@@ -56,7 +56,6 @@ _load_plugins() {
     # zplug "junkblocker/calibre-zaw-source", on:"zsh-users/zaw", if:"(( $+commands[calibredb] ))", defer:1
 
     # Misc
-    zplug "plugins/safe-paste", from:oh-my-zsh
     # <ESC><ESC>为当前命令加上sudo
     zplug "hcgraf/zsh-sudo", if:"(( $+commands[sudo] ))"
 
