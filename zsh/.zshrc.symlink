@@ -182,7 +182,10 @@ DISABLE_AUTO_UPDATE=true
 
 [ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage1
 
-_load_plugins
+if (( $+commands[git] ))
+then
+    _load_plugins
+fi
 
 [ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage2
 
