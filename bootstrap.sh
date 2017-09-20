@@ -554,11 +554,14 @@ else
     echo ''
 fi
 
-info 'setup submodules'
-pushd "${DOTFILES_ROOT}" > /dev/null
-git submodule init
-git submodule update
-popd > /dev/null
+if [ -d "${DOTFILES_ROOT}/.git" ]
+then
+    info 'setup submodules'
+    pushd "${DOTFILES_ROOT}" > /dev/null
+    git submodule init
+    git submodule update
+    popd > /dev/null
+fi
 
 typeset -a dirs
 
