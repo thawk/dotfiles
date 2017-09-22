@@ -128,6 +128,7 @@ _load_plugins() {
 
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
 DOTFILES_ROOT="$HOME/.dotfiles"
+DOTFILES_LOCAL="$HOME/.dotfiles.local"
 
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
@@ -180,14 +181,14 @@ DISABLE_AUTO_UPDATE=true
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
-[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage1
+[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage1
 
 if (( $+commands[git] ))
 then
     _load_plugins
 fi
 
-[ -f "$DOTFILES_ROOT/boot.zsh" ] && source "$DOTFILES_ROOT/boot.zsh" stage2
+[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage2
 
 # compsys initialization
 autoload -U compinit

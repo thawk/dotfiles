@@ -28,7 +28,7 @@ if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a 
     export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
 fi
 
-DOTFILES_ROOT="$HOME/.dotfiles"
+DOTFILES_LOCAL="$HOME/.dotfiles.local"
 
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
@@ -41,5 +41,5 @@ if ! shopt -oq posix; then
   fi
 fi
 
-[ -f "$DOTFILES_ROOT/boot.bash" ] && source "$DOTFILES_ROOT/boot.bash" stage1
-[ -f "$DOTFILES_ROOT/boot.bash" ] && source "$DOTFILES_ROOT/boot.bash" stage2
+[ -f "$DOTFILES_LOCAL/boot.bash" ] && source "$DOTFILES_LOCAL/boot.bash" stage1
+[ -f "$DOTFILES_LOCAL/boot.bash" ] && source "$DOTFILES_LOCAL/boot.bash" stage2
