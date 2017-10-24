@@ -1,4 +1,4 @@
-export DYNAMIC_COLORS_ROOT="${DOTFILES_ROOT}/solarized/dynamic-colors"
+export DYNAMIC_COLORS_ROOT="${DOTFILES_ROOT}/dynamic-colors/dynamic-colors"
 
 if [[ "$DOTFILES_THEME" == "solarized" ]]
 then
