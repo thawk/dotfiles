@@ -5,6 +5,11 @@
 # set-option default-command option to not empty prevents tmux using a login shell.
 #set-option -g default-command $SHELL
 
+# Add truecolor support
+set-option -ga terminal-overrides ",xterm-256color:Tc"
+# Default terminal is 256 colors
+set -g default-terminal "screen-256color"
+
 # Change prefix key to Ctrl+a
 set-option -g prefix C-a
 
