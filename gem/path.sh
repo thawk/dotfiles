@@ -1,1 +1,1 @@
-export PATH=${PATH}:$(ruby -rubygems -e "puts Gem.user_dir")/bin
+export PATH=${PATH}:$(ruby -rrubygems -e "puts Gem.user_dir")/bin
