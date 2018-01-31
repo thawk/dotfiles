@@ -6,6 +6,9 @@ esac
 
 [[ "$SHELL" =~ bash ]] || export SHELL=$(which bash)
 
+DOTFILES_ROOT="$HOME/.dotfiles"
+DOTFILES_LOCAL="$HOME/.dotfiles.local"
+
 [ -f ~/.localrc ] && . ~/.localrc
 [ -f ~/.bashrc.local ] && . ~/.bashrc.local
 
@@ -27,8 +30,6 @@ if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a 
     ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
     export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
 fi
-
-DOTFILES_LOCAL="$HOME/.dotfiles.local"
 
 # enable programmable completion features (you don't need to enable
 # this, if it's already enabled in /etc/bash.bashrc and /etc/profile

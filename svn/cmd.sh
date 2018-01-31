@@ -91,6 +91,7 @@ if [ -n "$(which svn 2>/dev/null)" ]; then
             lg)
                 shift 1
                 command svn log "$@" | less -FX
+                ;;
             *)
                 command svn "$@"
                 ;;
