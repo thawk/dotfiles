@@ -3,7 +3,6 @@
 # List of plugins
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
-set -g @plugin 'christoomey/vim-tmux-navigator'
 set -g @plugin 'tmux-plugins/tmux-prefix-highlight'
 set -g @prefix_highlight_show_copy_mode 'on'
 set -g @prefix_highlight_copy_mode_attr 'fg=black,bg=yellow'
@@ -11,6 +10,49 @@ set -g @prefix_highlight_copy_mode_attr 'fg=black,bg=yellow'
 # set -g @prefix_highlight_output_suffix ''
 # set -g @plugin 'tmux-plugins/tmux-yank'
 set -g @plugin 'tmux-plugins/tmux-copycat'
+
+# prefix + g - prompts for session name and switches to it. Performs 'kind-of' name completion.
+#              Faster than the built-in prefix + s prompt for long session lists.
+# prefix + C (shift + c) - prompt for creating a new session by name.
+# prefix + X (shift + x) - kill current session without detaching tmux.
+# prefix + S (shift + s) - switches to the last session.
+# prefix + @ - promote current pane into a new session.
+#              Analogous to how prefix + ! breaks current pane to a new window.
+# prefix + t<secondary-key> - join currently marked pane (prefix + m) to current session/window, and switch to it
+#          secondary-keys
+#          h, -, ": join horizontally
+#          v, |, %: join vertically
+#          f, @: join full screen
+set -g @plugin 'tmux-plugins/tmux-sessionist'
+
+# Navigation
+#   prefix + h and prefix + C-h select pane on the left
+#   prefix + j and prefix + C-j select pane below the current one
+#   prefix + k and prefix + C-k select pane above
+#   prefix + l and prefix + C-l select pane on the right
+#
+# Resizing panes
+#   prefix + shift + h resize current pane 5 cells to the left
+#   prefix + shift + j resize 5 cells in the down direction
+#   prefix + shift + k resize 5 cells in the up direction
+#   prefix + shift + l resize 5 cells to the right
+# 
+# Splitting panes
+#   prefix + | split current pane horizontally
+#   prefix + - split current pane vertically
+#   prefix + \ split current pane full width horizontally
+#   prefix + _ split current pane full width vertically
+#   Newly created pane always has the same path as the original pane.
+# 
+# Swapping windows
+#   prefix + < - moves current window one position to the left
+#   prefix + > - moves current window one position to the right
+set -g @plugin 'tmux-plugins/tmux-pain-control'
+set-option -g @pane_resize "5"
+
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @continuum-restore 'on'
 
 # Auto install tpm
 if "test ! -d ~/.tmux/plugins/tpm" \
