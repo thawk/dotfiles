@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # vim: set ft=sh fenc=utf-8:
 #
 # Rainer Müller <raimue@codingfarm.de>

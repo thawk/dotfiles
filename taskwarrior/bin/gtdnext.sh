@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ################################################################################
 ##
 ## Copyright 2006 - 2017, Paul Beckingham, Federico Hernandez.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 function complete_remote_paths() {
     word_to_complete=${COMP_WORDS[COMP_CWORD]}
     command_line=${COMP_LINE}
