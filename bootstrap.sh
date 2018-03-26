@@ -40,7 +40,7 @@ fail () {
 }
 
 relpath() {
-    if type python > /dev/null
+    if type python &> /dev/null
     then
         python -c "import os.path; print(os.path.relpath('$1','${2:-$PWD}'))"
     elif type realpath &> /dev/null
