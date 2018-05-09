@@ -1,3 +1,3 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 echo -e "\u00b1 \u0246 \u16A0 \u229D \u2630 \u2632 \u2699 \u26a1 \u2718 \u27a6 \u33D1 \ue0a0 \ue0a1 \ue0a2 \ue0b0 \ue0b1 \ue0b2 \ue0b3 \u2460 \u2461"
