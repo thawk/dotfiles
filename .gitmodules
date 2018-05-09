@@ -10,3 +10,6 @@
 [submodule "dynamic-colors/dynamic-colors"]
 	path = dynamic-colors/dynamic-colors
 	url = https://github.com/sos4nt/dynamic-colors.git
+[submodule "myrepos/src"]
+	path = myrepos/src
+	url = git://myrepos.branchable.com/
