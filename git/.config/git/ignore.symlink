@@ -10,3 +10,6 @@
 *.pyo
 Thumbs.db
 ehthumbs.db
+GTAGS
+GRTAGS
+GPATH
