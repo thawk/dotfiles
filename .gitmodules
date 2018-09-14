@@ -13,3 +13,6 @@
 [submodule "myrepos/src"]
 	path = myrepos/src
 	url = git://myrepos.branchable.com/
+[submodule "percol/src"]
+	path = percol/src
+	url = https://github.com/mooz/percol.git
