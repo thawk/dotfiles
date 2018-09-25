@@ -1,1 +1,21 @@
 _FASD_BACKENDS="native current"
+
+projects() {
+    for repos in "$HOME/.cache/vimfiles/repos/"* "$GOPATH"/src/{golang.org,github.com,bitbucket.org}
+    do
+        if [ -d "$repos" ]
+        then
+            for owner in "$repos"/*
+            do
+                for repo in "$owner"/*
+                do
+                    echo "$repo|1"
+                done
+            done
+        fi
+    done
+
+    unset repo
+    unset owner
+    unset repos
+}
