@@ -4,6 +4,7 @@ my_os=$(uname -o)
 if [ "$my_os" = "FreeBSD" ]
 then
     alias ls='ls -G'
+    type gmake &> /dev/null && alias make=gmake
 else
     alias ls='ls --color=auto'
 fi
