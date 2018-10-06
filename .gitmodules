@@ -9,7 +9,7 @@
 	url = https://github.com/tbabej/task.default-date-time.git
 [submodule "dynamic-colors/dynamic-colors"]
 	path = dynamic-colors/dynamic-colors
-	url = https://github.com/sos4nt/dynamic-colors.git
+	url = https://github.com/thawk/dynamic-colors.git
 [submodule "myrepos/src"]
 	path = myrepos/src
 	url = git://myrepos.branchable.com/
