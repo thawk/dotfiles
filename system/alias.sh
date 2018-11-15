@@ -1,7 +1,7 @@
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 my_os=$(uname -o)
 
-if [ "$my_os" = "FreeBSD" ]
+if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "freebsd"* ]]
 then
     alias ls='ls -G'
     type gmake &> /dev/null && alias make=gmake

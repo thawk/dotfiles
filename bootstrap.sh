@@ -2,7 +2,13 @@
 #
 # bootstrap installs things.
 
-DOTFILES_ROOT="$(dirname "$(readlink -f "$0")")"
+if type perl &> /dev/null; then
+    DOTFILES_ROOT="$(dirname $(perl -e 'use Cwd "abs_path";print abs_path(shift)' $0))"
+elif [[ "$OSTYPE" == "linux-gnu" ]]; then
+    DOTFILES_ROOT="$(dirname "$(readlink -f "$0")")"
+else
+    DOTFILES_ROOT="$(cd "$(dirname "$0")" && pwd -P)"
+fi
 DOTFILES_LOCAL="${HOME}/.dotfiles.local"
 
 set -e
@@ -553,6 +559,10 @@ else
     echo "!!! Apply mode !!!"
     echo ''
 fi
+
+info "Environments:"
+info "    DOTFILES_ROOT=${DOTFILES_ROOT}"
+info "    DOTFILES_LOCAL=${DOTFILES_LOCAL}"
 
 if [ -d "${DOTFILES_ROOT}/.git" ]
 then
