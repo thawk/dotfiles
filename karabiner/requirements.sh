@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-type karabiner_cli &> /dev/null
+[ -d /Applications/Karabiner-Elements.app ]
