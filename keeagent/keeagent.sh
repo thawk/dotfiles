@@ -43,7 +43,7 @@ while true ; do
 done
 
 # only needed for WSL
-if [ "$(uname -s)" = "Linux" ] && grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null
+if [[ "${OSTYPE}" == "linux-gnu" ] && grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null
 then
     # If MSYSGIT socket in keeagent is set as c:\Users/foo/Documents/ssh_auth_msysgit
     SSH_AUTH_KEEAGENT_SOCK=/mnt/c/Users/$USER/keepass.sock
