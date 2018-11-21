@@ -1,4 +1,4 @@
-if [[ "$DOTFILES_THEME" == "solarized" ]]
+if [ -z "$DOTFILES_THEME" ] || [ "$DOTFILES_THEME" == "solarized" ]
 then
     if [ -n "$ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE" ]
     then
