@@ -1,0 +1,16 @@
+aria2
+bash
+boost
+boost-build
+git
+global
+graphviz
+highlight
+karabiner-elements
+mr
+neovim
+openssl
+python
+the_silver_searcher
+tmux
+wget
