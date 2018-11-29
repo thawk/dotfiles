@@ -38,6 +38,7 @@ _load_plugins() {
     # Python
     zplug "plugins/pip", from:oh-my-zsh, if:"(( $+commands[pip] ))"
     zplug "plugins/python", from:oh-my-zsh, if:"(( $+commands[python] ))"
+    zplug "plugins/docker", from:oh-my-zsh, if:"(( $+commands[docker] ))"
     # mkvenv创建virtualenv，在cd时自动切换
     zplug "plugins/virtualenvwrapper", from:oh-my-zsh, if:"[[ -d $HOME/.virtualenvs ]]"
     # zplug "MichaelAquilina/zsh-autoswitch-virtualenv"
@@ -66,10 +67,7 @@ _load_plugins() {
     zplug "plugins/gitfast", from:oh-my-zsh, if:"(( $+commands[git] ))"
 
     # GeekNote: cmdline for evernote
-    zplug "s7anley/zsh-geeknote", if:"(( $+commands[geeknote] ))"
-
-    # Asciidoctor
-    zplug "sparsick/asciidoctor-zsh", if:"(( $+commands[asciidoctor] ))"
+    zplug "plugins/geeknote", from:oh-my-zsh, if:"(( $+commands[geeknote] ))"
 
     # 外观调整
     zplug "zlsun/solarized-man"
