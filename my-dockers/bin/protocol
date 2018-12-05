@@ -1,0 +1,5 @@
+#!/bin/bash
+# Command for running protocol http://www.luismg.com/protocol/
+
+docker run -it "jessfraz/protocol" "$@"
+

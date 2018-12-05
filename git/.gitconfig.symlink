@@ -1,29 +1,30 @@
 # Local/private config goes in the include
 [include]
-path = ~/.gitconfig.local
+    path = ~/.gitconfig.local
 
 [push]
-default = simple
+    default = simple
 
 [core]
-eol = lf
-autocrlf = false
-filemode = false
+    eol = lf
+    autocrlf = false
+    filemode = false
+    quotepath = false
 
 [alias]
-co = checkout
-ci = commit
-st = status -s
-br = branch
+    co = checkout
+    ci = commit
+    st = status -s
+    br = branch
 # hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
-hist2 = log --abbrev-commit --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
-hist = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
-lg1 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)' --all
-lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
-lg = !"git lg1"
-ld = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
-type = cat-file -t
-dump = cat-file -p
+    hist2 = log --abbrev-commit --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
+    hist = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
+    lg1 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)' --all
+    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
+    lg = !"git lg1"
+    ld = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
+    type = cat-file -t
+    dump = cat-file -p
 
 [branch]
-autosetuprebase = always
+    autosetuprebase = always
