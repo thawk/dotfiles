@@ -10,9 +10,9 @@ if [[ "$1" = /* ]]; then
     shift
 
     # Run the docker command
-    docker run -it -P -v "$dir_name":/src "${docker_image}" "$file_name" "$@"
+    docker run -it --rm -P -v "$dir_name":/src "${docker_image}" "$file_name" "$@"
 else
     # Run the docker command
-    docker run -it -P -v "$(pwd)":/src "${docker_image}" "$@"
+    docker run -it --rm -P -v "$(pwd)":/src "${docker_image}" "$@"
 fi
 
