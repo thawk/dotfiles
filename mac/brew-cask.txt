@@ -1,0 +1,16 @@
+alfred
+asciidocfx
+cheatsheet
+docker
+font-dejavusansmono-nerd-font
+font-hack-nerd-font
+karabiner-elements
+keepassxc
+openoffice
+qq
+shadowsocksx-ng
+squirrel
+standard-notes
+touchswitcher
+typora
+xquartz
