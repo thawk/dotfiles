@@ -18,3 +18,4 @@ then
     alias cyp='apt-cyg mirror http://mirrors.kernel.org/sources.redhat.com/cygwinports/'
 fi
 
+type nvim &> /dev/null && ! type nv &> /dev/null && alias nv=nvim
