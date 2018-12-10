@@ -18,4 +18,8 @@ then
     alias cyp='apt-cyg mirror http://mirrors.kernel.org/sources.redhat.com/cygwinports/'
 fi
 
-type nvim &> /dev/null && ! type nv &> /dev/null && alias nv=nvim
+# 在MacOS下，使用neovim
+if [[ "$OSTYPE" == "darwin"* ]]
+then
+    type nvim &> /dev/null  && alias vim=nvim
+fi
