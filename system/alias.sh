@@ -23,3 +23,9 @@ if [[ "$OSTYPE" == "darwin"* ]]
 then
     type nvim &> /dev/null  && alias vim=nvim
 fi
+
+if type encfs &> /dev/null && [ -d "$HOME/my/.enc-private" ]
+then
+    alias mp="encfs '$HOME/my/.enc-private' '$HOME/my/private'"
+    alias ump="encfs -u '$HOME/my/private'"
+fi
