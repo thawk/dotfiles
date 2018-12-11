@@ -19,8 +19,15 @@ then
     }
 
     um() {
-        encfs -u "$1"
-        rm -d "$1"
+        if [ -z "$1" ]; then
+            # umount all
+            if mount | grep "^encfs@" &> /dev/null; then
+                mount | grep "^encfs@" | cut -d' ' -f3 | xargs -n 1 encfs -u
+            fi
+        else
+            encfs -u "$1"
+            rm -d "$1"
+        fi
     }
 
     alias mp="em '$HOME/my/private'"
