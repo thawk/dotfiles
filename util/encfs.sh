@@ -7,13 +7,26 @@ then
         fi
 
         parent="$(cd "$(dirname "$1")" && pwd -P)"
-        dst="${parent}/$(basename "$1")"
-        src="${parent}/.$(basename "$1")"
+        base=$(basename "$1")
 
-        if [ ! -d "$src" ]; then
-            echo "'$src' not exists!"
-            return
+        if [[ "${base}" == .* ]]
+        then  # begin with a dot
+            src="${parent}/${base}"
+            dst="${parent}/${base#.}"
+        else
+            src="${parent}/.${base}"
+            dst="${parent}/${base}"
         fi
+
+        for f in "${src}/.encfs"*.xml
+        do
+            if [ ! -f "$f" ]
+            then
+                echo "'$src' not exists or not a encfs directory!"
+                return
+            fi
+            break
+        done
 
         mkdir -p "${dst}" && encfs "${src}" "${dst}"
     }
@@ -22,7 +35,11 @@ then
         if [ -z "$1" ]; then
             # umount all
             if mount | grep "^encfs@" &> /dev/null; then
-                mount | grep "^encfs@" | cut -d' ' -f3 | xargs -n 1 encfs -u
+                mount | grep "^encfs@" | cut -d' ' -f3 | while read d
+                do
+                    encfs -u "${d}"
+                    rm -d "${d}"
+                done
             fi
         else
             encfs -u "$1"
