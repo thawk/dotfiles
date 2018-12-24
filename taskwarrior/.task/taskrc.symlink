@@ -77,6 +77,7 @@ alias.shop=add proj:购物
 alias.tc=add +work +@内网
 
 include ~/.dotfiles/taskwarrior/eisenhower.conf
+include ~/.dotfiles/taskwarrior/pomodoro.conf
 
 # include ~/.dotfiles/taskwarrior/base16-dark.theme
 include ~/.dotfiles/taskwarrior/solarized-dark.theme
