@@ -1,0 +1,2 @@
+#!/bin/sh
+docker run -it --rm -v "$(pwd)":/documents/ thawk/asciidoctor asciidoctor-epub3 -r asciidoctor-diagram "$@"
