@@ -104,6 +104,13 @@ zplugin load zdharma/history-search-multi-word
 zplugin ice wait"5" atinit"ZPLGM[COMPINIT_OPTS]=-C; zpcompinit; zpcdreplay" lucid
 zplugin light zdharma/fast-syntax-highlighting
 
+# Utils
+zplugin ice wait"1" lucid mv"httpstat.sh -> httpstat" pick"httpstat" as"program"
+zplugin snippet https://github.com/b4b4r07/httpstat/blob/master/httpstat.sh
+
+zplugin ice wait"1"
+zplugin light mollifier/cd-gitroot
+
 ## Theme
 setopt promptsubst
 
@@ -130,18 +137,6 @@ zplugin light bhilburn/powerlevel9k
 # # export NVM_LAZY_LOAD=true
 # # zplug "lukechilds/zsh-nvm"
 
-
 # # VCS 
 # zplug "plugins/gitfast", from:oh-my-zsh, if:"(( $+commands[git] ))"
 
-# # 自动建议、补全
-# # Very cool plugin that generates zsh completion functions for commands
-# # if they have getopt-style help text. It doesn't generate them on the fly,
-# # you'll have to explicitly generate a completion, but it's still quite cool.
-# # 用gencomp命令生成补全文件。
-# # zplug "RobSis/zsh-completion-generator"
-
-# zplug "b4b4r07/httpstat", \
-#     as:command, \
-#     use:'(*).sh', \
-#     rename-to:'$1'
