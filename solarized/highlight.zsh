@@ -1,4 +1,4 @@
-if [ -z "$DOTFILES_THEME" ] || [ "$DOTFILES_THEME" == "solarized" ]
+if [ -z "$DOTFILES_THEME" ] || [ "$DOTFILES_THEME" = "solarized" ]
 then
     # change the zsh_autosuggestions highlight color
     # so it will be visible under solarized
