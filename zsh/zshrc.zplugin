@@ -1,0 +1,213 @@
+ZPLG_HOME="${ZDOTDIR:-$HOME}/.zplugin"
+
+if ! test -d "$ZPLG_HOME"; then
+    echo 'Installing zplugin...'
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/zdharma/zplugin/master/doc/install.sh)"
+fi
+
+_load_plugins() {
+    # load zplugin
+    source "$ZPLG_HOME/bin/zplugin.zsh"
+    autoload -Uz _zplugin
+    (( ${+_comps} )) && _comps[zplugin]=_zplugin
+
+    setopt promptsubst
+
+    # Tmux
+    zplugin ice svn if'[[ -n "$commands[tmux]" ]]' lucid
+    zplugin snippet OMZ::plugins/tmux
+
+    # OS specific plugins
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # zplugin ice wait"0" lucid atinit"local ZSH=\$PWD" \
+        #     atclone"mkdir -p plugins; cd plugins; ln -sfn ../. osx"
+        # zplugin snippet OMZ::plugins/osx
+        zplugin ice wait"0" lucid
+        zplugin snippet OMZ::plugins/iterm2/iterm2.plugin.zsh
+    elif [[ "$OSTYPE" == 'cygwin' ]]; then
+        zplugin ice wait"0" lucid
+        zplugin snippet OMZ::plugins/cygwin/cygwin.plugin.zsh
+    fi
+
+    zplugin snippet OMZ::lib/git.zsh
+    # Load completion library for those sweet [tab] squares
+    zplugin snippet OMZ::lib/completion.zsh
+    # Up -> History search!
+    zplugin snippet OMZ::lib/key-bindings.zsh
+    # History defaults
+    zplugin snippet OMZ::lib/history.zsh
+    # Adds useful aliases for things dealing with directories
+    zplugin snippet OMZ::lib/directories.zsh
+
+    zplugin ice wait"0" blockf lucid
+    zplugin light zsh-users/zsh-completions
+
+    # zplug "hchbaw/auto-fu.zsh"
+    zplugin ice wait"0" lucid
+    zplugin light zsh-users/zsh-history-substring-search
+
+        # Bind UP and DOWN arrow keys for substring search.
+        zmodload zsh/terminfo
+        bindkey "$terminfo[cuu1]" history-substring-search-up
+        bindkey "$terminfo[cud1]" history-substring-search-down
+
+        bindkey -M emacs '^P' history-substring-search-up
+        bindkey -M emacs '^N' history-substring-search-down
+
+        bindkey -M vicmd 'k' history-substring-search-up
+        bindkey -M vicmd 'j' history-substring-search-down
+
+    zplugin ice wait"0" atload"unalias grv" lucid
+    zplugin snippet OMZ::plugins/git/git.plugin.zsh
+
+    zplugin ice wait"0" lucid
+    zplugin snippet OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh
+    # zplug "zlsun/solarized-man"
+
+    # OS - Command Not Found Helper
+    zplugin ice wait"0" lucid
+    zplugin snippet OMZ::plugins/command-not-found/command-not-found.plugin.zsh
+
+    # Python
+    zplugin ice wait"0" if'[[ -n "$commands[pip]" ]]' lucid
+    zplugin snippet OMZ::plugins/pip/pip.plugin.zsh
+    zplugin ice wait"0" if'[[ -n "$commands[python]" ]]' lucid
+    zplugin snippet OMZ::plugins/python/python.plugin.zsh
+    if type workon &>/dev/null; then
+        zplugin ice wait"0" lucid
+        zplugin snippet OMZ::plugins/virtualenv/virtualenv.plugin.zsh
+        unset VIRTUAL_ENV_DISABLE_PROMPT
+
+        # mkvenv创建virtualenv，在cd时自动切换
+        zplugin ice wait"0" lucid
+        zplugin snippet OMZ::plugins/virtualenvwrapper/virtualenvwrapper.plugin.zsh
+    fi
+
+    # docker
+    zplugin ice as"completion" if'[[ -n "$commands[docker]" ]]'
+    zplugin snippet https://github.com/docker/cli/raw/master/contrib/completion/zsh/_docker
+
+    # npm
+    zplugin ice wait"0" if'[[ -n "$commands[npm]" ]]' lucid
+    zplugin snippet OMZ::plugins/npm/npm.plugin.zsh
+
+    zplugin ice wait"0" if'[[ -n "$commands[sudo]" ]]' lucid
+    zplugin snippet OMZ::plugins/sudo/sudo.plugin.zsh
+
+    # 如果使用的命令有定义alias，会进行提醒
+    zplugin ice wait"0" lucid
+    zplugin light djui/alias-tips
+
+    zplugin ice wait"1" atload"_zsh_autosuggest_start" lucid
+    zplugin light zsh-users/zsh-autosuggestions
+
+    zplugin ice wait"1" lucid
+    zplugin load zdharma/history-search-multi-word
+
+    zplugin ice wait"5" atinit"ZPLGM[COMPINIT_OPTS]=-C; zpcompinit; zpcdreplay" lucid
+    zplugin light zdharma/fast-syntax-highlighting
+
+    ### Pure Theme (loaded using async)
+    #zplugin ice pick"async.zsh" src"pure.zsh"
+    #zplugin light sindresorhus/pure
+
+    zplugin light agnoster/agnoster-zsh-theme
+
+    #zplugin ice wait"0" lucid
+    #zplugin snippet OMZ::themes/dstufft.zsh-theme
+
+    # ############
+    # # 一些缺省值
+    # zplug "willghatch/zsh-saneopt"
+
+    # # util used by some plugins
+    # zplug "mafredri/zsh-async"
+
+    # # export NVM_LAZY_LOAD=true
+    # # zplug "lukechilds/zsh-nvm"
+
+
+    # # VCS 
+    # zplug "plugins/gitfast", from:oh-my-zsh, if:"(( $+commands[git] ))"
+
+    # # 自动建议、补全
+    # # Very cool plugin that generates zsh completion functions for commands
+    # # if they have getopt-style help text. It doesn't generate them on the fly,
+    # # you'll have to explicitly generate a completion, but it's still quite cool.
+    # # 用gencomp命令生成补全文件。
+    # # zplug "RobSis/zsh-completion-generator"
+
+    # zplug "b4b4r07/httpstat", \
+    #     as:command, \
+    #     use:'(*).sh', \
+    #     rename-to:'$1'
+}
+
+# DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
+DOTFILES_ROOT="$HOME/.dotfiles"
+DOTFILES_LOCAL="$HOME/.dotfiles.local"
+
+# Uncomment the following line to use case-sensitive completion.
+CASE_SENSITIVE="true"
+
+VIRTUALENVWRAPPER_PYTHON=$(which python3)
+
+# Uncomment the following line to use hyphen-insensitive completion. Case
+# sensitive completion must be off. _ and - will be interchangeable.
+# HYPHEN_INSENSITIVE="true"
+
+# Uncomment the following line to disable auto-setting terminal title.
+# DISABLE_AUTO_TITLE="true"
+
+# Uncomment the following line to enable command auto-correction.
+# ENABLE_CORRECTION="true"
+
+# Uncomment the following line to display red dots whilst waiting for completion.
+# COMPLETION_WAITING_DOTS="true"
+
+# Uncomment the following line if you want to disable marking untracked files
+# under VCS as dirty. This makes repository status check for large repositories
+# much, much faster.
+# DISABLE_UNTRACKED_FILES_DIRTY="true"
+
+# If current shell doesn't contains zsh, set to zsh
+[[ "$SHELL" =~ zsh ]] || export SHELL=$(which zsh)
+export ZSH_TMUX_AUTOSTART="true"
+export ZSH_TMUX_AUTOQUIT="false"
+
+# 由于启用了tmux插件，在顶层zsh中是不会执行到oh-my-zsh.sh后面的内容的，所以专门source一些需要在顶层载入的内容
+if [ "$SHLVL" -eq 1 ]
+then
+    # 在顶层SHELL中恢复base16的配色
+    [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
+
+    # Fix problem that SSH_AUTH_SOCK not updated in tmux
+    if [ ! -z "$SSH_AUTH_SOCK" -a -e "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
+        unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+        ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+        export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+    fi
+fi
+
+# Disable oh-my-zsh autoupdate
+DISABLE_AUTO_UPDATE=true
+
+# Stash your environment variables in ~/.zshrc.local. This means they'll stay out
+# of your main dotfiles repository (which may be public), but you'll have access
+# to them in your scripts.
+[[ -a ~/.localrc ]] && source ~/.localrc
+[[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
+
+[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage1
+
+if (( $+commands[git] ))
+then
+    _load_plugins
+fi
+
+[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage2
+
+# compsys initialization
+autoload -U compinit
+compinit
+
