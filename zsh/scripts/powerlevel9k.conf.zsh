@@ -2,7 +2,7 @@
 
 POWERLEVEL9K_MODE="nerdfont-complete"
 
-POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(os_icon dir vcs)
+POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(os_icon virtualenv dir vcs)
 POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=(status root_indicator background_jobs context time ssh)
 POWERLEVEL9K_PROMPT_ON_NEWLINE=true
 POWERLEVEL9K_RPROMPT_ON_NEWLINE=false
