@@ -57,8 +57,8 @@ DISABLE_AUTO_UPDATE=true
 
 if (( $+commands[git] ))
 then
-    #source "$DOTFILES_ROOT/zsh/scripts/zplug-plugins.zsh"
-    source "$DOTFILES_ROOT/zsh/scripts/zplugin-plugins.zsh"
+    #source "$DOTFILES_ROOT/zsh/scripts/zplug.plugins.zsh"
+    source "$DOTFILES_ROOT/zsh/scripts/zplugin.plugins.zsh"
 fi
 
 [ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage2

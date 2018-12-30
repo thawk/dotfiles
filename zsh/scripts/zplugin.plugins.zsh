@@ -113,7 +113,10 @@ setopt promptsubst
 #zplugin ice pick"async.zsh" src"pure.zsh"
 #zplugin light sindresorhus/pure
 
-zplugin light agnoster/agnoster-zsh-theme
+#zplugin light agnoster/agnoster-zsh-theme
+
+source "$DOTFILES_ROOT/zsh/scripts/powerlevel9k.conf.zsh"
+zplugin light bhilburn/powerlevel9k
 
 #zplugin snippet OMZ::themes/dstufft.zsh-theme
 
