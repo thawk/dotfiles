@@ -23,7 +23,7 @@ POWERLEVEL9K_MULTILINE_FIRST_PROMPT_PREFIX="%{%K{black}%}\u256D\u2500%{%k%}"
 POWERLEVEL9K_MULTILINE_LAST_PROMPT_PREFIX="%{%K{black}%}\u2570\uf460%{%F{black}%k%}%{%f%k%}"
 
 # context
-POWERLEVEL9K_CONTEXT_TEMPLATE="%n@`hostname -s`"
+POWERLEVEL9K_CONTEXT_TEMPLATE="%n@`hostname -s` \uf109"
 #POWERLEVEL9K_CONTEXT_TEMPLATE="\U1f4BB%n@`hostname -s`"
 
 # time

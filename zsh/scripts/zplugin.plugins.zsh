@@ -108,7 +108,7 @@ zplugin light zdharma/fast-syntax-highlighting
 zplugin ice wait"1" lucid mv"httpstat.sh -> httpstat" pick"httpstat" as"program"
 zplugin snippet https://github.com/b4b4r07/httpstat/blob/master/httpstat.sh
 
-zplugin ice wait"1"
+zplugin ice wait"1" lucid
 zplugin light mollifier/cd-gitroot
 
 ## Theme
