@@ -1,0 +1,87 @@
+tap "homebrew/bundle"
+tap "homebrew/cask"
+tap "homebrew/cask-fonts"
+tap "homebrew/core"
+cask "osxfuse"
+# Download with resuming and segmented downloading
+brew "aria2"
+# Bourne-Again SHell, a UNIX command interpreter
+brew "bash"
+# Collection of portable C++ source libraries
+brew "boost"
+# C++ build system
+brew "boost-build"
+# Encrypted pass-through FUSE file system
+brew "encfs"
+# Command-line fuzzy finder written in Go
+brew "fzf"
+# Distributed revision control system
+brew "git"
+# Interpreted, interactive, object-oriented programming language
+brew "python"
+# Source code tag system
+brew "global"
+# Open source programming language to build simple/reliable/efficient software
+brew "go"
+# Graph visualization software from AT&T and Bell Labs
+brew "graphviz"
+# CLI wrapper for basic network utilities on macOS - ip command
+brew "iproute2mac"
+# Cross platform, open source .NET development framework
+brew "mono"
+# Multiple Repository management tool
+brew "mr"
+# Ambitious Vim-fork focused on extensibility and agility
+brew "neovim"
+# 7-Zip (high compression file archiver) implementation
+brew "p7zip"
+# Perl-powered file rename script with many helpful built-ins
+brew "rename"
+# Search tool like grep and The Silver Searcher
+brew "ripgrep"
+# Version control system designed to be a better CVS
+brew "subversion"
+# Feature-rich console based todo list manager
+brew "task"
+# Code-search similar to ack
+brew "the_silver_searcher"
+# Terminal multiplexer
+brew "tmux"
+# Display directories as trees (with optional color/HTML output)
+brew "tree"
+# Internet file retriever
+brew "wget"
+cask "alfred"
+cask "android-file-transfer"
+cask "asciidocfx"
+cask "cheatsheet"
+cask "dash"
+cask "docker"
+cask "font-dejavusansmono-nerd-font"
+cask "font-hack-nerd-font"
+cask "gpg-suite"
+cask "iina"
+cask "karabiner-elements"
+cask "keepassxc"
+cask "licecap"
+cask "macdown"
+cask "openoffice"
+cask "qlcolorcode"
+cask "qlmarkdown"
+cask "qlmobi"
+cask "qlstephen"
+cask "qlvideo"
+cask "qq"
+cask "quicklook-json"
+cask "quicklookase"
+cask "shadowsocksx-ng"
+cask "squirrel"
+cask "standard-notes"
+cask "suspicious-package"
+cask "taskwarrior-pomodoro"
+cask "touchswitcher"
+cask "typora"
+cask "visual-studio-code"
+cask "webpquicklook"
+cask "xquartz"
+cask "yu-writer"
