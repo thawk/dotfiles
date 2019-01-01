@@ -84,10 +84,7 @@ fi
 zplugin ice as"completion" if'[[ -n "$commands[docker]" ]]'
 zplugin snippet https://github.com/docker/cli/raw/master/contrib/completion/zsh/_docker
 
-# npm
-zplugin ice wait"0" if'[[ -n "$commands[npm]" ]]' lucid
-zplugin snippet OMZ::plugins/npm/npm.plugin.zsh
-
+# sudo
 zplugin ice wait"0" if'[[ -n "$commands[sudo]" ]]' lucid
 zplugin snippet OMZ::plugins/sudo/sudo.plugin.zsh
 
@@ -111,6 +108,9 @@ zplugin snippet https://github.com/b4b4r07/httpstat/blob/master/httpstat.sh
 zplugin ice wait"1" lucid
 zplugin light mollifier/cd-gitroot
 
+zplugin ice wait"1" lucid
+zplugin light supercrabtree/k
+
 ## Theme
 setopt promptsubst
 
@@ -124,6 +124,9 @@ setopt promptsubst
 
 source "$DOTFILES_ROOT/zsh/scripts/powerlevel9k.conf.zsh"
 zplugin light bhilburn/powerlevel9k
+
+#zplugin ice nocompletions
+#zplugin load robobenklein/p10k
 
 #zplugin snippet OMZ::themes/dstufft.zsh-theme
 
