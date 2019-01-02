@@ -1,0 +1,3 @@
+#!/bin/sh
+
+docker run -it --rm -v $(cd; pwd):/home thawk/midnight-commander /home /home "$@"

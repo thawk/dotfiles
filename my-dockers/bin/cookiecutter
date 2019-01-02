@@ -1,0 +1,4 @@
+#!/bin/sh
+
+docker run -it --rm -v $(pwd):/srv/app amaysim/cookiecutter:1.5.1 "$@"
+
