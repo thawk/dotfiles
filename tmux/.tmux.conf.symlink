@@ -41,6 +41,7 @@ set-window-option -g automatic-rename on
 set-window-option -g clock-mode-style 24
 
 set-option -g update-environment -r
+set-option -g update-environment[0] TERM_PROGRAM
 
 source ~/.tmux/tmux-theme-base16.conf
 source ~/.tmux/tmux-status.conf
