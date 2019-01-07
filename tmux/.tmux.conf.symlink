@@ -40,8 +40,8 @@ set-window-option -g automatic-rename on
 # Clock
 set-window-option -g clock-mode-style 24
 
-set-option -g update-environment -r
-set-option -g update-environment[0] TERM_PROGRAM
+#set-option -g update-environment -r
+set-option -g update-environment "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY TERM_PROGRAM"
 
 source ~/.tmux/tmux-theme-base16.conf
 source ~/.tmux/tmux-status.conf
