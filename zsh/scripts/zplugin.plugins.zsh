@@ -63,7 +63,7 @@ zplugin snippet OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh
 
 # OS - Command Not Found Helper
 zplugin ice wait"0" lucid
-zplugin snippet OMZ::plugins/command-not-found/command-not-found.plugin.zsh
+#zplugin snippet OMZ::plugins/command-not-found/command-not-found.plugin.zsh
 
 # Python
 zplugin ice wait"0" if'[[ -n "$commands[pip]" ]]' lucid
