@@ -2,6 +2,7 @@ tap "homebrew/bundle"
 tap "homebrew/cask"
 tap "homebrew/cask-fonts"
 tap "homebrew/core"
+tap "martido/brew-graph"
 cask "osxfuse"
 # Download with resuming and segmented downloading
 brew "aria2"
@@ -27,8 +28,8 @@ brew "go"
 brew "graphviz"
 # CLI wrapper for basic network utilities on macOS - ip command
 brew "iproute2mac"
-# Cross platform, open source .NET development framework
-brew "mono"
+# Mac App Store command-line interface
+brew "mas"
 # Multiple Repository management tool
 brew "mr"
 # Ambitious Vim-fork focused on extensibility and agility
@@ -51,12 +52,15 @@ brew "tmux"
 brew "tree"
 # Internet file retriever
 brew "wget"
+brew "martido/brew-graph/brew-graph"
 cask "alfred"
 cask "android-file-transfer"
+cask "applepi-baker"
 cask "asciidocfx"
 cask "cheatsheet"
 cask "dash"
 cask "docker"
+cask "fliqlo"
 cask "font-dejavusansmono-nerd-font"
 cask "font-hack-nerd-font"
 cask "gpg-suite"
@@ -81,7 +85,22 @@ cask "suspicious-package"
 cask "taskwarrior-pomodoro"
 cask "touchswitcher"
 cask "typora"
+cask "vanilla"
 cask "visual-studio-code"
 cask "webpquicklook"
 cask "xquartz"
 cask "yu-writer"
+mas "GarageBand", id: 682658836
+mas "iMovie", id: 408981434
+mas "Keynote", id: 409183694
+mas "Kindle", id: 405399194
+mas "NeteaseMusic", id: 944848654
+mas "Numbers", id: 409203825
+mas "Pages", id: 409201541
+mas "Pendo", id: 1220959405
+mas "QQMusic", id: 595615424
+mas "Reeder", id: 880001334
+mas "Snip", id: 512505421
+mas "The Unarchiver", id: 425424353
+mas "WeChat", id: 836500024
+mas "爱奇艺", id: 1012296988

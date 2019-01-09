@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+diff \
+         <(brew deps --installed | sed 's/:.*//' | sort -u) \
+         <(brew deps --installed | sed 's/^.*://' | tr -s "[:space:]" "\n" | sort -u) |
+         grep "^<" |
+         sed 's/^< //'
