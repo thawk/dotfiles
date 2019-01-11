@@ -9,41 +9,13 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
 else
     DOTFILES_ROOT="$(cd "$(dirname "$0")" && pwd -P)"
 fi
-DOTFILES_LOCAL="${HOME}/.dotfiles.local"
+
+export DOTFILES_ROOT
+export DOTFILES_LOCAL="${HOME}/.dotfiles.local"
 
 set -e
 
-debug () {
-    # printf "\r  [ \033[00;34m..\033[0m ] $1\n" 1>&2
-    echo > /dev/null
-}
-
-info () {
-    printf "\r  [ \033[00;34m..\033[0m ] $1\n" 1>&2
-}
-
-user () {
-    printf "\r  [ \033[0;33m??\033[0m ] $1\n" 1>&2
-}
-
-success () {
-    printf "\r\033[2K  [ \033[00;32mOK\033[0m ] $1\n" 1>&2
-}
-
-warn () {
-    printf "\r\033[2K  [\033[00;33mWARN\033[0m] $1\n" 1>&2
-}
-
-skip () {
-    printf "\r\033[2K  [\033[00;35mSKIP\033[0m] $1\n" 1>&2
-    # echo > /dev/null
-}
-
-fail () {
-    printf "\r\033[2K  [\033[0;31mFAIL\033[0m] $1\n" 1>&2
-    echo ''
-    exit
-}
+source "${DOTFILES_ROOT}/logging.sh"
 
 relpath() {
     if type python &> /dev/null
@@ -54,54 +26,6 @@ relpath() {
         realpath --relative-to="${2:-$PWD}" "$1"
     fi
 }
-
-setup_gitconfig () {
-    if ! [ -f $DOTFILES_LOCAL/.gitconfig.local.symlink ]
-    then
-        info 'setup gitconfig'
-
-        git_credential='cache'
-        if [[ "$OSTYPE" == "darwin"* ]]
-        then
-            git_credential='osxkeychain'
-        fi
-
-        user ' - What is your github author name?'
-        read -e git_authorname
-        user ' - What is your github author email?'
-        read -e git_authoremail
-
-        if [ "${DRY_RUN}" = 'yes' ]
-        then
-            echo .gitconfig.local.symlink
-            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example
-        else
-            mkdir -p "$DOTFILES_LOCAL"
-            sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" $DOTFILES_ROOT/git/.gitconfig.local.symlink.example > $DOTFILES_LOCAL/.gitconfig.local.symlink
-        fi
-
-        success 'gitconfig'
-    fi
-}
-
-
-setup_taskrc () {
-    if ! [ -f $DOTFILES_LOCAL/.taskrc.symlink ]
-    then
-        info 'setup taskrc'
-
-        if [ "${DRY_RUN}" = 'yes' ]
-        then
-            echo .taskrc.symlink
-        else
-            mkdir -p "$DOTFILES_LOCAL"
-            cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_LOCAL/.taskrc.symlink
-        fi
-
-        success 'taskrc'
-    fi
-}
-
 
 link_file () {
     local src=$1 dst=$2
@@ -312,11 +236,13 @@ generate_source_list () {
             elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
                 completion_sh[${#completion_sh[*]}]="$f"
                 debug "      Add $f ito completion.sh..."
-            elif ! [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
+            elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
+                debug "      Ignoring $f..."
+            elif [[ "${f##*/}" =~ ^bootstrap\.[^.]*$ ]]; then
+                debug "      Ignoring $f..."
+            else
                 others_sh[${#others_sh[*]}]="$f"
                 debug "      Add $f ito others.sh..."
-            else
-                debug "      Ignoring $f..."
             fi
         done
     done
@@ -420,17 +346,28 @@ generate_files() {
         if [ -z "${old_enabled[$dir]+isset}" ]
         then
             info "  Enable ${dir}"
+
+            bootstrap_file=
+            if [ -f "${dir}/bootstrap.sh" ]
+            then
+                bootstrap_file="${dir}/bootstrap.sh"
+            elif [ -f "${dir}/bootstrap" ]
+            then
+                bootstrap_file="${dir}/bootstrap"
+            fi
+
+            if [ -n "${bootstrap_file}" ]
+            then
+                if [ -x "${bootstrap_file}" ]
+                then
+                    "${bootstrap_file}" "${DRY_RUN}"
+                else
+                    fail "'${bootstrap_file}' must be executable!"
+                fi
+            fi
         else
             old_enabled["$d"]="1"
             debug "  Enable ${dir}"
-        fi
-
-        if [ "${dir}" == "git" ]
-        then
-            setup_gitconfig
-        elif [ "${dir}" == "taskwarrior" ]
-        then
-            setup_taskrc
         fi
 
         echo "${dir}" >> "$DOTFILES_LOCAL/enabled.txt"

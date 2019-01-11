@@ -14,6 +14,7 @@
 - **requirements.sh**: 如存在，则必须有可执行权限。在安装（bootstrap.sh）时，根据此脚本的返回结果决定是否启用本子目录。可用于判断目录所依赖的命令是否存在
 - **bin/**: bin目录会被加入$PATH以便随时可用
 - **{asterisk}.sh**: 子目录下的{asterisk}.sh（不含子目录）会被source进当前环境。{asterisk}.bash/{asterisk}.zsh只会被bash/zsh载入
+    - **bootstrap.sh**/**bootstrap**: 必须可执行，将在运行bootstrap.sh，本目录从未启用变成启用时执行
     - **path.sh**: 子目录下的path.sh会先于其它脚本source进环境，可以在这个脚本中设置$PATH
     - **env.sh**: 会在path.sh之后，其他脚本之前加载，可用于export环境变量
     - **completion.sh**/**completion_{asterisk}.sh**: 子目录下的completion.sh会被最后载入，可以在这个脚本中设置自动补全
