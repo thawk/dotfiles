@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-[[ -x "$HOME/.pyenv/bin/pyenv" ]]
+type pyenv &> /dev/null || [[ -x "$HOME/.pyenv/bin/pyenv" ]]
