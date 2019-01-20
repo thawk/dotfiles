@@ -74,6 +74,7 @@ NOTE: 这几个配置文件会在``zsh``载入插件前载入。
 | 取值      | 含义
 | solarized | 自动载入上次的``solarized``配色，在``mintty``等支持``ANSI``转义的终端下，可用``dynamic-colors``命令实时切换亮色和暗色。
 | base16    | 自动载入上次的``base16``配色，在``mintty``等支持``ANSI``转义的终端下，可用``base16_*``命令实时切换不同的配色。但不支持``putty``
+| 空串      | 自动载入上次的``dynamic-colors配色``
 | 其他      | 不自动载入配色
 |===
 +
