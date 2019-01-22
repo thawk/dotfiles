@@ -4,6 +4,8 @@ tap "homebrew/cask-fonts"
 tap "homebrew/core"
 tap "martido/brew-graph"
 cask "osxfuse"
+# SSL/TLS cryptography library
+brew "openssl"
 # Download with resuming and segmented downloading
 brew "aria2"
 # Bourne-Again SHell, a UNIX command interpreter
@@ -18,6 +20,10 @@ brew "encfs"
 brew "fzf"
 # Distributed revision control system
 brew "git"
+# Library for command-line editing
+brew "readline"
+# General-purpose data compression with high compression ratio
+brew "xz"
 # Interpreted, interactive, object-oriented programming language
 brew "python"
 # Source code tag system
@@ -36,6 +42,14 @@ brew "mr"
 brew "neovim"
 # 7-Zip (high compression file archiver) implementation
 brew "p7zip"
+# Swiss-army knife of markup format conversion
+brew "pandoc"
+# Python version management
+brew "pyenv"
+# Pyenv plugin to manage virtualenv
+brew "pyenv-virtualenv"
+# Alternative to pyenv for managing virtualenvs
+brew "pyenv-virtualenvwrapper"
 # Perl-powered file rename script with many helpful built-ins
 brew "rename"
 # Search tool like grep and The Silver Searcher
@@ -50,6 +64,8 @@ brew "the_silver_searcher"
 brew "tmux"
 # Display directories as trees (with optional color/HTML output)
 brew "tree"
+# Ncurses based file manager with vi like keybindings
+brew "vifm"
 # Internet file retriever
 brew "wget"
 brew "martido/brew-graph/brew-graph"
@@ -59,15 +75,21 @@ cask "applepi-baker"
 cask "asciidocfx"
 cask "cheatsheet"
 cask "dash"
+cask "disk-inventory-x"
 cask "docker"
+cask "double-commander"
 cask "fliqlo"
 cask "font-dejavusansmono-nerd-font"
+cask "font-firacode-nerd-font"
+cask "font-firacode-nerd-font-mono"
 cask "font-hack-nerd-font"
+cask "font-meslo-nerd-font"
 cask "gpg-suite"
 cask "iina"
 cask "karabiner-elements"
 cask "keepassxc"
 cask "licecap"
+cask "lyricsx"
 cask "macdown"
 cask "openoffice"
 cask "qlcolorcode"
@@ -79,13 +101,16 @@ cask "qq"
 cask "quicklook-json"
 cask "quicklookase"
 cask "shadowsocksx-ng"
+cask "spotify"
 cask "squirrel"
 cask "standard-notes"
 cask "suspicious-package"
 cask "taskwarrior-pomodoro"
 cask "touchswitcher"
+cask "turtl"
 cask "typora"
 cask "vanilla"
+cask "vimr"
 cask "visual-studio-code"
 cask "webpquicklook"
 cask "xquartz"
@@ -98,6 +123,7 @@ mas "NeteaseMusic", id: 944848654
 mas "Numbers", id: 409203825
 mas "Pages", id: 409201541
 mas "Pendo", id: 1220959405
+mas "PixelScheduler", id: 976996075
 mas "QQMusic", id: 595615424
 mas "Reeder", id: 880001334
 mas "Snip", id: 512505421
