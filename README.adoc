@@ -1,8 +1,10 @@
 = dotfiles
 
-自用的Linux/cygwin/MSYS2配置文件。
+自用的Linux/MacOS/cygwin/MSYS2配置文件。
 
 参考了 link:https://github.com/holman/dotfiles[holman] 的配置。
+
+NOTE: 本配置库不含``vim``/``neovim``配置。可以在 link:https://github.com/thawk/dotspacevim[这里] 找到我对应 link:https://spacevim.org[SpaceVim] 配置，在 link:https://github.com/thawk/dotvim[这里] 可以找到我以前手工维护的``vim``配置，可根据自己的需要自行选用，也可以配合其他``vim``/``neovim``配置使用。
 
 == 文件组织
 
