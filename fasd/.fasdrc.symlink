@@ -1,9 +1,9 @@
 _FASD_BACKENDS="native current"
 
 projects() {
-    find "$HOME/.cache/vimfiles/repos" -type d -d 2 -exec echo "{}|1" \; 2> /dev/null
-    find "$GOPATH/src"                 -type d -d 2 -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplugin/snippets"     -type d -d 1 -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplugin/plugins"      -type d -d 1 -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplug/repos"          -type d -d 1 -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.cache/vimfiles/repos" -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$GOPATH/src"                 -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.zplugin/snippets"     -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.zplugin/plugins"      -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.zplug/repos"          -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
 }
