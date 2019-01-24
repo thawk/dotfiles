@@ -10,13 +10,6 @@
 # Extended svn diff functionality
 if [ -n "$(which svn 2>/dev/null)" ]; then
     function svn() {
-        if (( $+commands[svn] )); then
-            # zsh的type -fp svn返回svn is XXXXX，因此换一种方法
-            local svn=$commands[svn]
-        else
-            local svn=$(type -fp svn)
-        fi
-
         case "$1" in
             diff-plain)
                 shift;
