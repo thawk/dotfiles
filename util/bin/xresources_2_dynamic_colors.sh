@@ -3,7 +3,7 @@
 convert() {
     sed -E '
 s/^[[:space:]]*!/#/;
-s/^[[:space:]]*\*([[:alnum:]]+)[[:space:]]*:[[:space:]]*(#[[:xdigit:]]+).*/\1="\2"/
+s/^[[:space:]]*\*\.?([[:alnum:]]+)[[:space:]]*:[[:space:]]*(#[[:xdigit:]]+).*/\1="\2"/
     '
 }
 
