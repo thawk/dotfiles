@@ -61,9 +61,9 @@ zplugin ice wait"0" lucid
 zplugin snippet OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh
 # zplug "zlsun/solarized-man"
 
-# OS - Command Not Found Helper
-zplugin ice wait"0" lucid
-#zplugin snippet OMZ::plugins/command-not-found/command-not-found.plugin.zsh
+# OS - thefuck
+zplugin ice wait"0" if'[[ -n "$commands[fuck]" ]]' lucid
+zplugin snippet OMZ::plugins/thefuck/thefuck.plugin.zsh
 
 # Python
 zplugin ice wait"0" if'[[ -n "$commands[pip]" ]]' lucid
@@ -84,9 +84,9 @@ fi
 zplugin ice as"completion" if'[[ -n "$commands[docker]" ]]'
 zplugin snippet https://github.com/docker/cli/raw/master/contrib/completion/zsh/_docker
 
-# sudo
-zplugin ice wait"0" if'[[ -n "$commands[sudo]" ]]' lucid
-zplugin snippet OMZ::plugins/sudo/sudo.plugin.zsh
+## sudo
+#zplugin ice wait"0" if'[[ -n "$commands[sudo]" ]]' lucid
+#zplugin snippet OMZ::plugins/sudo/sudo.plugin.zsh
 
 # 如果使用的命令有定义alias，会进行提醒
 zplugin ice wait"0" lucid
