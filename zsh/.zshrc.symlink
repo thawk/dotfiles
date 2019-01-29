@@ -1,3 +1,5 @@
+#zmodload zsh/zprof
+
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
 DOTFILES_ROOT="$HOME/.dotfiles"
 DOTFILES_LOCAL="$HOME/.dotfiles.local"
@@ -67,3 +69,4 @@ fi
 autoload -U compinit
 compinit
 
+#zprof
