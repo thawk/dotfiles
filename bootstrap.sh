@@ -199,17 +199,9 @@ create_symlinks () {
     done
 }
 
-get_zsh_completions() {
-    local dir=
-
-    for dir in "$@"
-    do
-        [ -d "${dir}/zsh-completion" ] && echo "${dir}/zsh-completion"
-    done
-}
-
 generate_source_list () {
     local f dir shell orig_nullglob
+    local path_env fpath_env
     local -a path_sh env_sh completion_sh others_sh
 
     shell="$1"
@@ -218,40 +210,62 @@ generate_source_list () {
     shopt nullglob > /dev/null && orig_nullglob=1
     shopt -s nullglob
 
-    while [ $# -gt 1 ]
+    path_env='export PATH=$PATH'
+    fpath_env='export fpath=($fpath'
+
+    while [ $# -ge 1 ]
     do
         shift
 
         dir=$1
         debug "    Handling subdir ${dir}..."
 
+        if [ -d "${DOTFILES_ROOT}/${dir}/bin" ]; then
+            path_env="${path_env}:${DOTFILES_ROOT}/${dir}/bin"
+            debug "      Add ${dir}/bin to \$PATH..."
+        fi
+
+        if [ -d "${DOTFILES_ROOT}/${dir}/zsh-completion" ]; then
+            fpath_env="${fpath_env} ${DOTFILES_ROOT}/${dir}/zsh-completion"
+            debug "      Add ${dir}/zsh-completion to \$fpath..."
+        fi
+
         for f in "${DOTFILES_ROOT}/${dir}"/*.sh "${DOTFILES_ROOT}/${dir}"/*."${shell}"
         do
             if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
                 path_sh[${#path_sh[*]}]="$f"
-                debug "      Add $f ito path.sh..."
+                debug "      Add $f to path.sh..."
             elif [[ "${f##*/}" =~ ^env\.[^.]*$ ]]; then
                 env_sh[${#env_sh[*]}]="$f"
-                debug "      Add $f ito env.sh..."
+                debug "      Add $f to env.sh..."
             elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
                 completion_sh[${#completion_sh[*]}]="$f"
-                debug "      Add $f ito completion.sh..."
+                debug "      Add $f to completion.sh..."
             elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
                 debug "      Ignoring $f..."
             elif [[ "${f##*/}" =~ ^bootstrap\.[^.]*$ ]]; then
                 debug "      Ignoring $f..."
             else
                 others_sh[${#others_sh[*]}]="$f"
-                debug "      Add $f ito others.sh..."
+                debug "      Add $f to others.sh..."
             fi
         done
     done
+
+    fpath_env="${fpath_env})"
 
     # reset nullglob if original value is false
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
     echo "# empty stage or stage1"
     echo 'if [[ -z "$1" ]] || [[ "$1" == stage1 ]]; then'
+    echo "    ${path_env}"
+
+    if [ "$shell" == "zsh" ]; then
+        echo "    ${fpath_env}"
+    fi
+
+    echo ''
 
     echo "    # set paths"
     for f in "${path_sh[@]}"
@@ -389,15 +403,6 @@ generate_files() {
     create_symlinks "${DOTFILES_LOCAL}" "links_local.txt" .
 }
 
-get_addtional_paths() {
-    local dir=
-
-    for dir in "$@"
-    do
-        [ -d "${DOTFILES_ROOT}/${dir}/bin" ] && echo "${DOTFILES_ROOT}/${dir}/bin"
-    done
-}
-
 generate_script_file() {
     local dir= shell= script_name=
 
@@ -407,33 +412,6 @@ generate_script_file() {
         info "Generating ${script_name} for ${shell}"
 
         cat /dev/null > "$script_name"
-
-        echo -n "export PATH=\$PATH" >> "$script_name"
-
-        for dir in $(get_addtional_paths "$@")
-        do
-            echo -n ":${dir}" >> "$script_name"
-        done
-        echo >> "$script_name"
-        echo >> "$script_name"
-
-        if [ "$shell" == "zsh" ]
-        then
-
-            local zsh_completions=( $(get_zsh_completions "$@") )
-            if [ ${#zsh_completions[*]} -gt 0 ]
-            then
-                echo -n "export fpath=(\$fpath" >> "$script_name"
-                for dir in "${zsh_completions[@]}"
-                do
-                    echo -n " ${DOTFILES_ROOT}/${dir}" >> "$script_name"
-                done
-                echo ")" >> "$script_name"
-                echo >> "$script_name"
-                echo >> "$script_name"
-            fi
-
-        fi
 
         generate_source_list $shell "$@" >> "$script_name"
     done
