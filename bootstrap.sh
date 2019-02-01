@@ -11,7 +11,7 @@ else
 fi
 
 export DOTFILES_ROOT
-export DOTFILES_LOCAL="${HOME}/.dotfiles.local"
+export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
 set -e
 

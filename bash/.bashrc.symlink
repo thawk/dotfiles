@@ -6,8 +6,8 @@ esac
 
 [[ "$SHELL" =~ bash ]] || export SHELL=$(which bash)
 
-DOTFILES_ROOT="$HOME/.dotfiles"
-DOTFILES_LOCAL="$HOME/.dotfiles.local"
+export DOTFILES_ROOT="$HOME/.dotfiles"
+export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
 [ -f ~/.localrc ] && . ~/.localrc
 [ -f ~/.bashrc.local ] && . ~/.bashrc.local

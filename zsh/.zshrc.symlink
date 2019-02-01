@@ -2,7 +2,7 @@
 
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
 DOTFILES_ROOT="$HOME/.dotfiles"
-DOTFILES_LOCAL="$HOME/.dotfiles.local"
+DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
@@ -29,10 +29,10 @@ VIRTUALENVWRAPPER_PYTHON=$(which python3)
 
 # If current shell doesn't contains zsh, set to zsh
 [[ "$SHELL" =~ zsh ]] || export SHELL=$(which zsh)
-export ZSH_TMUX_AUTOSTART="true"
-export ZSH_TMUX_AUTOQUIT="false"
+#export ZSH_TMUX_AUTOSTART="true"
+#export ZSH_TMUX_AUTOQUIT="false"
 
-# 由于启用了tmux插件，在顶层zsh中是不会执行到oh-my-zsh.sh后面的内容的，所以专门source一些需要在顶层载入的内容
+# 在顶层zsh中是不会执行到后面的内容，所以专门source一些需要在顶层载入的内容
 if [ "$SHLVL" -eq 1 ]
 then
     # 在顶层SHELL中恢复base16的配色
@@ -43,6 +43,15 @@ then
         unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
         ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
         export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+    fi
+
+    if (( $+commands[tmux] )); then
+        command tmux attach
+
+        # Failed to attach, start new session
+        if [[ $? -ne 0 ]]; then
+            command tmux new-session
+        fi
     fi
 fi
 
