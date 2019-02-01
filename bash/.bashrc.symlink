@@ -42,5 +42,5 @@ if ! shopt -oq posix; then
   fi
 fi
 
-[ -f "$DOTFILES_LOCAL/boot.bash" ] && source "$DOTFILES_LOCAL/boot.bash" stage1
-[ -f "$DOTFILES_LOCAL/boot.bash" ] && source "$DOTFILES_LOCAL/boot.bash" stage2
+[ -f "$DOTFILES_LOCAL/stage1.bash" ] && source "$DOTFILES_LOCAL/stage1.bash"
+[ -f "$DOTFILES_LOCAL/stage2.bash" ] && source "$DOTFILES_LOCAL/stage2.bash"

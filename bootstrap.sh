@@ -149,7 +149,7 @@ create_symlinks () {
     LINK_FILE="$2"
     shift 2
 
-    info "Creating symbol links for ${LINK_BASE} into ${LINK_FILE}..."
+    info "    ${LINK_BASE} => ${LINK_FILE} ..."
 
     local -A links
     
@@ -206,6 +206,11 @@ generate_source_list () {
 
     shell="$1"
 
+    info "    Generating script files for ${shell}..."
+
+    stage1_file="$DOTFILES_LOCAL/stage1.${shell}"
+    stage2_file="$DOTFILES_LOCAL/stage2.${shell}"
+
     orig_nullglob=
     shopt nullglob > /dev/null && orig_nullglob=1
     shopt -s nullglob
@@ -232,6 +237,10 @@ generate_source_list () {
 
         for f in "${DOTFILES_ROOT}/${dir}"/*.sh "${DOTFILES_ROOT}/${dir}"/*."${shell}"
         do
+            if [ ! -f "$f" ]; then
+                continue
+            fi
+
             if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
                 path_sh[${#path_sh[*]}]="$f"
                 debug "      Add $f to path.sh..."
@@ -257,49 +266,59 @@ generate_source_list () {
     # reset nullglob if original value is false
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
-    echo "# empty stage or stage1"
-    echo 'if [[ -z "$1" ]] || [[ "$1" == stage1 ]]; then'
-    echo "    ${path_env}"
+    info "        ${stage1_file}"
+
+    cat /dev/null > "${stage1_file}"
+
+    echo "${path_env}" >> "${stage1_file}"
 
     if [ "$shell" == "zsh" ]; then
-        echo "    ${fpath_env}"
+        echo "${fpath_env}" >> "${stage1_file}"
     fi
 
-    echo ''
+    echo "" >> "${stage1_file}"
 
-    echo "    # set paths"
+    echo "### set paths ###" >> "${stage1_file}"
     for f in "${path_sh[@]}"
     do
-        echo "    source \"$f\""
-    done | sort
+        echo "# Script $f" >> "${stage1_file}"
+        cat "$f" >> "${stage1_file}"
+        echo "" >> "${stage1_file}"
+    done
 
-    echo
-    echo "    # set environments"
+    echo "" >> "${stage1_file}"
+    echo "### set environments ###" >> "${stage1_file}"
     for f in "${env_sh[@]}"
     do
-        echo "    source \"$f\""
-    done | sort
+        echo "# Script $f" >> "${stage1_file}"
+        cat "$f" >> "${stage1_file}"
+        echo "" >> "${stage1_file}"
+    done
 
-    echo "fi"
-    echo
+    echo "" >> "${stage1_file}"
 
-    echo "# empty stage or stage2"
-    echo 'if [[ -z "$1" ]] || [[ "$1" == stage2 ]]; then'
+    # stage2
+    info "        ${stage2_file}"
+    cat /dev/null > "${stage2_file}"
 
-    echo "    # others scripts"
+    echo "### others scripts ###" >> "${stage2_file}"
+    echo "" >> "${stage2_file}"
+
     for f in "${others_sh[@]}"
     do
-        echo "    source \"$f\""
-    done | sort
+        echo "# Script $f" >> "${stage2_file}"
+        cat "$f" >> "${stage2_file}"
+        echo "" >> "${stage2_file}"
+    done
 
-    echo
-    echo "    # completion scripts"
+    echo "" >> "${stage2_file}"
+    echo "### completion scripts ###" >> "${stage2_file}"
     for f in "${completion_sh[@]}"
     do
-        echo "    source \"$f\""
-    done | sort
-
-    echo "fi"
+        echo "# Script $f" >> "${stage2_file}"
+        cat "$f" >> "${stage2_file}"
+        echo "" >> "${stage2_file}"
+    done
 }
 
 function join_by {
@@ -399,6 +418,8 @@ generate_files() {
 
     local overwrite_all=false backup_all=false skip_all=false
 
+    info "Creating symbol links..."
+
     create_symlinks "${DOTFILES_ROOT}" "links.txt" "$@"
     create_symlinks "${DOTFILES_LOCAL}" "links_local.txt" .
 }
@@ -406,14 +427,11 @@ generate_files() {
 generate_script_file() {
     local dir= shell= script_name=
 
+    info "Generating script files for shells..."
+
     for shell in bash zsh
     do
-        script_name="$DOTFILES_LOCAL/boot.${shell}"
-        info "Generating ${script_name} for ${shell}"
-
-        cat /dev/null > "$script_name"
-
-        generate_source_list $shell "$@" >> "$script_name"
+        generate_source_list $shell "$@"
     done
 }
 
@@ -464,15 +482,13 @@ while true ; do
     esac
 done
 
-echo ''
-
 if [ "${DRY_RUN}" = 'yes' ]
 then
-    echo "!!! DRY RUN !!!"
-    echo ''
+    info "!!! DRY RUN !!!"
+    info ""
 else
-    echo "!!! Apply mode !!!"
-    echo ''
+    info "!!! Apply mode !!!"
+    info ""
 fi
 
 info "Environments:"
@@ -481,7 +497,7 @@ info "    DOTFILES_LOCAL=${DOTFILES_LOCAL}"
 
 if [ -d "${DOTFILES_ROOT}/.git" ]
 then
-    info 'setup submodules'
+    info 'Setup submodules'
     pushd "${DOTFILES_ROOT}" > /dev/null
     git submodule init
     git submodule update
@@ -495,5 +511,4 @@ generate_files "${dirs[@]}"
 
 unset dirs
 
-echo ''
-echo '  All installed!'
+info 'Done!'

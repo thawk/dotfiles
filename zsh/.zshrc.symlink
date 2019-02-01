@@ -64,7 +64,7 @@ DISABLE_AUTO_UPDATE=true
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
-[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage1
+[ -f "$DOTFILES_LOCAL/stage1.zsh" ] && source "$DOTFILES_LOCAL/stage1.zsh"
 
 if (( $+commands[git] ))
 then
@@ -72,10 +72,15 @@ then
     source "$DOTFILES_ROOT/zsh/scripts/zplugin.plugins.zsh"
 fi
 
-[ -f "$DOTFILES_LOCAL/boot.zsh" ] && source "$DOTFILES_LOCAL/boot.zsh" stage2
+[ -f "$DOTFILES_LOCAL/stage2.zsh" ] && source "$DOTFILES_LOCAL/stage2.zsh"
 
-# compsys initialization
-autoload -U compinit
-compinit
+# compsys initialization once per 24 hours
+autoload -Uz compinit
+setopt EXTENDEDGLOB
+for dump in ~/.zcompdump(N.mh+24); do
+  compinit
+done
+unsetopt EXTENDEDGLOB
+compinit -C
 
 #zprof
