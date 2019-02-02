@@ -1,7 +1,3 @@
-# User specific aliases and functions
-export LC_ALL=en_US.UTF-8
-export LANG=en_US.UTF-8
-
 #export GREP_OPTIONS="--color"
 
 # 文件名补全时，忽略.svn目录
