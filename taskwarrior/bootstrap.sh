@@ -1,20 +1,14 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-source "${DOTFILES_ROOT}/logging.sh"
-DRY_RUN=$1
+env_file="${DOTFILES_LOCAL}/taskwarrior/env.zsh"
+mkdir -p "$(dirname "$env_file")"
+rm "$(dirname "$env_file")"/*
+: > "${env_file}"
 
-if ! [ -f $DOTFILES_LOCAL/.taskrc.symlink ]
-then
-    info 'setup taskrc'
-
-    if [ "${DRY_RUN}" = 'yes' ]
-    then
-        echo .taskrc.symlink
-    else
-        mkdir -p "$DOTFILES_LOCAL"
-        cp $DOTFILES_ROOT/taskwarrior/.taskrc.symlink.example $DOTFILES_LOCAL/.taskrc.symlink
-    fi
-
-    success 'taskrc'
+if [ -f /usr/local/share/taskwarrior/scripts/zsh/_task ]; then
+    echo "fpath=(\$fpath /usr/local/share/taskwarrior/scripts/zsh)" >> "${env_file}"
+elif [ -f /usr/local/share/doc/task/scripts/zsh/_task ]; then
+    echo "fpath=(\$fpath /usr/local/share/doc/task/scripts/zsh)" >> "${env_file}"
+elif [ -f /usr/share/doc/task/scripts/zsh/_task ]; then
+    echo "fpath=(\$fpath /usr/share/doc/task/scripts/zsh)" >> "${env_file}"
 fi
-

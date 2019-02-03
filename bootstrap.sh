@@ -96,7 +96,7 @@ link_file () {
 
         if [ "$skip" == "true" ]
         then
-            debug "  skipped $src"
+            debug "      skipped $src"
         fi
     fi
 
@@ -218,7 +218,7 @@ generate_source_list () {
     path_env='export PATH=$PATH'
     fpath_env='export fpath=($fpath'
 
-    while [ $# -ge 1 ]
+    while [ $# -gt 1 ]
     do
         shift
 
@@ -235,7 +235,7 @@ generate_source_list () {
             debug "      Add ${dir}/zsh-completion to \$fpath..."
         fi
 
-        for f in "${DOTFILES_ROOT}/${dir}"/*.sh "${DOTFILES_ROOT}/${dir}"/*."${shell}"
+        for f in "${DOTFILES_ROOT}/${dir}"/*.{sh,"${shell}"} "${DOTFILES_LOCAL}/${dir}"/*.{sh,"${shell}"}
         do
             if [ ! -f "$f" ]; then
                 continue
@@ -379,31 +379,32 @@ generate_files() {
         if [ -z "${old_enabled[$dir]+isset}" ]
         then
             info "  Enable ${dir}"
-
-            bootstrap_file=
-            if [ -f "${dir}/bootstrap.sh" ]
-            then
-                bootstrap_file="${dir}/bootstrap.sh"
-            elif [ -f "${dir}/bootstrap" ]
-            then
-                bootstrap_file="${dir}/bootstrap"
-            fi
-
-            if [ -n "${bootstrap_file}" ]
-            then
-                if [ -x "${bootstrap_file}" ]
-                then
-                    "${bootstrap_file}" "${DRY_RUN}"
-                else
-                    fail "'${bootstrap_file}' must be executable!"
-                fi
-            fi
         else
             old_enabled["$d"]="1"
             debug "  Enable ${dir}"
         fi
 
         echo "${dir}" >> "$DOTFILES_LOCAL/enabled.txt"
+
+        # run bootstrap file
+        bootstrap_file=
+        if [ -f "${dir}/bootstrap.sh" ]
+        then
+            bootstrap_file="${dir}/bootstrap.sh"
+        elif [ -f "${dir}/bootstrap" ]
+        then
+            bootstrap_file="${dir}/bootstrap"
+        fi
+
+        if [ -n "${bootstrap_file}" ]
+        then
+            if [ -x "${bootstrap_file}" ]
+            then
+                "${bootstrap_file}" "${DRY_RUN}"
+            else
+                fail "'${bootstrap_file}' must be executable!"
+            fi
+        fi
     done
 
     for d in "${old_enabled[@]}"
@@ -444,10 +445,11 @@ Usage: $(basename "$0") [options]
       -h [ --help ]                show this screen
       --dry-run                    print modify instead of apply it
       -t [ --target=<TARGET_DIR> ] target directory, defaults to \$HOME
+      -v [ --verbose ]             show debug log
 " >&2
 }
 
-TEMP=$(getopt -o h,t: --long help,apply,target: -- "$@")
+TEMP=$(getopt -o h,t: --long help,dry-run,target: -- "$@")
 
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
