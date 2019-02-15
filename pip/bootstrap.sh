@@ -7,7 +7,7 @@ rm "$(dirname "$env_file")"/*
 
 #Not work at macos
 
-#echo "export PATH=\${PATH}:$(python -m site --user-base)/bin" >> "${env_file}"
+echo "export PATH=$(python -m site --user-base)/bin:\${PATH}" >> "${env_file}"
 
 #if [ -n "$(python -c 'import site; print(site.USER_SITE)')" ]
 #then

@@ -24,11 +24,27 @@ if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
-# Fix problem that SSH_AUTH_SOCK not updated in tmux
-if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
-    unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
-    ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
-    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+if [ "$SHLVL" -eq 1 ]
+then
+    # 在顶层SHELL中恢复base16的配色
+    [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
+
+    # Fix problem that SSH_AUTH_SOCK not updated in tmux
+    if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
+        unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+        ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+        export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+    fi
+
+    # 自动打开或恢复tmux
+    if type tmux &> /dev/null ; then
+        command tmux attach
+
+        # Failed to attach, start new session
+        if [[ $? -ne 0 ]]; then
+            command tmux new-session
+        fi
+    fi
 fi
 
 # enable programmable completion features (you don't need to enable
