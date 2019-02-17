@@ -511,6 +511,9 @@ typeset -a dirs
 dirs=( $(get_enabled_dir) )
 generate_files "${dirs[@]}"
 
+# Delete zsh completion dump file, force regeneration
+[ -e ~/.zcompdump ] && rm ~/.zcompdump
+
 unset dirs
 
 info 'Done!'
