@@ -80,7 +80,7 @@ link_file () {
             else
                 rm -rf "$dst"
             fi
-            success "  removed $dst"
+            success "    removed $dst"
         fi
 
         if [ "$backup" == "true" ]
@@ -120,7 +120,7 @@ link_file () {
         else
             ln -s "$1" "$2"
         fi
-        success "  linked $1 to $2"
+        success "    linked $1 to $2"
     fi
 
     unset src dst overwrite backup skip action
@@ -177,12 +177,12 @@ create_symlinks () {
                         else
                             rm "$dst"
                         fi
-                        success "  remove outdated \"$dst\""
+                        success "    remove outdated \"$dst\""
                     else
-                        skip "  $dst is not point to original position, don't need to be remove"
+                        skip "    $dst is not point to original position, don't need to be remove"
                     fi
                 else
-                    skip "  $dst is not exists, or not a symbol link, don't need to be remove"
+                    skip "    $dst is not exists, or not a symbol link, don't need to be remove"
                 fi
             fi
         done
@@ -334,7 +334,7 @@ get_enabled_dir() {
     local old_path=$PATH
     local -a dirs=( $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort) ) 
 
-    info "Checking disabled directory..."
+    info "Check plugins status..."
 
     for dir in "${dirs[@]}"
     do
@@ -361,13 +361,13 @@ get_enabled_dir() {
 
 generate_files() {
     local -A old_enabled
-    local d
+    local dir
 
     if [ -e "$DOTFILES_LOCAL/enabled.txt" ]
     then
-        for d in $( cat "$DOTFILES_LOCAL/enabled.txt" )
+        for dir in $( cat "$DOTFILES_LOCAL/enabled.txt" )
         do
-            old_enabled["$d"]="0"
+            old_enabled["$dir"]="0"
         done
     fi
 
@@ -378,10 +378,10 @@ generate_files() {
     do
         if [ -z "${old_enabled[$dir]+isset}" ]
         then
-            info "  Enable ${dir}"
+            info "    Enable ${dir}"
         else
-            old_enabled["$d"]="1"
-            debug "  Enable ${dir}"
+            old_enabled["$dir"]="1"
+            debug "    Enable ${dir}"
         fi
 
         echo "${dir}" >> "$DOTFILES_LOCAL/enabled.txt"
@@ -407,11 +407,11 @@ generate_files() {
         fi
     done
 
-    for d in "${old_enabled[@]}"
+    for dir in "${!old_enabled[@]}"
     do
-        if [ "${old_enabled[$d]}" == "0" ]
+        if [ "${old_enabled[$dir]}" == "0" ]
         then
-            info "  Disable ${dir}"
+            info "    Disable ${dir}"
         fi
     done
 
