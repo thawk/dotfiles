@@ -334,7 +334,7 @@ get_enabled_dir() {
     local old_path=$PATH
     local -a dirs=( $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort) ) 
 
-    info "Check plugins status..."
+    info "Checking plugins status..."
 
     for dir in "${dirs[@]}"
     do
@@ -357,6 +357,8 @@ get_enabled_dir() {
     done
 
     PATH=$old_path
+
+    info '    Done'
 }
 
 generate_files() {
@@ -423,6 +425,8 @@ generate_files() {
 
     create_symlinks "${DOTFILES_ROOT}" "links.txt" "$@"
     create_symlinks "${DOTFILES_LOCAL}" "links_local.txt" .
+
+    info '    Done'
 }
 
 generate_script_file() {
@@ -499,11 +503,12 @@ info "    DOTFILES_LOCAL=${DOTFILES_LOCAL}"
 
 if [ -d "${DOTFILES_ROOT}/.git" ]
 then
-    info 'Setup submodules'
+    info 'Setup submodules...'
     pushd "${DOTFILES_ROOT}" > /dev/null
     git submodule init
     git submodule update
     popd > /dev/null
+    info '    Done'
 fi
 
 typeset -a dirs
