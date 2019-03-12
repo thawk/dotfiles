@@ -1,12 +1,12 @@
 #zmodload zsh/zprof
 
 # User specific aliases and functions
-LC_ALL=en_US.UTF-8
-LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
 
 # DOTFILES_ROOT="$(dirname $(dirname "$(readlink -f "$0")"))"
-DOTFILES_ROOT="$HOME/.dotfiles"
-DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
+export DOTFILES_ROOT="$HOME/.dotfiles"
+export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
