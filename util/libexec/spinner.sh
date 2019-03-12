@@ -30,8 +30,8 @@ get_progress_str()
     local msg=$3
 
     local width=30
-    local empty=$(printf '[%*s]' "$width")
-    local pstr=$(printf '[%*s]' "$width" | tr ' ' '=')
+    local empty="$(printf '[%*s]' "$width")"
+    local pstr="$(printf '[%*s]' "$width" | tr ' ' '=')"
 
     pd=$(( $count * $((width+2)) / $total ))
     printf "%3d.%1d%% %s%s %s" $(( $count * 100 / $total )) $(( ($count * 1000 / $total) % 10 )) "${pstr:0:$pd}" "${empty:$pd}" "$msg"
