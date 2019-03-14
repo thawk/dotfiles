@@ -34,8 +34,8 @@ then
     um() {
         if [ -z "$1" ]; then
             # umount all
-            if mount | grep "^encfs@" &> /dev/null; then
-                mount | grep "^encfs@" | cut -d' ' -f3 | while read d
+            if mount | grep "^encfs@\|^encfs on " &> /dev/null; then
+                mount | grep "^encfs@\|^encfs on " | cut -d' ' -f3 | while read d
                 do
                     encfs -u "${d}"
                     rm -d "${d}"
