@@ -5,6 +5,10 @@ mkdir -p "$(dirname "$env_file")"
 rm "$(dirname "$env_file")"/*
 : > "${env_file}"
 
+# Reset environment to correctly handle golang upgrade
+export GOPATH=
+export GOROOT=
+
 go_path=$(go env GOPATH)
 go_root=$(go env GOROOT)
 

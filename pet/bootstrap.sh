@@ -5,7 +5,7 @@ mkdir -p "$(dirname "$env_file")"
 rm "$(dirname "$env_file")"/*
 : > "${env_file}"
 
-GOPATH=$(go env GOPATH)
+GOPATH=$(env GOPATH= GOROOT= go env GOPATH)
 
 if [ -d "${GOPATH}/src/github.com/knqyf263/pet/misc/completions/zsh" ]
 then
