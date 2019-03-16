@@ -357,8 +357,6 @@ get_enabled_dir() {
     done
 
     PATH=$old_path
-
-    info '    Done'
 }
 
 generate_files() {
@@ -416,6 +414,8 @@ generate_files() {
             info "    Disable ${dir}"
         fi
     done
+
+    info '    Done'
 
     generate_script_file "$@"
 
