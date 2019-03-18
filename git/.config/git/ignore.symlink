@@ -6,6 +6,7 @@
 .Trashes
 ._*
 .venv
+.python-version
 *.pyc
 *.pyo
 Thumbs.db
