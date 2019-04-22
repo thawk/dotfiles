@@ -13,3 +13,5 @@ set print array-indexes on
 
 # 每行打印一个结构体成员
 set print pretty on
+
+set disassembly-flavor intel
