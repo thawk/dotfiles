@@ -21,6 +21,7 @@ import os
 if 'DOTFILES_ROOT' in os.environ:
   sys.path.insert(0, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'scripts'))
   import offsets
+  import gdbDisplayLockedThreads
 end
 
 # 如果有~/.gdbinit.local则载入

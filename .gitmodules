@@ -10,3 +10,6 @@
 [submodule "percol/src"]
 	path = percol/src
 	url = https://github.com/mooz/percol.git
+[submodule "gdb/repos/gdb-automatic-deadlock-detector"]
+	path = gdb/repos/gdb-automatic-deadlock-detector
+	url = https://github.com/xmementoit/gdb-automatic-deadlock-detector
