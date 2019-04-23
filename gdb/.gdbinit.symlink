@@ -15,3 +15,15 @@ set print array-indexes on
 set print pretty on
 
 set disassembly-flavor intel
+
+python
+import os
+if 'DOTFILES_ROOT' in os.environ:
+  sys.path.insert(0, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'scripts'))
+  import offsets
+end
+
+# 如果有~/.gdbinit.local则载入
+shell if test -f ~/.gdbinit.local; then echo source ~/.gdbinit.local; fi > /tmp/gdbinit.tmp
+source /tmp/gdbinit.tmp
+
