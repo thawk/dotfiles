@@ -13,3 +13,6 @@
 [submodule "gdb/repos/gdb-automatic-deadlock-detector"]
 	path = gdb/repos/gdb-automatic-deadlock-detector
 	url = https://github.com/xmementoit/gdb-automatic-deadlock-detector
+[submodule "gdb/repos/Gdbinit"]
+	path = gdb/repos/Gdbinit
+	url = https://github.com/gdbinit/Gdbinit

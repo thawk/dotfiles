@@ -1,0 +1,30 @@
+# 保存历史命令
+set history filename ~/.gdb_history
+set history save on
+
+# 退出时不显示提示信息
+#set confirm off
+
+# 按照派生类型打印对象
+set print object on
+
+# 打开数组的索引下标
+set print array-indexes on
+
+# 每行打印一个结构体成员
+set print pretty on
+
+set disassembly-flavor intel
+
+python
+import os
+if 'DOTFILES_ROOT' in os.environ:
+  sys.path.insert(0, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'scripts'))
+  import offsets
+  import gdbDisplayLockedThreads
+end
+
+# 如果有~/.gdbinit.local则载入
+shell if test -f ~/.gdbinit.local; then echo source ~/.gdbinit.local; fi > /tmp/gdbinit.tmp
+source /tmp/gdbinit.tmp
+
