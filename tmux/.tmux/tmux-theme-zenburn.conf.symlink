@@ -1,32 +1,32 @@
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux
 
 # zenburn theme {{{
-#set -g status-bg cyan
-#set -g status-fg blue
-set -g status-bg colour237
-set -g status-fg colour243
+#set -g status-style bg=cyan
+#set -g status-style fg=blue
+set -g status-style bg=colour237
+set -g status-style fg=colour243
 
-setw -g window-status-attr none
-setw -g window-status-bg default
-setw -g window-status-fg colour3
+setw -g window-status-style none
+setw -g window-status-style bg=default
+setw -g window-status-style fg=colour3
 
-setw -g window-status-current-attr none
-#setw -g window-status-current-bg colour237
-setw -g window-status-current-bg colour235
-#setw -g window-status-current-bg colour22
-#setw -g window-status-current-fg colour3
+setw -g window-status-current-style none
+#setw -g window-status-current-style bg=colour237
+setw -g window-status-current-style bg=colour235
+#setw -g window-status-current-style bg=colour22
+#setw -g window-status-current-style fg=colour3
 
 # Highlighting the alert window in status bar
-setw -g window-status-bell-attr none
-setw -g window-status-bell-bg default
-setw -g window-status-bell-fg red
+setw -g window-status-bell-style none
+setw -g window-status-bell-style bg=default
+setw -g window-status-bell-style fg=red
 
-setw -g window-status-content-attr none
-setw -g window-status-content-bg default
-setw -g window-status-content-fg red
+setw -g window-status-content-style none
+setw -g window-status-content-style bg=default
+setw -g window-status-content-style fg=red
 
-setw -g window-status-activity-attr none
-setw -g window-status-activity-bg default
-setw -g window-status-activity-fg red
+setw -g window-status-activity-style none
+setw -g window-status-activity-style bg=default
+setw -g window-status-activity-style fg=red
 # }}}
 
