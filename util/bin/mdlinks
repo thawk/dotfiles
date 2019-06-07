@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import re
+import sys, os
+
+document = ''
+for line in sys.stdin:
+    document += line
+
+link_pattern = re.compile(r'(\[([^\]]+)\]\[([^\]]*)\])', re.MULTILINE)
+matches = link_pattern.findall(document)
+document_links = set()
+
+if matches:
+    for match in matches:
+        link_title = match[1]
+        link_refname = match[2]
+
+        footer_text = ''
+
+        if link_refname:
+            footer_link = link_refname
+        else:
+            footer_link = link_title
+
+        document_links.add(footer_link)
+
+        # print "[{footer_link}]: ".format(footer_link = footer_link)
+
+existing_link_pattern = re.compile(r'^\[([^\]]+)\]:', re.MULTILINE)
+existing_links = existing_link_pattern.findall(document)
+
+print(document)
+
+if existing_links:
+    for link in existing_links:
+        if link in document_links:
+            document_links.discard(link)
+#        else:
+#            sys.stderr.write('WARNING: found unused link in document: ' \
+#                    '[{link}]\n'.format(link = link))
+
+
+for link in document_links:
+    print("[{link}]: ".format(link = link))
