@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# Prepend today to the basename, and edit it
+if [ -n "${EDITOR}" ]; then
+    "${EDITOR}" "$(dirname "$*")/$(date +%Y-%m-%d)-$(basename "$*")"
+else
+    vim "$(dirname "$*")/$(date +%Y-%m-%d)-$(basename "$*")"
+fi
