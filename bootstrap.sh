@@ -388,18 +388,19 @@ generate_files() {
 
         # run bootstrap file
         bootstrap_file=
-        if [ -f "${dir}/bootstrap.sh" ]
+        if [ -f "${DOTFILES_ROOT}/${dir}/bootstrap.sh" ]
         then
-            bootstrap_file="${dir}/bootstrap.sh"
-        elif [ -f "${dir}/bootstrap" ]
+            bootstrap_file="${DOTFILES_ROOT}/${dir}/bootstrap.sh"
+        elif [ -f "${DOTFILES_ROOT}/${dir}/bootstrap" ]
         then
-            bootstrap_file="${dir}/bootstrap"
+            bootstrap_file="${DOTFILES_ROOT}/${dir}/bootstrap"
         fi
 
         if [ -n "${bootstrap_file}" ]
         then
             if [ -x "${bootstrap_file}" ]
             then
+                debug "      Executing ${bootstrap_file}"
                 "${bootstrap_file}" "${DRY_RUN}"
             else
                 fail "'${bootstrap_file}' must be executable!"
