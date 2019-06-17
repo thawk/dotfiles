@@ -7,7 +7,7 @@ document = ''
 for line in sys.stdin:
     document += line
 
-link_pattern = re.compile(r'(\[([^\]]+)\]\[([^\]]*)\])', re.MULTILINE)
+link_pattern = re.compile(r'(\[([^\]\r\n]+)\]\[([^\]\r\n]*)\])', re.MULTILINE)
 matches = link_pattern.findall(document)
 document_links = set()
 
@@ -27,7 +27,7 @@ if matches:
 
         # print "[{footer_link}]: ".format(footer_link = footer_link)
 
-existing_link_pattern = re.compile(r'^\[([^\]]+)\]:', re.MULTILINE)
+existing_link_pattern = re.compile(r'^\[([^\]\r\n]+)\]:', re.MULTILINE)
 existing_links = existing_link_pattern.findall(document)
 
 print(document)
