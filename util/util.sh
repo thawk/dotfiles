@@ -25,11 +25,34 @@ grepp() {
 urlencode() {
     if [ $# -gt 0 ]
     then
-        echo "$*" | urlencode
+        echo -n "$*" | urlencode
         return
     fi
 
-    perl -lpe 's/([^A-Za-z0-9.])/sprintf("%%%02X", ord($1))/seg'
+    local LC_ALL=C
+    local opt
+
+    if [[ -n "${ZSH_VERSION}" ]]; then
+        opt="-r -k 1 -u 0"
+    else
+        opt="-r -n1"
+    fi
+
+    local char
+    # while IFS= read -r ${opt} char
+    while IFS= eval "read $opt char"
+    do
+        case "${char}" in
+            [a-zA-Z0-9.~_-])
+                printf '%s' "${char}"
+            ;;
+
+            *)
+                printf '%%%02X' "'${char}"
+            ;;
+        esac
+    done
+    printf '\n'
 }
 
 urldecode() {
@@ -42,8 +65,8 @@ urldecode() {
     local data
     while read data
     do
-        data=${data//+/ }
-        printf '%b\n' "${data//\%/\\x}"
+        : "${data//+/ }"
+        printf '%b\n' "${_//%/\\x}"
     done
 }
 
