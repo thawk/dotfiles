@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-type peco &> /dev/null
+! (type fzf &> /dev/null) && type peco &> /dev/null

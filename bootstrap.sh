@@ -336,6 +336,9 @@ get_enabled_dir() {
 
     info "Checking plugins status..."
 
+    mkdir -p "$DOTFILES_LOCAL"
+    : > "$DOTFILES_LOCAL/enabled.new.txt"
+
     for dir in "${dirs[@]}"
     do
         [ -d "$dir/bin" ] && PATH=$PATH:"$dir/bin"
@@ -343,16 +346,14 @@ get_enabled_dir() {
 
     for dir in "${dirs[@]}"
     do
-        if [ -e "${dir}/disabled" ]
+        if [ -e "${dir}/disabled" ] \
+            || [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
         then
+            echo "#$(basename ${dir})" >> "$DOTFILES_LOCAL/enabled.new.txt"
             continue
         fi
 
-        if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
-        then
-            continue
-        fi
-
+        echo "$(basename ${dir})" >> "$DOTFILES_LOCAL/enabled.new.txt"
         echo $(basename ${dir})
     done
 
@@ -365,14 +366,11 @@ generate_files() {
 
     if [ -e "$DOTFILES_LOCAL/enabled.txt" ]
     then
-        for dir in $( cat "$DOTFILES_LOCAL/enabled.txt" )
+        for dir in $( grep "^[^#]" "$DOTFILES_LOCAL/enabled.txt" )
         do
             old_enabled["$dir"]="0"
         done
     fi
-
-    mkdir -p "$DOTFILES_LOCAL"
-    cat /dev/null > "$DOTFILES_LOCAL/enabled.txt"
 
     for dir in "$@"
     do
@@ -383,8 +381,6 @@ generate_files() {
             old_enabled["$dir"]="1"
             debug "    Enable ${dir}"
         fi
-
-        echo "${dir}" >> "$DOTFILES_LOCAL/enabled.txt"
 
         # run bootstrap file
         bootstrap_file=
@@ -516,6 +512,8 @@ typeset -a dirs
 
 dirs=( $(get_enabled_dir) )
 generate_files "${dirs[@]}"
+[ -e "$DOTFILES_LOCAL/enabled.new.txt" ] && mv "$DOTFILES_LOCAL/enabled.new.txt" "$DOTFILES_LOCAL/enabled.txt"
+
 
 # Delete zsh completion dump file, force regeneration
 [ -e ~/.zcompdump ] && rm ~/.zcompdump
