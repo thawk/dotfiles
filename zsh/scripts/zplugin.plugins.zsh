@@ -123,7 +123,8 @@ setopt promptsubst
 #zplugin light agnoster/agnoster-zsh-theme
 
 source "$DOTFILES_ROOT/zsh/scripts/powerlevel9k.conf.zsh"
-zplugin light bhilburn/powerlevel9k
+#zplugin light bhilburn/powerlevel9k
+zplugin light romkatv/powerlevel10k
 
 #zplugin ice nocompletions
 #zplugin load robobenklein/p10k
