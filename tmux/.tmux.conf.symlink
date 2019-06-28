@@ -12,6 +12,8 @@ set -g default-terminal "screen-256color"
 
 # Change prefix key to Ctrl+a
 set-option -g prefix C-a
+bind C-a send-prefix
+bind a last-window
 
 # Window numbering from 1
 #set-option -g base-index 1

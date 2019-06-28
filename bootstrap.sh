@@ -18,7 +18,10 @@ set -e
 source "${DOTFILES_ROOT}/logging.sh"
 
 relpath() {
-    if type python &> /dev/null
+    if type python3 &> /dev/null
+    then
+        python3 -c "import os.path; print(os.path.relpath('$1','${2:-$PWD}'))"
+    elif type python &> /dev/null
     then
         python -c "import os.path; print(os.path.relpath('$1','${2:-$PWD}'))"
     elif type realpath &> /dev/null

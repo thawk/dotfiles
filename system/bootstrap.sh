@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 env_file="${DOTFILES_LOCAL}/system/env.sh"
 mkdir -p "$(dirname "$env_file")"
@@ -30,7 +30,9 @@ if type nvim &> /dev/null ; then
     echo "export EDITOR='nvim'" >> "${env_file}"
 
     # 在MacOS下，使用neovim代替vim
-    [[ "$OSTYPE" == "darwin"* ]] && echo "alias vim=nvim" >> "${env_file}"
+    if ! type vim &> /dev/null || [[ "$OSTYPE" == "darwin"* ]] ; then
+        echo "alias vim=nvim" >> "${env_file}"
+    fi
 
     type vi &> /dev/null || echo "alias vi=nvim" >> "${env_file}"
 elif type vim &> /dev/null ; then
