@@ -21,9 +21,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # zplugin snippet OMZ::plugins/osx
     zplugin ice wait"0" lucid
     zplugin snippet OMZ::plugins/iterm2/iterm2.plugin.zsh
-elif [[ "$OSTYPE" == 'cygwin' ]]; then
-    zplugin ice wait"0" lucid
-    zplugin snippet OMZ::plugins/cygwin/cygwin.plugin.zsh
 fi
 
 zplugin snippet OMZ::lib/git.zsh
