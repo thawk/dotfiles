@@ -1,5 +1,5 @@
 BoldAsFont=yes
-Font=Powerline Consolas
+Font=DejaVuSansMono NF
 FontHeight=13
 Term=xterm-256color
 CursorType=block
