@@ -2,6 +2,8 @@
 
 term screen-256color
 
+bind a other
+bind ^a meta
 bind j focus down
 bind k focus up
 bind t focus top
