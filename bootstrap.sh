@@ -254,9 +254,11 @@ generate_source_list () {
                 completion_sh[${#completion_sh[*]}]="$f"
                 debug "      Add $f to completion.sh..."
             elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
-                debug "      Ignoring $f..."
+                # debug "      Ignoring $f..."
+                true
             elif [[ "${f##*/}" =~ ^bootstrap\.[^.]*$ ]]; then
-                debug "      Ignoring $f..."
+                # debug "      Ignoring $f..."
+                true
             else
                 others_sh[${#others_sh[*]}]="$f"
                 debug "      Add $f to others.sh..."
