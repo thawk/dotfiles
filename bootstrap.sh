@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-#
+
 # bootstrap installs things.
+
+__ScriptVersion="20190803"
 
 if type perl &> /dev/null; then
     DOTFILES_ROOT="$(dirname $(perl -e 'use Cwd "abs_path";print abs_path(shift)' $0))"
@@ -442,53 +444,51 @@ generate_script_file() {
     done
 }
 
-function EchoUsage()
+EchoUsage()
 {
     echo "
-Usage: $(basename "$0") [options]
+Usage: $(basename "$0") [options] [--]
 
-  Options:
-      -h [ --help ]                show this screen
-      --dry-run                    print modify instead of apply it
-      -t [ --target=<TARGET_DIR> ] target directory, defaults to \$HOME
-      -v [ --verbose ]             show debug log
+    Options:
+        -h|help                 Display this message
+        -V|version              Display script version
+        -v|verbose              Display more verbose log
+        -t|target <TARGET_DIR>  Target directory, defaults to \$HOME
+        -d|dry-run              Print modification instead of apply it
 " >&2
 }
 
-TEMP=$(getopt -o h,t: --long help,dry-run,target: -- "$@")
+DRY_RUN=
+VERBOSE=
+TARGET="$HOME"
 
-if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
-
-# Note the quotes around `$TEMP': they are essential!
-eval set -- "$TEMP"
-
-DRY_RUN=no
-TARGET=$HOME
-
-while true ; do
-    case "$1" in
-        -h|--help)
+while getopts ":hVvt:d" opt; do
+    case $opt in
+        h|help)
             EchoUsage
-            exit 1
+            exit 0
             ;;
-        --dry-run)
+        V|version)
+            echo "$(basename "$0") -- Version $__ScriptVersion"
+            exit 0
+            ;;
+        v|verbose)
+            VERBOSE="${VERBOSE}1"
+            ;;
+        t|target)
+            TARGET="$OPTARG"
+            ;;
+        d|dry-run)
             DRY_RUN=yes
-            shift 1
             ;;
-        -t|--target)
-            TARGET=$2
-            shift 2
-            ;;
-        --)
-            shift 1
-            break
-            ;;
-        *)
-            echo "Unknown parameter '$1'!"
+        * )
+            echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
+            EchoUsage
             exit 1
             ;;
     esac
 done
+shift $(($OPTIND-1))
 
 if [ "${DRY_RUN}" = 'yes' ]
 then
@@ -500,8 +500,12 @@ else
 fi
 
 info "Environments:"
-info "    DOTFILES_ROOT=${DOTFILES_ROOT}"
-info "    DOTFILES_LOCAL=${DOTFILES_LOCAL}"
+info "    DOTFILES_ROOT  = ${DOTFILES_ROOT}"
+info "    DOTFILES_LOCAL = ${DOTFILES_LOCAL}"
+info ""
+
+info "Install to $TARGET..."
+info ""
 
 if [ -d "${DOTFILES_ROOT}/.git" ]
 then
