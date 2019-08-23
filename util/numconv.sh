@@ -1,14 +1,19 @@
 function = {
-    python - << EOD
+    python2 - << EOD
 from math import *
+from struct import pack
 result=($@)
 if isinstance(result, int):
-    bytes=int(ceil(len('{:b}'.format(result))/8.0))
+    count=int(ceil(len('{:b}'.format(result))/8.0))
+    bytes=pack(">Q",result)[8-count:]
+    if isinstance(bytes[0], type('c')):
+        bytes=map(ord, bytes)
     print('    '.join((
     '{0}'.format(result),
-    '0x{0:0>{1}X}'.format(result, bytes*2),
+    '0x{0:0>{1}X}'.format(result, count*2),
     '0o{0:0>{1}o}'.format(result, 1),
-    '0b{0:0>{1}b}'.format(result, bytes*8),
+    '0b{0:0>{1}b}'.format(result, count*8),
+    ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes]),
     )))
 else:
     print(result)
