@@ -4,7 +4,11 @@ timestamp() {
 
     if [[ $# -eq 0 ]]; then
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            date +"%s000000"
+            if type python &> /dev/null; then
+                python -c 'from time import time; print(int(round(time() * 1000000)))'
+            else
+                date +"%s000000"
+            fi
         else
             date +"%s%N"
         fi
@@ -13,7 +17,8 @@ timestamp() {
         do
             ts=$1
             if [[ $ts -lt 10000000000 ]]; then
-                epoch=ts
+                epoch=$ts
+                subsecs=
             elif [[ $ts -lt 10000000000000 ]]; then
                 epoch=$((ts / 1000))
                 subsecs=.$(printf "%03d" $((ts % 1000)))
@@ -23,9 +28,9 @@ timestamp() {
             fi
 
             if [[ "$OSTYPE" == "darwin"* ]]; then
-                date -r ${epoch} +"%Y-%m-%d %T"${subsecs}
+                date -u -r ${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
             else
-                date -d @${epoch} +"%Y-%m-%d %T"${subsecs}
+                date --utc -d @${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
             fi
 
             shift
@@ -33,3 +38,4 @@ timestamp() {
     fi
 }
 
+(type ts &> /dev/null) || alias ts=timestamp
