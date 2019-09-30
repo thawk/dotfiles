@@ -6,7 +6,8 @@
 	url = https://github.com/thawk/dynamic-colors.git
 [submodule "myrepos/src"]
 	path = myrepos/src
-	url = git://myrepos.branchable.com/
+	; url = git://myrepos.branchable.com/
+	url = https://github.com/thawk/myrepos.git
 [submodule "percol/src"]
 	path = percol/src
 	url = https://github.com/mooz/percol.git
