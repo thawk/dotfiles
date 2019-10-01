@@ -1,5 +1,5 @@
 function = {
-    python2 - << EOD
+    python - << EOD
 from math import *
 from struct import pack
 result=($@)
