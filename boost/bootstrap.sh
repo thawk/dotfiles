@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 ROOTS=("$HOME/workspace/cs/lib/cppf/common/3rd/" "$HOME/workspace/")
 
