@@ -122,7 +122,9 @@ alias gupav='git pull --rebase --autostash -v'
 alias gupv='git pull --rebase -v'
 alias gwch='git whatchanged -p --abbrev-commit --pretty=medium'
 
-function gdv() { git diff -w "$@" | view - }
+function gdv() {
+  git diff -w "$@" | view -
+}
 
 function ggf() {
   [[ "$#" != 1 ]] && local b="$(git_current_branch)"

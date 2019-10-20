@@ -13,7 +13,7 @@ setopt noshare_history
 
 # Parameters
 # Do not *write* the following commands to environment command history
-HISTORY_IGNORE="(?|??|cd|cd [~-.]|cd ..|tmux|vim|declare|env|alias|exit|history *|pwd|clear|jobs|mount|brew up*|brew cleanup|em *|um|um *)"
+HISTORY_IGNORE="(?|??|cd|cd [~-.]|cd ..|tmux|vim|declare|env|alias|exit|history *|pwd|clear|jobs|mount|brew up*|brew cleanup|em *|um|um *|vim */private/*|vim private/*|cd private|cd private/*)"
 #HISTORY_IGNORE="(l[alsh]#( *)#|cd|pwd|exit|cd ..|em *|um|um *)"
 
 zshaddhistory() {
