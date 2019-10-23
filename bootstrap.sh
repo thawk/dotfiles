@@ -511,8 +511,8 @@ if [ -d "${DOTFILES_ROOT}/.git" ]
 then
     info 'Setup submodules...'
     pushd "${DOTFILES_ROOT}" > /dev/null
-    git submodule init
-    git submodule update
+    git submodule sync > /dev/null
+    git submodule update --init --remote --no-fetch
     popd > /dev/null
     info '    Done'
 fi
