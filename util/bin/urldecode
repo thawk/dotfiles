@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+urldecode_ () {
+	local data
+	while read data
+	do
+		: "${data//+/ }"
+		printf '%b\n' "${_//%/\\x}"
+	done
+}
+
+if [ $# -gt 0 ]
+then
+    echo "$*" | urldecode_
+else
+    urldecode_
+fi

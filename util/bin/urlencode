@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+urlencode_ () {
+	local LC_ALL=C 
+	local opt
+	if [[ -n "${ZSH_VERSION}" ]]
+	then
+		opt="-r -k 1 -u 0" 
+	else
+		opt="-r -n1" 
+	fi
+	local char
+	while IFS= eval "read $opt char"
+	do
+		case "${char}" in
+			([a-zA-Z0-9.~_-]) printf '%s' "${char}" ;;
+			(*) printf '%%%02X' "'${char}" ;;
+		esac
+	done
+	printf '\n'
+}
+
+if [ $# -gt 0 ]
+then
+    echo -n "$*" | urlencode_
+else
+    urlencode_
+fi
+

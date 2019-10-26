@@ -22,54 +22,6 @@ grepp() {
   fi 
 }
 
-urlencode() {
-    if [ $# -gt 0 ]
-    then
-        echo -n "$*" | urlencode
-        return
-    fi
-
-    local LC_ALL=C
-    local opt
-
-    if [[ -n "${ZSH_VERSION}" ]]; then
-        opt="-r -k 1 -u 0"
-    else
-        opt="-r -n1"
-    fi
-
-    local char
-    # while IFS= read -r ${opt} char
-    while IFS= eval "read $opt char"
-    do
-        case "${char}" in
-            [a-zA-Z0-9.~_-])
-                printf '%s' "${char}"
-            ;;
-
-            *)
-                printf '%%%02X' "'${char}"
-            ;;
-        esac
-    done
-    printf '\n'
-}
-
-urldecode() {
-    if [ $# -gt 0 ]
-    then
-        echo "$*" | urldecode
-        return
-    fi
-
-    local data
-    while read data
-    do
-        : "${data//+/ }"
-        printf '%b\n' "${_//%/\\x}"
-    done
-}
-
 htmlencode() {
     if [ $# -gt 0 ]
     then
