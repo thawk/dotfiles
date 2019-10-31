@@ -55,6 +55,12 @@ set-option -g @pane_resize "5"
 #set -g @plugin 'tmux-plugins/tmux-continuum'
 #set -g @continuum-restore 'on'
 
+# In tmux copy mode:
+#   o - "open" a highlighted selection with the system default program. open for OS X or xdg-open for Linux.
+#   Ctrl-o - open a highlighted selection with the $EDITOR
+#   Shift-s - search the highlighted selection directly inside a search engine (defaults to google).
+set -g @plugin 'tmux-plugins/tmux-open'
+
 # Auto install tpm
 if "test ! -d ~/.tmux/plugins/tpm" \
    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"

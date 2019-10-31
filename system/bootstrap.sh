@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 env_file="${DOTFILES_LOCAL}/system/env.sh"
+editor_file="${DOTFILES_LOCAL}/system/editor"
 mkdir -p "$(dirname "$env_file")"
 rm "$(dirname "$env_file")"/*
 : > "${env_file}"
+: > "${editor_file}"
 
 if [ -d ~/bin ]; then
     echo "export PATH=~/bin:\$PATH" >> "${env_file}"
@@ -27,18 +29,18 @@ fi
 
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 if type nvim &> /dev/null ; then
-    echo "export EDITOR='nvim'" >> "${env_file}"
+    echo "export EDITOR='nvim'" >> "${editor_file}"
 
     # 在MacOS下，使用neovim代替vim
     if ! type vim &> /dev/null || [[ "$OSTYPE" == "darwin"* ]] ; then
-        echo "alias vim=nvim" >> "${env_file}"
+        echo "alias vim=nvim" >> "${editor_file}"
     fi
 
-    type vi &> /dev/null || echo "alias vi=nvim" >> "${env_file}"
+    type vi &> /dev/null || echo "alias vi=nvim" >> "${editor_file}"
 elif type vim &> /dev/null ; then
-    echo "export EDITOR='vim'" >> "${env_file}"
-    type vi &> /dev/null || echo "alias vi=vim" >> "${env_file}"
+    echo "export EDITOR='vim'" >> "${editor_file}"
+    type vi &> /dev/null || echo "alias vi=vim" >> "${editor_file}"
 elif type vi &> /dev/null ; then
-    echo "export EDITOR='vi'" >> "${env_file}"
+    echo "export EDITOR='vi'" >> "${editor_file}"
 fi
 

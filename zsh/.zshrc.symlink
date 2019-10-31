@@ -8,6 +8,8 @@ export LANG=en_US.UTF-8
 export DOTFILES_ROOT="$HOME/.dotfiles"
 export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
+[ -f "${DOTFILES_LOCAL}/system/editor" ] && source "${DOTFILES_LOCAL}/system/editor"
+
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
 
