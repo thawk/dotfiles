@@ -5,7 +5,8 @@ PATH=$(echo $PATH | sed -e "s;:${my_DIR}/bin;;")
 
 if type b2 &> /dev/null
 then
-    true
+    # use exists b2 command
+    false
 else
     [ -d "$HOME/workspace" ] && (find -type d -name "boost_*" &> /dev/null)
 fi
