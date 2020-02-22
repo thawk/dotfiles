@@ -1,8 +1,36 @@
-# 进入与当前tmux session名称一致的目录
 cdd() {
     if type tmux &> /dev/null
     then
-        cd "$HOME/workspace/$(tmux display-message -p '#S')"
+        # 如果当前tmux session名称正好是$DOTFILES_SRC_ROOT下的目录名，则进入该目录
+        local proj_name="$(tmux display-message -p '#S')"
+        local src_root="${DOTFILES_SRC_ROOT:-$HOME/workspace}"
+
+        if [[ -d "${src_root}/${proj_name}" ]]; then
+            cd "${src_root}/${proj_name}"
+            return
+        fi
+    fi
+
+    # 没有找到与tmux session名称对应的项目，找当前目录往上的VCS目录作为项目的根目录
+    # 如果有多个VCS目录，说明存在一些子项目，取最顶层目录
+    local last_proj_root=
+    local dir="$PWD"
+    local last_dir=
+
+    while [[ "$dir" != "$last_dir" ]]; do
+        for d in .git _darcs .hg .bzr .svn; do
+            if [[ -e "$dir/$d" ]]; then
+                last_proj_root="$dir"
+                break
+            fi
+        done
+
+        last_dir="$dir"
+        dir="$(dirname "$dir")"
+    done
+
+    if [[ -d "$last_proj_root" ]]; then
+        cd "$last_proj_root"
     fi
 }
 

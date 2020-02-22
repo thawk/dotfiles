@@ -82,3 +82,5 @@ NOTE: 这几个配置文件会在``zsh``载入插件前载入。
 +
 NOTE: 会根据使用配色，对一些插件的颜色进行修正。
 
+* ``DOTFILES_SRC_ROOT``: 代码库的根。如``$HOME/workspace``
+
