@@ -13,7 +13,7 @@ export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 # Uncomment the following line to use case-sensitive completion.
 CASE_SENSITIVE="true"
 
-VIRTUALENVWRAPPER_PYTHON=$(which python3)
+VIRTUALENVWRAPPER_PYTHON=$(which python3 2> /dev/null)
 
 # Uncomment the following line to use hyphen-insensitive completion. Case
 # sensitive completion must be off. _ and - will be interchangeable.
