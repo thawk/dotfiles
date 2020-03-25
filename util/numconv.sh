@@ -84,3 +84,15 @@ num() {
 0o() {
     _num_conv 0o "$@"
 }
+
+# join , a b c => a,b,c
+join_by () {
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+# acut 2 3 打印第2和第3个字段。可以支持空格、tab等空白字符
+acut () {
+    awk "{print $(join_by , ${*/#/\$})}" | column -t
+}
