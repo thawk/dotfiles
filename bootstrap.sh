@@ -213,6 +213,7 @@ generate_source_list () {
 
     info "    Generating script files for ${shell}..."
 
+    stage0_file="$DOTFILES_LOCAL/stage0.${shell}"
     stage1_file="$DOTFILES_LOCAL/stage1.${shell}"
     stage2_file="$DOTFILES_LOCAL/stage2.${shell}"
 
@@ -255,6 +256,9 @@ generate_source_list () {
             elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
                 completion_sh[${#completion_sh[*]}]="$f"
                 debug "      Add $f to completion.sh..."
+            elif [[ "${f##*/}" =~ ^top_sh\.[^.]*$ ]]; then
+                top_sh_sh[${#top_sh_sh[*]}]="$f"
+                debug "      Add $f to top_sh.sh..."
             elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
                 # debug "      Ignoring $f..."
                 true
@@ -273,6 +277,21 @@ generate_source_list () {
     # reset nullglob if original value is false
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
+    # stage0 - for top shell, SHLVL=1
+    info "        ${stage0_file}"
+    cat /dev/null > "${stage0_file}"
+
+    echo "### top_sh scripts ###" >> "${stage0_file}"
+    echo "" >> "${stage0_file}"
+
+    for f in "${top_sh_sh[@]}"
+    do
+        echo "# Script $f" >> "${stage0_file}"
+        cat "$f" >> "${stage0_file}"
+        echo "" >> "${stage0_file}"
+    done
+
+    # stage1
     info "        ${stage1_file}"
 
     cat /dev/null > "${stage1_file}"
