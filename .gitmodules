@@ -17,3 +17,6 @@
 [submodule "gdb/repos/Gdbinit"]
 	path = gdb/repos/Gdbinit
 	url = https://github.com/gdbinit/Gdbinit
+[submodule "fpp/PathPicker"]
+	path = fpp/PathPicker
+	url = https://github.com/facebook/PathPicker.git

@@ -1,0 +1,1 @@
+export FPP_DISABLE_SPLIT=1
