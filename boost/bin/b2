@@ -33,21 +33,25 @@ then
     exit 1
 fi
 
-for d in tools/build boost_build
-do
-    if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
-    then
-        BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
-        B2="${BOOST_BUILD_PATH}/b2"
-        if [ ! -e "${B2}" ]
+if [ ! -d "${BOOST_BUILD_PATH}" ]
+    for d in tools/build boost_build
+    do
+        if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
         then
-            cd "${BOOST_BUILD_PATH}"
-            ./bootstrap.sh
-            cd "${CURCWD}"
+            BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
+            break
         fi
-        break
-    fi
-done
+    done
+fi
+
+B2="${BOOST_BUILD_PATH}/b2"
+if [ ! -x "${B2}" ]
+then
+    echo "Building b2 ('${B2}')..."
+    cd "${BOOST_BUILD_PATH}"
+    ./bootstrap.sh
+    cd "${CURCWD}"
+fi
 
 if [ ! -x "${B2}" ]
 then
@@ -60,7 +64,6 @@ export BOOST_BUILD_PATH
 
 cpu_count=$(grep "processor" /proc/cpuinfo | wc -l)
 [ $cpu_count -ge 1 ] || cpu_count=1
-# CPU数较多时，不全占完
 [ $cpu_count -ge 5 ] && cpu_count=$((cpu_count - 2))
 [ $cpu_count -ge $MAX_PROCESSES ] && cpu_count=$MAX_PROCESSES
 
