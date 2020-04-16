@@ -13,10 +13,9 @@ source "$ZINIT_HOME/bin/zinit.zsh"
 autoload -Uz _zinit
 (( ${+_comps} )) && _comps[zinit]=_zinit
 
-# Tmux
-zinit ice svn if'[[ -n "$commands[tmux]" ]]' lucid
-# zinit ice if'[[ -n "$commands[tmux]" ]]' lucid
-zinit snippet OMZ::plugins/tmux
+## Tmux
+#zinit ice svn if'[[ -n "$commands[tmux]" ]]' lucid
+#zinit snippet OMZ::plugins/tmux
 
 # OS specific plugins
 if [[ "$OSTYPE" == "darwin"* ]]; then
