@@ -48,7 +48,7 @@ def get_fileinfo(piece):
 
     # The filename is the last space-separated token in the first line of
     # the piece.
-    fullpath = piece[0].split(' ')[-1]
+    fullpath = piece[0].split(' ')[-1].strip()
     m = re.match(r"^(.+/|)(src|include)/.*", fullpath)
     basepath = m.group(1) if m else os.path.dirname(fullpath)
     basename = os.path.basename(fullpath)
@@ -56,8 +56,9 @@ def get_fileinfo(piece):
 
     return {
         'fullpath' : fullpath,
-        'basepath' : basepat,
+        'basepath' : basepath,
         'basename' : basename,
+        'filename' : filename,
         'fileext'  : fileext,
     }
 
@@ -80,11 +81,11 @@ def diff_cmp(lhs, rhs):
 
         a < b if pred(a) and not pred(b).
         """
-        va = pred(a)
-        b = pred(b)
-        if va and not b:
+        vl = pred(linfo)
+        vr = pred(rinfo)
+        if vl and not vr:
             return -1
-        elif b and not va:
+        elif vr and not vl:
             return 1
         return 0
 
@@ -96,7 +97,8 @@ def diff_cmp(lhs, rhs):
             yield pred_to_cmp(lambda x: x["fileext"] in (".h", ".hpp"))
         yield pred_to_cmp(
             lambda x: not (('/test/' in x["fullpath"]) or ('/tests/' in x["fullpath"]) or ('/unittest/' in x["fullpath"])))
-        yield cmp(a, b)
+        yield cmp(linfo["basepath"]+linfo["basename"], rinfo["basepath"]+rinfo["basename"])
+        yield cmp(linfo["fullpath"], rinfo["fullpath"])
 
     for res in comparators():
         if res != 0:
@@ -113,7 +115,7 @@ def reorder(infile, outfile):
 
     for piece in sorted(
         ((get_fileinfo(piece), piece) for piece in pieces),
-            key=cmp_to_key(diff_comp)):
+            key=cmp_to_key(diff_cmp)):
         outfile.writelines(piece[1])
 
 if __name__ == '__main__':
