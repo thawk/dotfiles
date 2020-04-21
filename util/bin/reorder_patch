@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+
+"""Re-order the files in a patch according to a set of rules.
+Input is accepted on stdin, and written to stdout.
+Usage: cat patch | reorder-patch > reordered-patch
+"""
+
+import sys
+import os
+import re
+
+def cmp_to_key(mycmp):
+    'Convert a cmp= function into a key= function'
+    class K:
+        def __init__(self, obj, *args):
+            self.obj = obj
+        def __lt__(self, other):
+            return mycmp(self.obj, other.obj) < 0
+        def __gt__(self, other):
+            return mycmp(self.obj, other.obj) > 0
+        def __eq__(self, other):
+            return mycmp(self.obj, other.obj) == 0
+        def __le__(self, other):
+            return mycmp(self.obj, other.obj) <= 0
+        def __ge__(self, other):
+            return mycmp(self.obj, other.obj) >= 0
+        def __ne__(self, other):
+            return mycmp(self.obj, other.obj) != 0
+    return K
+
+def split_diff(f):
+    """Split a diff file into pieces.
+
+    Every piece is a line contains diffs of on file.
+    If the given file does not have a header, an empty list is returned.
+    """
+    lines = []
+    for line in f:
+        if line.startswith('diff') or line.startswith('Index'):
+            yield lines
+            lines = []
+        lines.append(line)
+
+    yield lines
+
+def get_fileinfo(piece):
+    """Get the file info from a diff piece."""
+
+    # The filename is the last space-separated token in the first line of
+    # the piece.
+    fullpath = piece[0].split(' ')[-1]
+    m = re.match(r"^(.+/|)(src|include)/.*", fullpath)
+    basepath = m.group(1) if m else os.path.dirname(fullpath)
+    basename = os.path.basename(fullpath)
+    filename, fileext = os.path.splitext(basename)
+
+    return {
+        'fullpath' : fullpath,
+        'basepath' : basepat,
+        'basename' : basename,
+        'fileext'  : fileext,
+    }
+
+def diff_cmp(lhs, rhs):
+    """Determine whether lhs should go above or below rhs, according to
+    the following rules:
+    
+    * xml come first, then other files.
+    * files sorted by base path (path before include/src)
+    * .h files come before their corresponding .cpp files.
+    * Files with "/test/" or "/tests/" or "/unittest/" in their path come after other files.
+    * Otherwise sort in lexicographic order.
+    """
+
+    linfo = lhs[0]
+    rinfo = rhs[0]
+
+    def pred_to_cmp(pred):
+        """Transform a boolean function into a comparison function.
+
+        a < b if pred(a) and not pred(b).
+        """
+        va = pred(a)
+        b = pred(b)
+        if va and not b:
+            return -1
+        elif b and not va:
+            return 1
+        return 0
+
+    def comparators():
+        # Think of these bool_comparators as: You get sorted towards the top of
+        # the patch if you match the lambda.
+        yield pred_to_cmp(lambda x: x["fileext"] == '.xml')
+        if linfo["filename"] == rinfo["filename"]:
+            yield pred_to_cmp(lambda x: x["fileext"] in (".h", ".hpp"))
+        yield pred_to_cmp(
+            lambda x: not (('/test/' in x["fullpath"]) or ('/tests/' in x["fullpath"]) or ('/unittest/' in x["fullpath"])))
+        yield cmp(a, b)
+
+    for res in comparators():
+        if res != 0:
+            return res
+
+    return 0
+
+def reorder(infile, outfile):
+    pieces = split_diff(infile)
+
+    # outfile gets the first piece first (it's the patch header), then we sort
+    # the remaining pieces.
+    outfile.write(''.join(next(pieces)))
+
+    for piece in sorted(
+        ((get_fileinfo(piece), piece) for piece in pieces),
+            key=cmp_to_key(diff_comp)):
+        outfile.writelines(piece[1])
+
+if __name__ == '__main__':
+    infile = sys.stdin
+    outfile = sys.stdout
+    reorder(infile, outfile)
