@@ -1,25 +1,3 @@
-function = {
-    python - << EOD
-from math import *
-from struct import pack
-result=($@)
-if isinstance(result, int):
-    count=int(ceil(len('{:b}'.format(result))/8.0))
-    bytes=pack(">Q",result)[8-count:]
-    if isinstance(bytes[0], type('c')):
-        bytes=map(ord, bytes)
-    print('    '.join((
-    '{0}'.format(result),
-    '0x{0:0>{1}X}'.format(result, count*2),
-    '0o{0:0>{1}o}'.format(result, 1),
-    '0b{0:0>{1}b}'.format(result, count*8),
-    ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes]),
-    )))
-else:
-    print(result)
-EOD
-}
-
 0b36() {
     while [ ! -z "$1" ]
     do
@@ -85,14 +63,4 @@ num() {
     _num_conv 0o "$@"
 }
 
-# join , a b c => a,b,c
-join_by () {
-    local IFS="$1"
-    shift
-    echo "$*"
-}
 
-# acut 2 3 打印第2和第3个字段。可以支持空格、tab等空白字符
-acut () {
-    awk "{print $(join_by , ${*/#/\$})}" | column -t
-}

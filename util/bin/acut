@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Time: 2020-06-03 11:30:58
+
+# acut 2 3 打印第2和第3个字段。可以支持空格、tab等空白字符
+awk "{print $(join_by , ${*/#/\$})}" | column -t
