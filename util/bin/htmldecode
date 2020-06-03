@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Time: 2020-06-03 16:35:05
+
+if [ $# -gt 0 ];
+then
+    echo "$@" | perl -MHTML::Entities -lne 'print decode_entities($_)'
+else
+    perl -MHTML::Entities -lne 'print decode_entities($_)'
+fi

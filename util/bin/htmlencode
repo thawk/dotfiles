@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Time: 2020-06-03 16:35:05
+
+if [ $# -gt 0 ]
+then
+    echo "$@" | perl -lne "use HTML::Entities qw(encode_entities_numeric); use open(':locale'); print encode_entities_numeric(\$_,'<&>\\x0-\\x1f')"
+else
+    perl -lne "use HTML::Entities qw(encode_entities_numeric); use open(':locale'); print encode_entities_numeric(\$_,'<&>\\x0-\\x1f')"
+fi

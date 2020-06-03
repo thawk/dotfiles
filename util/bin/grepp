@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Time: 2020-06-03 16:35:05
+
+if test -z "$1"; then
+    echo "USAGE: grepp searchterm [filetosearch]";
+elif test -z "$2"; then
+    perl -00ne "print if /$1/i"
+else
+    term=$1
+    shift
+    while ! test -z "$1"
+    do
+        perl -00ne "print if /$term/i" < $1
+        shift
+    done
+fi 
