@@ -32,4 +32,4 @@
 #hidden=$(tput invis)
 
 #PS1="\[$(tput sgr0)\]\[$(tput setab 0)\] \u@\h \[$(tput setaf 0)\]\[$(tput setab 4)\] \w \[$(tput sgr0)\]\[$(tput setaf 4)\]\[$(tput sgr0)\] "
-PS1="\[$(tput sgr0)\]\[$(tput setab 0)\] \u@\h \[$(tput setaf 0)\]\[$(tput setab 4)\] \w \[$(tput sgr0)\]\[$(tput setaf 4)\]${X_SCLS:+\[$(tput setab 2)\]\[$(tput setaf 0)\] ${X_SCLS}\[$(tput sgr0)\]\[$(tput setaf 2)\]}\[$(tput sgr0)\] "
+PS1="\[$(tput sgr0)\]\[$(tput setab 0)\] \u@\h \[$(tput setaf 0)\]\[$(tput setab 4)\] \w \[$(tput sgr0)\]\[$(tput setaf 4)\]\${X_SCLS:+\[$(tput setab 2)\]\[$(tput setaf 0)\] \${X_SCLS}\[$(tput sgr0)\]\[$(tput setaf 2)\]}\[$(tput sgr0)\] "
