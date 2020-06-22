@@ -372,10 +372,13 @@ get_enabled_dir() {
 
     for dir in "${dirs[@]}"
     do
-        if [ -e "${dir}/disabled" ] \
-            || [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
+        if [ -e "${dir}/disabled" ]
         then
-            echo "#$(basename ${dir})" >> "$DOTFILES_LOCAL/enabled.new.txt"
+            continue
+        fi
+
+        if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
+        then
             continue
         fi
 
