@@ -8,6 +8,7 @@ svnbase="${1:-.}"
 shift
 
 (
-    echo -e "$svnbase\t$(getSvnUrl "$svnbase")"
+    echo -e "Path\tExpected\tCurrent"
+    echo -e "$svnbase\t$(getSvnInfo "$svnbase")"
     getSvnExternals "$svnbase" "$@" | sort
 ) | column -t
