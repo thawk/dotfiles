@@ -50,14 +50,20 @@ then
         export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
     fi
 
-    if (( $+commands[tmux] )); then
-        command tmux attach
+    case "$TERM_PROGRAM" in
+        vscode)
+            ;;
+        *)
+            if (( $+commands[tmux] )); then
+                command tmux attach
 
-        # Failed to attach, start new session
-        if [[ $? -ne 0 ]]; then
-            command tmux new-session
-        fi
-    fi
+                # Failed to attach, start new session
+                if [[ $? -ne 0 ]]; then
+                    command tmux new-session
+                fi
+            fi
+            ;;
+    esac
 fi
 
 # Disable oh-my-zsh autoupdate
