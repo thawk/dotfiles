@@ -1,15 +1,44 @@
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux
 
-# List of plugins
+# prefix + I — fetch the plugin.
+# prefix + alt + u — remove the plugin.
+# prefix + U — updates plugin(s).
 set -g @plugin 'tmux-plugins/tpm'
+
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'christoomey/vim-tmux-navigator'
+
 set -g @plugin 'tmux-plugins/tmux-prefix-highlight'
 set -g @prefix_highlight_show_copy_mode 'on'
 set -g @prefix_highlight_copy_mode_attr 'fg=black,bg=yellow'
 # set -g @prefix_highlight_output_prefix ''
 # set -g @prefix_highlight_output_suffix ''
-# set -g @plugin 'tmux-plugins/tmux-yank'
+
+# Normal Mode
+#   prefix + y — copies text from the command line to the clipboard.
+#   prefix + Y — copy the current pane's current working directory to the clipboard.
+#
+# Copy Mode
+#   y — copy selection to system clipboard.
+#   Y — "put" selection. Equivalent to copying a selection, and pasting it to the command line.
+set -g @plugin 'tmux-plugins/tmux-yank'
+
+# Predefined searches
+#   prefix + / - regex search (strings work too)
+#   prefix + ctrl-f - simple file search
+#   prefix + ctrl-g - jumping over git status files (best used after git status command)
+#   prefix + alt-h - jumping over SHA-1/SHA-256 hashes (best used after git log command)
+#   prefix + ctrl-u - url search (http, ftp and git urls)
+#   prefix + ctrl-d - number search (mnemonic d, as digit)
+#   prefix + alt-i - ip address search
+#
+# "Copycat mode" bindings
+#   n - jumps to the next match
+#   N - jumps to the previous match
+#
+# To copy a highlighted match:
+#   Enter - if you're using Tmux vi mode
+#   ctrl-w or alt-w - if you're using Tmux emacs mode
 set -g @plugin 'tmux-plugins/tmux-copycat'
 
 # prefix + g - prompts for session name and switches to it. Performs 'kind-of' name completion.
@@ -60,6 +89,10 @@ set-option -g @pane_resize "5"
 #   Ctrl-o - open a highlighted selection with the $EDITOR
 #   Shift-s - search the highlighted selection directly inside a search engine (defaults to google).
 set -g @plugin 'tmux-plugins/tmux-open'
+
+# Enables displaying CPU and GPU information in Tmux status-right and status-left.
+# Configurable percentage and icon display.
+set -g @plugin 'tmux-plugins/tmux-cpu'
 
 # Auto install tpm
 if-shell "test ! -d ~/.tmux/plugins/tpm" \
