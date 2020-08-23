@@ -19,7 +19,7 @@ set-option -ga status-right "#[bg=default, fg=green]#[bg=green, fg=black] "
 
 # 高于1.9版本，使用tpm的cpu插件
 if-shell '~/.tmux/version-ge.sh 1.9' \
-    set-option -ga status-right "#{cpu_percentage} "; \
+    'set-option -ga status-right "#{cpu_percentage} "'
 
 # 低于1.9版本，且有/proc/loadavg，使用load
 if-shell "test -f /proc/loadavg && ~/.tmux/version-lt.sh 1.9" \
