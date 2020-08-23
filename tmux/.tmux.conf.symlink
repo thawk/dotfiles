@@ -25,10 +25,10 @@ bind C-[ copy-mode
 set-window-option -g mode-keys vi
 
 # Make mouse useful in copy mode
-if-shell -b '~/.tmux/version-ge.sh 2.1' \
+if-shell '~/.tmux/version-ge.sh 2.1' \
     'set-option -g mouse on'
 
-if-shell -b '~/.tmux/version-lt.sh 2.1' \
+if-shell '~/.tmux/version-lt.sh 2.1' \
     'set -g mouse-select-pane on; \
     set -g mode-mouse on; \
     set -g mouse-resize-pane on; \
@@ -57,10 +57,10 @@ source ~/.tmux/tmux-theme-base16.conf
 source ~/.tmux/tmux-status.conf
 
 # if can't run tpm, use tmux-fallback.conf
-if-shell -b '~/.tmux/version-ge.sh 1.9' '\
+if-shell '~/.tmux/version-ge.sh 1.9' '\
     source ~/.tmux/tmux-plugins.conf'
 
-if-shell -b '~/.tmux/version-lt.sh 1.9' '\
+if-shell '~/.tmux/version-lt.sh 1.9' '\
     source ~/.tmux/tmux-fallback.conf'
 
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux

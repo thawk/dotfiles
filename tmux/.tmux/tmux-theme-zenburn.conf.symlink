@@ -1,6 +1,6 @@
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux
 
-if-shell -b '~/.tmux/version-ge.sh 2.1' \
+if-shell '~/.tmux/version-ge.sh 2.1' \
     'set -g status-style bg=colour237,fg=colour243; \
     setw -g window-status-style bg=default,fg=colour3; \
     setw -g window-status-current-style bg=colour235; \
@@ -8,7 +8,7 @@ if-shell -b '~/.tmux/version-ge.sh 2.1' \
     setw -g window-status-content-style bg=default,fg=red; \
     setw -g window-status-activity-style bg=default,fg=red'
 
-if-shell -b '~/.tmux/version-lt.sh 2.1' \
+if-shell '~/.tmux/version-lt.sh 2.1' \
     'set -g status-bg colour237; \
     set -g status-fg colour243; \
     \

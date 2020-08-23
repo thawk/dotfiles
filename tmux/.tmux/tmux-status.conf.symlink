@@ -15,15 +15,15 @@ set-option -ga status-left "#[bg=default, fg=blue] #[fg=default, bg=default]"
 
 set-option -g  status-right "#{prefix_highlight}"
 
-if-shell -b '~/.tmux/version-ge.sh 1.9' \
-    'set-option -ga status-right "#[bg=default, fg=green]#[bg=green, fg=black]; "
-    set-option -ga status-right "#{cpu_percentage} ";
+if-shell '~/.tmux/version-ge.sh 1.9' \
+    'set-option -ga status-right "#[bg=default, fg=green]#[bg=green, fg=black] "; \
+    set-option -ga status-right "#{cpu_percentage} "; \
     set-option -ga status-right "#[bg=green, fg=cyan]#[bg=cyan, fg=black] "'
 
 # if-shell "test ! -f /proc/loadavg" \
 #     'set-option -ga status-right " #(cat /proc/loadavg | awk {print $1 $2 $3}) "'
 
-if-shell -b '~/.tmux/version-lt.sh 1.9' \
+if-shell '~/.tmux/version-lt.sh 1.9' \
     'set-option -ga status-right "#[bg=default, fg=cyan]#[bg=cyan, fg=black] "'
 
 # 日期
@@ -35,7 +35,7 @@ set-option -ga status-right "#[bg=default, fg=default]"
 # set -g window-status-format "#[fg=colour7,bg=colour238]#I #[fg=colour240 bgcolor=4] #W"
 # set -g window-status-current-format "#[fg=colour238,bg=colour5]#[fg=colour15,bg=colour5] #I  #[fg=colour15,bold]#W #[fg=colour5,bg=colour237,nobold]"
 
-if-shell -b '~/.tmux/version-ge.sh 2.1' \
+if-shell '~/.tmux/version-ge.sh 2.1' \
     'set-window-option -g window-status-bell-style none; \
     set-window-option -g window-status-bell-style bg=red,fg=black; \
     \
@@ -45,7 +45,7 @@ if-shell -b '~/.tmux/version-ge.sh 2.1' \
     # set-window-option -g window-status-content-style none; \
     # set-window-option -g window-status-content-style bg=red fg=black; \
 
-if-shell -b '~/.tmux/version-lt.sh 2.1' \
+if-shell '~/.tmux/version-lt.sh 2.1' \
     'set-window-option -g window-status-bell-attr none; \
     set-window-option -g window-status-bell-bg red; \
     set-window-option -g window-status-bell-fg black; \
