@@ -94,6 +94,34 @@ set -g @plugin 'tmux-plugins/tmux-open'
 # Configurable percentage and icon display.
 set -g @plugin 'tmux-plugins/tmux-cpu'
 
+# Need fpp command
+# In any tmux mode:
+#    prefix + f - "fpp" for a new window with a Facebook PathPicker selection of your tty.
+if-shell "type fpp &> /dev/null" "\
+    set -g @plugin 'tmux-plugins/tmux-fpp'"
+
+# prefix + P - Toggle (start/stop) logging in the current pane.
+#
+#    File name format: tmux-#{session_name}-#{window_index}-#{pane_index}-%Y%m%dT%H%M%S.log
+#    File path: $HOME (user home dir)
+#
+# prefix + alt + p - Save visible text, in the current pane
+#
+#    Key binding: 
+#    File name format: tmux-screen-capture-#{session_name}-#{window_index}-#{pane_index}-%Y%m%dT%H%M%S.log
+#    File path: $HOME (user home dir)
+#
+# prefix + alt + P - Save complete pane history to a file.
+#                            Convenient if you retroactively remember you need to log/save all the work.
+#
+#    File name format: tmux-history-#{session_name}-#{window_index}-#{pane_index}-%Y%m%dT%H%M%S.log
+#    File path: $HOME (user home dir)
+#
+#    NOTE: depends on the value of history-limit.
+#
+# prefix + alt + c - Clear pane history
+set -g @plugin 'tmux-plugins/tmux-logging'
+
 # Auto install tpm
 if-shell "test ! -d ~/.tmux/plugins/tpm" \
    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
