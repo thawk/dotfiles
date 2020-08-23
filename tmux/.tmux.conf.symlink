@@ -57,10 +57,10 @@ source ~/.tmux/tmux-theme-base16.conf
 source ~/.tmux/tmux-status.conf
 
 # if can't run tpm, use tmux-fallback.conf
-if-shell -b '~/.tmux/version-ge.sh 1.9' \
-    'source ~/.tmux/tmux-plugins.conf'
+if-shell -b '~/.tmux/version-ge.sh 1.9' '\
+    source ~/.tmux/tmux-plugins.conf'
 
-if-shell -b '~/.tmux/version-lt.sh 1.9' \
-    'source ~/.tmux/tmux-fallback.conf'
+if-shell -b '~/.tmux/version-lt.sh 1.9' '\
+    source ~/.tmux/tmux-fallback.conf'
 
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux

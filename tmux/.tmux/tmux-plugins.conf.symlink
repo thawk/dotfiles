@@ -62,7 +62,7 @@ set-option -g @pane_resize "5"
 set -g @plugin 'tmux-plugins/tmux-open'
 
 # Auto install tpm
-if "test ! -d ~/.tmux/plugins/tpm" \
+if-shell "test ! -d ~/.tmux/plugins/tpm" \
    "run 'git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm && ~/.tmux/plugins/tpm/bin/install_plugins'"
 
 # Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
