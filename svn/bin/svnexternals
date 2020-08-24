@@ -7,8 +7,13 @@ source "${PROG_DIR}/svnutils.bash"
 svnbase="${1:-.}"
 shift
 
+echo -e "$(getSvnInfo "$svnbase" url)"
+
 (
-    echo -e "Path\tExpected\tCurrent"
+    # echo -e "Path\tExpected\tCurrent"
     echo -e "$svnbase\t$(getSvnInfo "$svnbase")"
     getSvnExternals "$svnbase" "$@" | sort
-) | column -t
+) |
+    column -t |
+    highlightBranch
+
