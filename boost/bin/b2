@@ -10,8 +10,8 @@ do
     do
         if [ -d "${dir}/${d}" ]
         then
-            BOOST_ROOT=$(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_*" | sort -r | head -n 1)
-            if [ -d "${BOOST_ROOT}" ]
+            BOOST_ROOT=$(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_[0-9]*" | sort -r | head -n 1)
+            if [ -d "${BOOST_ROOT}/boost" ]
             then
                 break 2
             fi
@@ -33,25 +33,22 @@ then
     exit 1
 fi
 
-if [ ! -d "${BOOST_BUILD_PATH}" ]
-    for d in tools/build boost_build
-    do
-        if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
+export $(basename "${BOOST_ROOT}" | sed "s/boost_/BOOST_ROOT_/")=${BOOST_ROOT}
+for d in tools/build boost_build
+do
+    if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
+    then
+        BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
+        B2="${BOOST_BUILD_PATH}/b2"
+        if [ ! -e "${B2}" ]
         then
-            BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
-            break
+            cd "${BOOST_BUILD_PATH}"
+            ./bootsrap.sh
+            cd "${CURCWD}"
         fi
-    done
-fi
-
-B2="${BOOST_BUILD_PATH}/b2"
-if [ ! -x "${B2}" ]
-then
-    echo "Building b2 ('${B2}')..."
-    cd "${BOOST_BUILD_PATH}"
-    ./bootstrap.sh
-    cd "${CURCWD}"
-fi
+        break
+    fi
+done
 
 if [ ! -x "${B2}" ]
 then
