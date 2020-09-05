@@ -291,12 +291,12 @@ generate_source_list () {
         echo "" >> "${stage0_file}"
     done
 
+    echo "${path_env}" >> "${stage0_file}"
+
     # stage1
     info "        ${stage1_file}"
 
     cat /dev/null > "${stage1_file}"
-
-    echo "${path_env}" >> "${stage1_file}"
 
     if [ "$shell" == "zsh" ]; then
         echo "${fpath_env}" >> "${stage1_file}"

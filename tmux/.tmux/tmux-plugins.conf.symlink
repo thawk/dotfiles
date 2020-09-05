@@ -98,7 +98,7 @@ set -g @plugin 'tmux-plugins/tmux-cpu'
 # In any tmux mode:
 #    prefix + f - "fpp" for a new window with a Facebook PathPicker selection of your tty.
 if-shell "type fpp &> /dev/null" "\
-    set -g @plugin 'tmux-plugins/tmux-fpp'"
+    set -g @plugin 'thawk/tmux-fpp'"
 
 # prefix + P - Toggle (start/stop) logging in the current pane.
 #
