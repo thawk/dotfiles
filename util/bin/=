@@ -4,18 +4,20 @@
 python - << EOD
 from math import *
 from struct import pack
+from re import sub
 result=($@)
 if isinstance(result, int):
-    count=int(ceil(len('{:b}'.format(result))/8.0))
-    bytes=pack(">Q",result)[8-count:]
+    count=int(ceil(result.bit_length()/8.0))
+    bytes=pack(">Q" if result >= 0 else ">q", result)
     if isinstance(bytes[0], type('c')):
         bytes=map(ord, bytes)
+
     print('    '.join((
     '{0}'.format(result),
-    '0x{0:0>{1}X}'.format(result, count*2),
-    '0o{0:0>{1}o}'.format(result, 1),
-    '0b{0:0>{1}b}'.format(result, count*8),
-    ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes]),
+    sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2)),
+    sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result)),
+    sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}X}'.format(result, count*8)),
+    ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]]),
     )))
 else:
     print(result)
