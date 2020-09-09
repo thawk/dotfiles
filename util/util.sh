@@ -48,3 +48,13 @@ cdd() {
         cd "$last_proj_root"
     fi
 }
+
+alias_expand {
+  if [[ $ZSH_VERSION ]]; then
+    # shellcheck disable=2154  # aliases referenced but not assigned
+    [ ${aliases[$1]+x} ] && printf '%s\n' "${aliases[$1]}" && return
+  else  # bash
+    [ "${BASH_ALIASES[$1]+x}" ] && printf '%s\n' "${BASH_ALIASES[$1]}" && return
+  fi
+  false  # Error: alias not defined
+}
