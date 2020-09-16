@@ -51,7 +51,7 @@ getSvnExternals() {
 
     if [[ "$external" =~ @[0-9]+$ ]]; then
         # 如果外链有peg，当前URL也加上revision进行比较
-        local peg=$(getSvnInfo "$1/$wcdir" "commit" "revision")
+        local peg=$(getSvnInfo "$1/$wcdir" "entry" "revision")
         cmp_curr_url="${cmp_curr_url}@${peg}"
         curr_url="${curr_url}@${peg}"
     fi
