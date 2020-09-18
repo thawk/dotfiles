@@ -49,7 +49,7 @@ cdd() {
     fi
 }
 
-alias_expand {
+alias_expand() {
   if [[ $ZSH_VERSION ]]; then
     # shellcheck disable=2154  # aliases referenced but not assigned
     [ ${aliases[$1]+x} ] && printf '%s\n' "${aliases[$1]}" && return
