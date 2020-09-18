@@ -49,6 +49,7 @@ set-window-option -g automatic-rename on
 
 # Clock
 set-window-option -g clock-mode-style 24
+bind C-t clock-mode
 
 #set-option -g update-environment -r
 set-option -g update-environment "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY TERM_PROGRAM"
