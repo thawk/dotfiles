@@ -16,7 +16,7 @@
 	url = https://github.com/xmementoit/gdb-automatic-deadlock-detector
 [submodule "gdb/repos/Gdbinit"]
 	path = gdb/repos/Gdbinit
-	url = https://github.com/gdbinit/Gdbinit
+	url = https://github.com/thawk/Gdbinit
 [submodule "fpp/PathPicker"]
 	path = fpp/PathPicker
 	url = https://github.com/facebook/PathPicker.git

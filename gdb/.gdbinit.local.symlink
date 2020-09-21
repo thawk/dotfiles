@@ -1,14 +1,5 @@
-# 按照派生类型打印对象
-set print object on
-
-# 打开数组的索引下标
-set print array-indexes on
-
-# 每行打印一个结构体成员
-set print pretty on
-
 set $COLOREDPROMPT = 0
-
-set $X86FLAVOR = 0
-set disassembly-flavor intel
+set $X86FLAVOR = 1
+set $SHOW_CONTEXT = 0
+set disassembly-flavor att
 
