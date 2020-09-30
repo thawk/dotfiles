@@ -12,7 +12,7 @@ class Offsets(gdb.Command):
 
         stype = gdb.lookup_type(argv[0])
 
-        print argv[0], '{'
+        print(argv[0], '{')
         for field in stype.fields():
             if hasattr(field, 'bitpos'):
                 offset = '%4d (0x%04x)' % (field.bitpos//8, field.bitpos//8)
@@ -24,10 +24,10 @@ class Offsets(gdb.Command):
             else:
                 typename = ''
 
-            print '  %s => %s%s' % (offset, field.name, typename)
+            print('  %s => %s%s' % (offset, field.name, typename))
 
-        print '}'
-        print 'Total size: %d (0x%04x) bytes' % (stype.sizeof, stype.sizeof)
+        print('}')
+        print('Total size: %d (0x%04x) bytes' % (stype.sizeof, stype.sizeof))
 
 Offsets()
 
