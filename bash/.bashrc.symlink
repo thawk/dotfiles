@@ -24,10 +24,13 @@ if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
     debian_chroot=$(cat /etc/debian_chroot)
 fi
 
+# 在顶层shell中不会执行到后面的内容，所以专门source一些需要在顶层载入的内容
 if [ "$SHLVL" -eq 1 ]
 then
+    [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
+
     # 在顶层SHELL中恢复base16的配色
-    [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
+    # [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
 
     # Fix problem that SSH_AUTH_SOCK not updated in tmux
     if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
@@ -64,5 +67,6 @@ if ! shopt -oq posix; then
   fi
 fi
 
+[ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
 [ -f "$DOTFILES_LOCAL/stage1.bash" ] && source "$DOTFILES_LOCAL/stage1.bash"
 [ -f "$DOTFILES_LOCAL/stage2.bash" ] && source "$DOTFILES_LOCAL/stage2.bash"

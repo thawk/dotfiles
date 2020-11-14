@@ -75,6 +75,7 @@ DISABLE_AUTO_UPDATE=true
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
+[ -f "$DOTFILES_LOCAL/stage0.zsh" ] && source "$DOTFILES_LOCAL/stage0.zsh"
 [ -f "$DOTFILES_LOCAL/stage1.zsh" ] && source "$DOTFILES_LOCAL/stage1.zsh"
 
 if (( $+commands[git] ))
