@@ -1,6 +1,7 @@
 _FASD_BACKENDS="native current"
 
 projects() {
+    find "$HOME/.SpaceVim/bundle" -depth 1 -type d -exec echo "{}|1" \; 2> /dev/null
     find "$HOME/.cache/vimfiles/repos" -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
     find "$GOPATH/src"                 -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
     find "$HOME/.zplugin/snippets"     -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
