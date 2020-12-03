@@ -12,13 +12,22 @@ if isinstance(result, int):
     if isinstance(bytes[0], type('c')):
         bytes=map(ord, bytes)
 
-    print('    '.join((
-    '{0}'.format(result),
-    sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2)),
-    sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result)),
-    sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}X}'.format(result, count*8)),
-    ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]]),
-    )))
+    s = '{0}'.format(result)
+    s += '\t'
+    if result >= 0:
+        s += '0x{0:0>{1}X}'.format(result, count*2)
+    else:
+        s += '0x{0:0>{1}X}'.format(result+256**count, count*2)
+        s += '\t'
+        s += sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2))
+    s += '\t'
+    s += sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
+    s += '\t'
+    s += sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}X}'.format(result, count*8))
+    s += '\t'
+    s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
+    
+    print(s)
 else:
     print(result)
 EOD
