@@ -1,3 +1,5 @@
 # 使用了pam_ssh，不再需要keychain
 #/usr/bin/keychain -Q -q ~/.ssh/id_rsa
 . ~/.bashrc
+
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*

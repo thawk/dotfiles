@@ -70,3 +70,6 @@ fi
 [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
 [ -f "$DOTFILES_LOCAL/stage1.bash" ] && source "$DOTFILES_LOCAL/stage1.bash"
 [ -f "$DOTFILES_LOCAL/stage2.bash" ] && source "$DOTFILES_LOCAL/stage2.bash"
+
+# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
+export PATH="$PATH:$HOME/.rvm/bin"
