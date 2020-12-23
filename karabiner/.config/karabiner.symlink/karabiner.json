@@ -129,7 +129,7 @@
         {
             "complex_modifications": {
                 "parameters": {
-                    "basic.simultaneous_threshold_milliseconds": 500,
+                    "basic.simultaneous_threshold_milliseconds": 200,
                     "basic.to_delayed_action_delay_milliseconds": 500,
                     "basic.to_if_alone_timeout_milliseconds": 1000,
                     "basic.to_if_held_down_threshold_milliseconds": 500,
@@ -733,7 +733,7 @@
                         ]
                     },
                     {
-                        "description": "SpaceFN: Space+Backquote (`) to Escape, Space+[1-9] to F[1-9], Space+0 to F10, Space+Hyphen (-) to F11, Space+Equal Sign (=) to F12",
+                        "description": "SpaceFN: Space+Backquote (`) to Escape, Space+[1-9] to F[1-9], Space+0 to F10, Space+Hyphen (-) to F11, Space+Equal Sign (=) to F12, Space+Slash to BackSlash",
                         "manipulators": [
                             {
                                 "from": {
@@ -811,7 +811,7 @@
                                             "key_code": "spacebar"
                                         },
                                         {
-                                            "key_code": "grave_accent_and_tilde"
+                                            "key_code": "slash"
                                         }
                                     ],
                                     "simultaneous_options": {
@@ -835,7 +835,7 @@
                                         }
                                     },
                                     {
-                                        "key_code": "grave_accent_and_tilde"
+                                        "key_code": "backslash"
                                     }
                                 ],
                                 "type": "basic"
@@ -849,7 +849,7 @@
                                     }
                                 ],
                                 "from": {
-                                    "key_code": "grave_accent_and_tilde",
+                                    "key_code": "slash",
                                     "modifiers": {
                                         "optional": [
                                             "any"
@@ -858,7 +858,7 @@
                                 },
                                 "to": [
                                     {
-                                        "key_code": "grave_accent_and_tilde"
+                                        "key_code": "backslash"
                                     }
                                 ],
                                 "type": "basic"
@@ -1960,136 +1960,7 @@
                     }
                 ]
             },
-            "devices": [
-                {
-                    "disable_built_in_keyboard_if_exists": false,
-                    "fn_function_keys": [],
-                    "identifiers": {
-                        "is_keyboard": true,
-                        "is_pointing_device": false,
-                        "product_id": 0,
-                        "vendor_id": 13
-                    },
-                    "ignore": false,
-                    "manipulate_caps_lock_led": false,
-                    "simple_modifications": [
-                        {
-                            "from": {
-                                "key_code": "left_command"
-                            },
-                            "to": {
-                                "key_code": "left_option"
-                            }
-                        },
-                        {
-                            "from": {
-                                "key_code": "left_option"
-                            },
-                            "to": {
-                                "key_code": "left_command"
-                            }
-                        },
-                        {
-                            "from": {
-                                "key_code": "right_command"
-                            },
-                            "to": {
-                                "key_code": "right_option"
-                            }
-                        },
-                        {
-                            "from": {
-                                "key_code": "right_option"
-                            },
-                            "to": {
-                                "key_code": "right_command"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "disable_built_in_keyboard_if_exists": false,
-                    "fn_function_keys": [],
-                    "identifiers": {
-                        "is_keyboard": true,
-                        "is_pointing_device": false,
-                        "product_id": 22288,
-                        "vendor_id": 1155
-                    },
-                    "ignore": false,
-                    "manipulate_caps_lock_led": false,
-                    "simple_modifications": [
-                        {
-                            "from": {
-                                "key_code": "left_alt"
-                            },
-                            "to": {
-                                "key_code": "left_gui"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "disable_built_in_keyboard_if_exists": false,
-                    "fn_function_keys": [],
-                    "identifiers": {
-                        "is_keyboard": true,
-                        "is_pointing_device": true,
-                        "product_id": 1300,
-                        "vendor_id": 4617
-                    },
-                    "ignore": false,
-                    "manipulate_caps_lock_led": true,
-                    "simple_modifications": [
-                        {
-                            "from": {
-                                "key_code": "left_command"
-                            },
-                            "to": {
-                                "key_code": "left_option"
-                            }
-                        },
-                        {
-                            "from": {
-                                "key_code": "left_option"
-                            },
-                            "to": {
-                                "key_code": "left_command"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "disable_built_in_keyboard_if_exists": false,
-                    "fn_function_keys": [],
-                    "identifiers": {
-                        "is_keyboard": true,
-                        "is_pointing_device": false,
-                        "product_id": 1300,
-                        "vendor_id": 4617
-                    },
-                    "ignore": false,
-                    "manipulate_caps_lock_led": true,
-                    "simple_modifications": [
-                        {
-                            "from": {
-                                "key_code": "left_option"
-                            },
-                            "to": {
-                                "key_code": "left_command"
-                            }
-                        },
-                        {
-                            "from": {
-                                "key_code": "left_command"
-                            },
-                            "to": {
-                                "key_code": "left_option"
-                            }
-                        }
-                    ]
-                }
-            ],
+            "devices": [],
             "fn_function_keys": [
                 {
                     "from": {

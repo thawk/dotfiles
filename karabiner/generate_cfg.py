@@ -40,10 +40,11 @@ rules = [
         )
     },
     {
-        "description": "SpaceFN: Space+Backquote (`) to Escape, Space+[1-9] to F[1-9], Space+0 to F10, Space+Hyphen (-) to F11, Space+Equal Sign (=) to F12",
+        "description": "SpaceFN: Space+Backquote (`) to Escape, Space+[1-9] to F[1-9], Space+0 to F10, Space+Hyphen (-) to F11, Space+Equal Sign (=) to F12, Space+Slash to BackSlash",
         "keys": (
             ("grave_accent_and_tilde", "escape"),
-            ("grave_accent_and_tilde", "grave_accent_and_tilde"),
+            #  ("grave_accent_and_tilde", "grave_accent_and_tilde"),
+            ("slash", "backslash"),
             ("1", "f1"),
             ("2", "f2"),
             ("3", "f3"),
