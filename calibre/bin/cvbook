@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Time: 2021-02-02 13:53:59
+
+while [[ -n "$1" ]]
+do
+    book="$1"
+    shift
+
+    name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
+    author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
+    if [[ -z "$name" ]] || [[ -z "$author" ]]
+    then
+        echo "!!! Failed to parse '$book' !!!"
+        continue
+    fi
+
+    ebook-convert "$book" "${book%.*}.epub"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$name" --authors="$author" --cover="${book%.*}.jpg"
+    kindlegen "${book%.*}.epub"
+done
