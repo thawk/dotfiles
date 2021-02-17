@@ -190,22 +190,30 @@ def main():
             modified = True
         if o == '-v':
             VERBOSE = True
-    if len(args) != 1:
+    if len(args) < 1:
         usage()
         sys.exit(1)
-    infile = args[0]
+    if len(args) > 1 and outfile is not None:
+        usage('OUTFILE must not be specified for multiple INFILEs')
+        sys.exit(1)
+    if len(args) > 1 and '-' in args:
+        usage('can not use - as INFILE while there are multiple INFILEs')
+        sys.exit(1)
     if format not in (None, 'abc', 'ly'):
         usage('invalid FORMAT')
         sys.exit(1)
-    if outfile is None:
-        if infile == '-':
-            usage('OUTFILE must be specified')
-            sys.exit(1)
+
+    for infile in args:
+        print_verbose('Processing %s' % infile)
+        if outfile is None:
+            if infile == '-':
+                usage('OUTFILE must be specified')
+                sys.exit(1)
         outfile = os.path.splitext(infile)[0] + '.png'
-    # Do the work.
-    music2png(format, infile, outfile, modified)
-    # Print something to suppress asciidoc 'no output from filter' warnings.
-    if infile == '-':
+        # Do the work.
+        music2png(format, infile, outfile, modified)
+        # Print something to suppress asciidoc 'no output from filter' warnings.
+    if args[0] == '-':
         sys.stdout.write(' ')
 
 if __name__ == "__main__":
