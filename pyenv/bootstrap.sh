@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 conf_dir="${DOTFILES_LOCAL}/pyenv"
 mkdir -p "${conf_dir}"
@@ -22,9 +22,9 @@ if [[ -x "$HOME/.pyenv/versions/neovim3/bin/python" ]]; then
     echo "export PYTHON3_HOST_PROG=\"$HOME/.pyenv/versions/neovim3/bin/python\"" >> "${env_file}"
 fi
 
-command pyenv init - bash > "${conf_dir}/init.bash"
-command pyenv virtualenv-init - bash > "${conf_dir}/virtualenv-init.bash"
+$HOME/.pyenv/bin/pyenv init - bash > "${conf_dir}/init.bash"
+$HOME/.pyenv/bin/pyenv virtualenv-init - bash > "${conf_dir}/virtualenv-init.bash"
 
-command pyenv init - zsh > "${conf_dir}/init.zsh"
-command pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
+$HOME/.pyenv/bin/pyenv init - zsh > "${conf_dir}/init.zsh"
+$HOME/.pyenv/bin/pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
 
