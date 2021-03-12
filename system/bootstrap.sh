@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 env_file="${DOTFILES_LOCAL}/system/env.sh"
-editor_file="${DOTFILES_LOCAL}/system/editor"
+editor_file="${DOTFILES_LOCAL}/system/editor.sh"
 mkdir -p "$(dirname "$env_file")"
 rm "$(dirname "$env_file")"/*
 : > "${env_file}"
