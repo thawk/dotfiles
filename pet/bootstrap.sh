@@ -2,7 +2,7 @@
 
 env_file="${DOTFILES_LOCAL}/pet/completion.zsh"
 mkdir -p "$(dirname "$env_file")"
-rm "$(dirname "$env_file")"/*
+rm -f "$(dirname "$env_file")"/*
 : > "${env_file}"
 
 GOPATH=$(env GOPATH= GOROOT= go env GOPATH)

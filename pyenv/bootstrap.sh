@@ -2,7 +2,7 @@
 
 conf_dir="${DOTFILES_LOCAL}/pyenv"
 mkdir -p "${conf_dir}"
-rm "${conf_dir}"/*
+rm -f "${conf_dir}"/*
 
 env_file="${conf_dir}/env.sh"
 : > "${env_file}"

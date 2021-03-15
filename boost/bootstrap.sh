@@ -4,7 +4,7 @@ ROOTS=("$HOME/workspace/cs/lib/cppf/common/3rd/" "$HOME/workspace/")
 
 env_file="${DOTFILES_LOCAL}/boost/env.sh"
 mkdir -p "$(dirname "${env_file}")"
-rm "$(dirname "$env_file")"/*
+rm -f "$(dirname "$env_file")"/*
 : > "${env_file}"
 
 for i in $(seq 0 $((${#ROOTS[*]} - 1)))

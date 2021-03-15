@@ -2,7 +2,7 @@
 
 env_file="${DOTFILES_LOCAL}/go/path.sh"
 mkdir -p "$(dirname "$env_file")"
-rm "$(dirname "$env_file")"/*
+rm -f "$(dirname "$env_file")"/*
 : > "${env_file}"
 
 # Reset environment to correctly handle golang upgrade

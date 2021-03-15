@@ -2,7 +2,7 @@
 
 env_file="${DOTFILES_LOCAL}/taskwarrior/env.zsh"
 mkdir -p "$(dirname "$env_file")"
-rm "$(dirname "$env_file")"/*
+rm -f "$(dirname "$env_file")"/*
 : > "${env_file}"
 
 if [ -f /usr/local/share/taskwarrior/scripts/zsh/_task ]; then
