@@ -22,9 +22,11 @@ if [[ -x "$HOME/.pyenv/versions/neovim3/bin/python" ]]; then
     echo "export PYTHON3_HOST_PROG=\"$HOME/.pyenv/versions/neovim3/bin/python\"" >> "${env_file}"
 fi
 
-$HOME/.pyenv/bin/pyenv init - bash > "${conf_dir}/init.bash"
-$HOME/.pyenv/bin/pyenv virtualenv-init - bash > "${conf_dir}/virtualenv-init.bash"
+PATH=$HOME/.pyenv/bin:$PATH
 
-$HOME/.pyenv/bin/pyenv init - zsh > "${conf_dir}/init.zsh"
-$HOME/.pyenv/bin/pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
+pyenv init - bash > "${conf_dir}/init.bash"
+pyenv virtualenv-init - bash > "${conf_dir}/virtualenv-init.bash"
+
+pyenv init - zsh > "${conf_dir}/init.zsh"
+pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
 
