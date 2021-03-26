@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Time: 2021-03-26 17:12:53
+
+port=${1:-8000}
+shift
+python3 -c "from http.server import test, SimpleHTTPRequestHandler as RH; RH.extensions_map={k:v+';charset=UTF-8' for k,v in RH.extensions_map.items()}; test(RH, port=$port)" "$@"
