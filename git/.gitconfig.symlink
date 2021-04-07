@@ -31,5 +31,3 @@
 
 [pull]
 	rebase = true
-[http]
-	proxy = socks5://172.31.0.253:23456
