@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEST_FILE=${1:-spacevim.tar.bz2}
+DEST_FILE=${1:-spacevim-$(date +%Y%m%d).tar.bz2}
 
 dirs=(.SpaceVim.d .SpaceVim .cache/vimfiles )
 [[ -d "$HOME/.config/coc" ]] && dirs=( "${dirs[@]}" .config/coc )
