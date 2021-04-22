@@ -3,4 +3,5 @@
 
 port=${1:-8000}
 shift
+echo "IP:" $(ip addr | sed -n -e 's!^[[:space:]]*inet \([^/]*\)/.*!\1!p'  | grep -v 127.0.0.1 | sort -n | tr '\n' ' ')
 python3 -c "from http.server import test, SimpleHTTPRequestHandler as RH; RH.extensions_map={k:v+';charset=UTF-8' for k,v in RH.extensions_map.items()}; test(RH, port=$port)" "$@"
