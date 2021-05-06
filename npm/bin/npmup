@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Time: 2021-05-06 20:02:46
+
+npm install npm@latest -g && npm -g update

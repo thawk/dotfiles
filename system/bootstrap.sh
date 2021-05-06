@@ -30,6 +30,7 @@ fi
 # 如果有vim则用vim。否则用vi。在有vim时，如果没有vi，将vi定义为vim的alias
 if type nvim &> /dev/null ; then
     echo "export EDITOR='nvim'" >> "${editor_file}"
+    echo "export MANPAGER=\"nvim +'set ft=man' -\"" >> "${env_file}"
 
     # 在MacOS下，使用neovim代替vim
     if ! type vim &> /dev/null || [[ "$OSTYPE" == "darwin"* ]] ; then
@@ -39,6 +40,7 @@ if type nvim &> /dev/null ; then
     type vi &> /dev/null || echo "alias vi=nvim" >> "${editor_file}"
 elif type vim &> /dev/null ; then
     echo "export EDITOR='vim'" >> "${editor_file}"
+    echo "export MANPAGER=\"vim +'set ft=man' -\"" >> "${env_file}"
     type vi &> /dev/null || echo "alias vi=vim" >> "${editor_file}"
 elif type vi &> /dev/null ; then
     echo "export EDITOR='vi'" >> "${editor_file}"

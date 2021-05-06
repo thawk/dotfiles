@@ -56,5 +56,14 @@ alias_expand() {
   else  # bash
     [ "${BASH_ALIASES[$1]+x}" ] && printf '%s\n' "${BASH_ALIASES[$1]}" && return
   fi
-  false  # Error: alias not defined
+  printf '%s\n' "$1"
+}
+
+fsed() {
+    [[ $# -lt 2 ]] && { echo 'usage: fsed <sed cmd> <files>' 2>&1; return 1; }
+    for file in "${@:2}"; do mv -nv "$file" "$(sed "$1" <<< "$file")"; done
+}
+
+mount() {
+    command mount | sed -e 's/^\(.*\) on \([^ ]*\)/\1\t\2\t/' | sort -t$'\t' -k2 -f | column -s$'\t' -t
 }

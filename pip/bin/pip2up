@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Time: 2021-05-06 19:59:04
+
+pip2 list --outdated | sed -e '1,2d; s/ .*//' | xargs pip2 --no-cache-dir install -U

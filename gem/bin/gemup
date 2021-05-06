@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Time: 2021-05-06 20:01:43
+
+gem update --system && gem update && gem cleanup
