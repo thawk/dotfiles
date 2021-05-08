@@ -67,3 +67,7 @@ fsed() {
 mount() {
     command mount | sed -e 's/^\(.*\) on \([^ ]*\)/\1\t\2\t/' | sort -t$'\t' -k2 -f | column -s$'\t' -t
 }
+
+resolve_link() {
+  $(type -p greadlink readlink | head -1) "$1"
+}
