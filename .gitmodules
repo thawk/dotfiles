@@ -20,3 +20,6 @@
 [submodule "fpp/PathPicker"]
 	path = fpp/PathPicker
 	url = https://github.com/facebook/PathPicker.git
+[submodule "gdb/repos/Boost-Pretty-Printer"]
+	path = gdb/repos/Boost-Pretty-Printer
+	url = https://github.com/ruediger/Boost-Pretty-Printer

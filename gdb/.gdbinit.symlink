@@ -15,13 +15,22 @@ set print array-indexes on
 set print pretty on
 
 source ~/.dotfiles/gdb/repos/Gdbinit/gdbinit
+source ~/.dotfiles/gdb/scripts/dbinit_stl_views-1.03.txt
 
 python
 import os
+import sys
 if 'DOTFILES_ROOT' in os.environ:
   sys.path.insert(0, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'scripts'))
+  # offsets-of
   import offsets
+  # blocked
   import gdbDisplayLockedThreads
+
+  # sys.path.insert(1, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'repos', 'Boost-Pretty-Printer'))
+  # import boost
+  # boost.register_printers(boost_version=(1,60,0))
+  # boost.register_printers(boost_version=(1,72,0))
 end
 
 ## 如果有~/.gdbinit.local则载入
