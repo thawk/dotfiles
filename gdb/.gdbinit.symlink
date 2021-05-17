@@ -26,12 +26,19 @@ if 'DOTFILES_ROOT' in os.environ:
   import offsets
   # blocked
   import gdbDisplayLockedThreads
-
-  # sys.path.insert(1, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'repos', 'Boost-Pretty-Printer'))
-  # import boost
-  # boost.register_printers(boost_version=(1,60,0))
-  # boost.register_printers(boost_version=(1,72,0))
 end
+
+#python
+#import os
+#import sys
+#if 'DOTFILES_ROOT' in os.environ:
+#  sys.path.insert(1, os.path.join(os.environ['DOTFILES_ROOT'], 'gdb', 'repos', 'Boost-Pretty-Printer'))
+#  import boost
+#  boost.register_printers(boost_version=(1,60,0))
+#  boost.register_printers(boost_version=(1,72,0))
+#end
+
+#source ~/.dotfiles/gdb/repos/gef/gef.py
 
 ## 如果有~/.gdbinit.local则载入
 #shell if test -f ~/.gdbinit.local; then echo source ~/.gdbinit.local; fi > /tmp/gdbinit.tmp
