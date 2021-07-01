@@ -1,132 +1,171 @@
 tap "homebrew/bundle"
 tap "homebrew/cask"
-tap "homebrew/cask-fonts"
-tap "homebrew/core"
-tap "martido/brew-graph"
-cask "osxfuse"
-# SSL/TLS cryptography library
-brew "openssl"
-# Download with resuming and segmented downloading
+tap "homebrew/cask-fonts", "https://mirrors.cloud.tencent.com/homebrew/homebrew-cask-fonts.git"
+tap "homebrew/cask-versions"
+tap "homebrew/core", "https://github.com/Homebrew/homebrew-core.git"
+tap "knqyf263/pet"
+tap "martido/graph"
+tap "smlsharp/smlsharp", "https://www.pllab.riec.tohoku.ac.jp/smlsharp/download/homebrew"
+tap "universal-ctags/universal-ctags"
+brew "ansifilter"
 brew "aria2"
-# Bourne-Again SHell, a UNIX command interpreter
 brew "bash"
-# Collection of portable C++ source libraries
 brew "boost"
-# C++ build system
 brew "boost-build"
-# Encrypted pass-through FUSE file system
-brew "encfs"
-# Command-line fuzzy finder written in Go
-brew "fzf"
-# Distributed revision control system
-brew "git"
-# Library for command-line editing
 brew "readline"
-# General-purpose data compression with high compression ratio
 brew "xz"
-# Interpreted, interactive, object-oriented programming language
-brew "python"
-# Source code tag system
+brew "python@3.9"
+brew "boost-python3"
+brew "chezscheme"
+brew "cloc"
+brew "cmake"
+brew "coreutils"
+brew "datamash"
+brew "dialog"
+brew "dive"
+brew "dos2unix"
+brew "encfs"
+brew "fd"
+brew "guile"
+brew "tesseract"
+brew "ffmpeg"
+brew "fluid-synth"
+brew "fzf"
+brew "git"
+brew "git-extras"
 brew "global"
-# Open source programming language to build simple/reliable/efficient software
 brew "go"
-# Graph visualization software from AT&T and Bell Labs
 brew "graphviz"
-# CLI wrapper for basic network utilities on macOS - ip command
+brew "haskell-stack"
+brew "httpie"
+brew "imagemagick"
 brew "iproute2mac"
-# Mac App Store command-line interface
+brew "jq"
+brew "kaitai-struct-compiler"
+brew "lftp"
+brew "libksba"
+brew "libyaml"
+brew "luarocks"
 brew "mas"
-# Multiple Repository management tool
+brew "mit-scheme"
+brew "mlton"
 brew "mr"
-# Ambitious Vim-fork focused on extensibility and agility
 brew "neovim"
-# 7-Zip (high compression file archiver) implementation
+brew "node"
+brew "nrg2iso"
+brew "openvpn"
 brew "p7zip"
-# Swiss-army knife of markup format conversion
 brew "pandoc"
-# Python version management
+brew "pdftilecut"
+brew "peco"
+brew "plantuml"
+brew "proxychains-ng"
+brew "pstree"
 brew "pyenv"
-# Pyenv plugin to manage virtualenv
 brew "pyenv-virtualenv"
-# Alternative to pyenv for managing virtualenvs
-brew "pyenv-virtualenvwrapper"
-# Perl-powered file rename script with many helpful built-ins
+brew "pylint"
 brew "rename"
-# Search tool like grep and The Silver Searcher
+brew "rfcstrip"
 brew "ripgrep"
-# Version control system designed to be a better CVS
+brew "rpm2cpio"
+brew "rust"
 brew "subversion"
-# Feature-rich console based todo list manager
-brew "task"
-# Code-search similar to ack
+brew "tesseract-lang"
 brew "the_silver_searcher"
-# Terminal multiplexer
+brew "thefuck"
+brew "tidy-html5"
+brew "timidity"
+brew "tldr"
 brew "tmux"
-# Display directories as trees (with optional color/HTML output)
+brew "todo-txt"
 brew "tree"
-# Ncurses based file manager with vi like keybindings
+brew "unar"
+brew "v2ray"
 brew "vifm"
-# Internet file retriever
 brew "wget"
-brew "martido/brew-graph/brew-graph"
-cask "alfred"
+brew "yarn"
+brew "you-get"
+brew "youtube-dl"
+brew "zlib"
+brew "knqyf263/pet/pet"
+brew "universal-ctags/universal-ctags/universal-ctags", args: ["HEAD"]
+cask "adobe-acrobat-reader"
 cask "android-file-transfer"
+cask "android-platform-tools"
+cask "anki"
+cask "appcleaner"
 cask "applepi-baker"
-cask "asciidocfx"
+cask "calibre"
 cask "cheatsheet"
-cask "dash"
-cask "disk-inventory-x"
+cask "dingtalk"
 cask "docker"
-cask "double-commander"
+cask "firefox"
 cask "fliqlo"
 cask "font-dejavusansmono-nerd-font"
-cask "font-firacode-nerd-font"
-cask "font-firacode-nerd-font-mono"
-cask "font-hack-nerd-font"
-cask "font-meslo-nerd-font"
+cask "frescobaldi"
 cask "gpg-suite"
+cask "hammerspoon"
 cask "iina"
+cask "iterm2"
+cask "java"
 cask "karabiner-elements"
 cask "keepassxc"
+cask "keyfinder"
+cask "kindle-previewer"
+cask "kindlegen"
+cask "landrop"
 cask "licecap"
 cask "lyricsx"
-cask "macdown"
-cask "openoffice"
-cask "qlcolorcode"
+cask "mcgimp"
+cask "numi"
+cask "ocenaudio"
+cask "osxfuse"
+cask "pock"
+cask "polycom-realpresence"
+cask "pomotodo"
 cask "qlmarkdown"
 cask "qlmobi"
-cask "qlstephen"
 cask "qlvideo"
 cask "qq"
 cask "quicklook-json"
 cask "quicklookase"
+cask "racket"
 cask "shadowsocksx-ng"
+cask "smlnj"
 cask "spotify"
 cask "squirrel"
-cask "standard-notes"
 cask "suspicious-package"
 cask "taskwarrior-pomodoro"
-cask "touchswitcher"
-cask "turtl"
+cask "tunnelblick"
 cask "typora"
-cask "vanilla"
-cask "vimr"
+cask "v2rayu"
 cask "visual-studio-code"
+cask "vmpk"
 cask "webpquicklook"
+cask "wireshark"
 cask "xquartz"
-cask "yu-writer"
-mas "GarageBand", id: 682658836
-mas "iMovie", id: 408981434
-mas "Keynote", id: 409183694
+cask "zoom"
+mas "Amphetamine", id: 937984704
+mas "Capo", id: 696977615
+mas "Cleaner One", id: 1133028347
+mas "Color Picker Plus", id: 1499052260
+mas "Disk Cartography", id: 905264208
+mas "EarMaster 7", id: 1492991594
+mas "Gapplin", id: 768053424
+mas "Hidden Bar", id: 1452453066
+mas "iMovie 剪辑", id: 408981434
 mas "Kindle", id: 405399194
-mas "NeteaseMusic", id: 944848654
-mas "Numbers", id: 409203825
-mas "Pages", id: 409201541
-mas "Pendo", id: 1220959405
-mas "PixelScheduler", id: 976996075
-mas "QQMusic", id: 595615424
+mas "Microsoft To Do", id: 1274495053
+mas "OneDrive", id: 823766827
+mas "Pine Player", id: 1112075769
+mas "QQ音乐", id: 595615424
 mas "Reeder", id: 880001334
 mas "Snip", id: 512505421
 mas "The Unarchiver", id: 425424353
-mas "WeChat", id: 836500024
+mas "VOX", id: 461369673
+mas "华为手机助手", id: 1232508288
+mas "库乐队", id: 682658836
+mas "微信", id: 836500024
 mas "爱奇艺", id: 1012296988
+mas "网易云音乐", id: 944848654
+mas "腾讯视频", id: 1231336508
