@@ -9,9 +9,6 @@ esac
 export DOTFILES_ROOT="$HOME/.dotfiles"
 export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
-[ -f ~/.localrc ] && . ~/.localrc
-[ -f ~/.bashrc.local ] && . ~/.bashrc.local
-
 # Source global definitions
 [ -f /etc/bashrc ] && . /etc/bashrc
 
@@ -27,6 +24,9 @@ fi
 # 在顶层shell中不会执行到后面的内容，所以专门source一些需要在顶层载入的内容
 if [ "$SHLVL" -eq 1 ]
 then
+    [ -f ~/.localrc ] && . ~/.localrc top
+    [ -f ~/.bashrc.local ] && . ~/.bashrc.local top
+
     [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
 
     # 在顶层SHELL中恢复base16的配色
@@ -66,6 +66,9 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
+
+[ -f ~/.localrc ] && . ~/.localrc
+[ -f ~/.bashrc.local ] && . ~/.bashrc.local
 
 [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
 [ -f "$DOTFILES_LOCAL/stage1.bash" ] && source "$DOTFILES_LOCAL/stage1.bash"

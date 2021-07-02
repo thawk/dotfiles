@@ -41,6 +41,9 @@ VIRTUALENVWRAPPER_PYTHON=$(which python3 2> /dev/null)
 # 在顶层zsh中是不会执行到后面的内容，所以专门source一些需要在顶层载入的内容
 if [ "$SHLVL" -eq 1 ]
 then
+    [[ -a ~/.localrc ]] && source ~/.localrc top
+    [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local top
+
     [ -f "$DOTFILES_LOCAL/stage0.zsh" ] && source "$DOTFILES_LOCAL/stage0.zsh"
 
     # Fix problem that SSH_AUTH_SOCK not updated in tmux
