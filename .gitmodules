@@ -26,3 +26,6 @@
 [submodule "gdb/repos/gef"]
 	path = gdb/repos/gef
 	url = https://github.com/hugsy/gef
+[submodule "gdb/repos/gdb-colour-filter"]
+	path = gdb/repos/gdb-colour-filter
+	url = https://github.com/daskol/gdb-colour-filter

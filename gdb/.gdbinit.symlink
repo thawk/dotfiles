@@ -26,6 +26,8 @@ if 'DOTFILES_ROOT' in os.environ:
   import offsets
   # blocked
   import gdbDisplayLockedThreads
+
+  import colour_filter
 end
 
 #python
