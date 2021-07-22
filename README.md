@@ -45,6 +45,9 @@ git clone https://github.com/thawk/dotfiles.git ~/.dotfiles
 
 升级后应再次运行``~/.dotfiles/bootstrap.sh``以更新插件配置，更新符号连接等。
 
+如果需要支持aarch64，需要从 https://github.com/romkatv/gitstatus/releases 下载相应可执行程序，放到 ``~/.zinit/plugins/romkatv---powerlevel10k/gitstatus/usrbin/
+`` 下。
+
 ## 配置
 
 ### 运行时配置
