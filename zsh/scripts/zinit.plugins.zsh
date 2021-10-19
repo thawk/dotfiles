@@ -39,7 +39,6 @@ zinit wait lucid for \
     OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh \
     atload"unalias grv" OMZ::plugins/git/git.plugin.zsh
 
-
 zinit ice wait"0" blockf lucid
 zinit light zsh-users/zsh-completions
 
