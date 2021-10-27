@@ -534,7 +534,7 @@ then
     info 'Setup submodules...'
     pushd "${DOTFILES_ROOT}" > /dev/null
     git submodule sync > /dev/null
-    git submodule update --init --remote --no-fetch
+    git submodule update --init --no-fetch
     popd > /dev/null
     info '    Done'
 fi
