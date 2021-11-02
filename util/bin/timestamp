@@ -19,13 +19,21 @@ else
     while [ $# -gt 0 ]
     do
         ts=$1
-        if [[ $ts -lt 253402300800 ]]; then
+        if [[ ${#ts} -ge 19 ]]; then
+            # timestamp, nanoseconds
+            l=${#ts}
+            epoch=${ts:0:$(($l-9))}
+            subsecs=.$(printf "%09d" ${ts:$(($l-9))})
+        elif [[ $ts -lt 253402300800 ]]; then
+            # timestamp, seconds
             epoch=$ts
             subsecs=
         elif [[ $ts -lt 253402300800000 ]]; then
+            # timestamp, milliseconds
             epoch=$((ts / 1000))
             subsecs=.$(printf "%03d" $((ts % 1000)))
         elif [[ $ts -lt 64060588800000000 ]]; then
+            # timestamp, microseconds
             epoch=$((ts / 1000000))
             subsecs=.$(printf "%06d" $((ts % 1000000)))
         else
