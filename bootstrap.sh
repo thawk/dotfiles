@@ -372,7 +372,7 @@ get_enabled_dir() {
 
     for dir in "${dirs[@]}"
     do
-        if [ -e "${dir}/disabled" ]
+        if [ -e "${dir}/disabled" ] || [ -e "${dir}/disabled.global" ]
         then
             continue
         fi
