@@ -183,14 +183,17 @@ EXEC 01;31  # Unix
 .org 32
 .md 32
 .mkd 32
+.adoc 32
+.asciidoc 32
 
 # Source text
 .h 32
-.c 32
-.C 32
-.cc 32
-.cxx 32
-.objc 32
+.c 33
+.C 33
+.cc 33
+.cxx 33
+.cpp 33
+.objc 33
 .sh 32
 .csh 32
 .zsh 32
@@ -207,6 +210,8 @@ EXEC 01;31  # Unix
 .html 32
 .shtml 32
 .xml 32
+.json 32
+.jam 32
 .rdf 32
 .css 32
 .js 32
@@ -226,6 +231,10 @@ EXEC 01;31  # Unix
 .p 32
 .pod 32
 .tex 32
+*Jamfile 32
+*Jamfile.v2 32
+*Jamroot 32
+*Jamroot.v2 32
 
 ### Multimedia formats
 
