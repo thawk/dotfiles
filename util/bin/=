@@ -6,11 +6,8 @@ from math import *
 from struct import pack
 from re import sub
 result=($@)
-if isinstance(result, int):
+if isinstance(result, int) or isinstance(result, long):
     count=int(ceil(result.bit_length()/8.0))
-    bytes=pack(">Q" if result >= 0 else ">q", result)
-    if isinstance(bytes[0], type('c')):
-        bytes=map(ord, bytes)
 
     s = '{0}'.format(result)
     s += '\t'
@@ -24,8 +21,15 @@ if isinstance(result, int):
     s += sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
     s += '\t'
     s += sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}X}'.format(result, count*8))
-    s += '\t'
-    s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
+
+    try:
+        bytes=pack(">Q" if result >= 0 else ">q", result)
+        if isinstance(bytes[0], type('c')):
+            bytes=map(ord, bytes)
+        s += '\t'
+        s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
+    except:
+        pass
     
     print(s)
 else:
