@@ -20,7 +20,8 @@ if isinstance(result, int) or isinstance(result, long):
     s += '\t'
     s += sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
     s += '\t'
-    s += sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}X}'.format(result, count*8))
+    if count <= 4:
+        s += sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}b}'.format(result, count*8))
 
     try:
         bytes=pack(">Q" if result >= 0 else ">q", result)
