@@ -5,8 +5,9 @@ python - << EOD
 from math import *
 from struct import pack
 from re import sub
+import sys
 result=($@)
-if isinstance(result, int) or isinstance(result, long):
+if isinstance(result, int) or (sys.version_info[0]<3 and isinstance(result, long)):
     count=int(ceil(result.bit_length()/8.0))
 
     s = '{0}'.format(result)
