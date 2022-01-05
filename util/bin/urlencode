@@ -17,7 +17,6 @@ urlencode_ () {
 			(*) printf '%%%02X' "'${char}" ;;
 		esac
 	done
-	printf '\n'
 }
 
 if [ $# -gt 0 ]
