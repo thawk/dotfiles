@@ -15,6 +15,11 @@ set-option -g prefix C-a
 bind C-a send-prefix
 bind a last-window
 
+# options sugested by nvim :checkhealth
+set-option -sg escape-time 10
+if-shell '~/.tmux/version-ge.sh 1.9' '\
+    set-option -g focus-events on'
+
 # Window numbering from 1
 #set-option -g base-index 1
 
