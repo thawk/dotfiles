@@ -1,39 +1,123 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python
 # vim: set fileencoding=utf-8 tabstop=4 expandtab shiftwidth=4 softtabstop=4:
 
-python - << EOD
 from math import *
 from struct import pack
-from re import sub
+import re
 import sys
-result=($@)
-if isinstance(result, int) or (sys.version_info[0]<3 and isinstance(result, long)):
-    count=int(ceil(result.bit_length()/8.0))
 
-    s = '{0}'.format(result)
-    s += '\t'
-    if result >= 0:
-        s += '0x{0:0>{1}X}'.format(result, count*2)
+TAB_SIZE = 8
+
+def padding(s):
+    """
+    >>> padding('')
+    '        '
+    """
+    pos = int(floor((len(s)+TAB_SIZE)/TAB_SIZE))*TAB_SIZE
+    return (pos - len(s))*' '
+
+
+def handle(s):
+    """Print the value of expression s in a resonable way.
+
+    >>> handle("0")
+    0       0x0     0o0     0b0
+
+    >>> handle("1")
+    1       0x01    0o1     0b00000001      .
+
+    >>> handle("1.")
+    1.0
+
+    >>> handle("2")
+    2       0x02    0o2     0b00000010      .
+
+    >>> handle("8")
+    8       0x08    0o10    0b00001000      .
+
+    >>> handle("65")
+    65      0x41    0o101   0b01000001      A
+
+    >>> handle("5432")
+    5432    0x1538  0o12470 0b0001010100111000      .8
+
+    >>> handle("1234567890")
+    1234567890      0x499602D2      0o11145401322   0b01001001100101100000001011010010      I...
+
+    >>> handle("12345678901")
+    12345678901     0x02DFDC1C35    0o133767016065  ....5
+
+    >>> handle("0x1538")
+    5432    0x1538  0o12470 0b0001010100111000      .8
+
+    >>> handle("0x02DFDC1C35")
+    12345678901     0x02DFDC1C35    0o133767016065  ....5
+
+    >>> handle("0x11223344556677889900")
+    80911113678783024503040 0x11223344556677889900  0o21104315042526316742114400
+
+    >>> handle("44 55 66 77")
+    1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
+
+    >>> handle("4455 6677")
+    1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
+
+    >>> handle("4455 66 77")
+    1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
+
+    >>> handle("44 5566 77")
+    1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
+
+    >>> handle("0x44 55 66 77")
+    Traceback (most recent call last):
+    SyntaxError: invalid syntax
+
+    >>> handle("aa BB cc DD")
+    2864434397      0xAABBCCDD      0o25256746335   0b10101010101110111100110011011101      ....
+
+    >>> handle("1+2 * 3")
+    7       0x07    0o7     0b00000111      .
+
+    >>> handle("1+2 * 3 + sqrt(4)")
+    9.0
+    """
+
+    if re.match(r'^\s*([0-9a-fA-F]{2}|[0-9a-fA-F]{4})(\s+([0-9a-fA-F]{2}|[0-9a-fA-F]{4}))+\s*$', s):
+        s = '0x' + re.sub(r'\s+', '', s)
+
+    result = eval(s)
+    if isinstance(result, int) or (sys.version_info[0]<3 and isinstance(result, long)):
+        count=int(ceil(result.bit_length()/8.0))
+
+        s = '{0}'.format(result)
+        s += padding(s)
+        if result >= 0:
+            s += '0x{0:0>{1}X}'.format(result, count*2)
+        else:
+            s += '0x{0:0>{1}X}'.format(result+256**count, count*2)
+            s += padding(s)
+            s += re.sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2))
+
+        s += padding(s)
+        s += re.sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
+
+        if count <= 4:
+            s += padding(s)
+            s += re.sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}b}'.format(result, count*8))
+
+        try:
+            bytes=pack(">Q" if result >= 0 else ">q", result)
+            if isinstance(bytes[0], type('c')):
+                bytes=map(ord, bytes)
+
+            s += padding(s)
+            s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
+        except:
+            pass
+
+        print(s.strip())
     else:
-        s += '0x{0:0>{1}X}'.format(result+256**count, count*2)
-        s += '\t'
-        s += sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2))
-    s += '\t'
-    s += sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
-    s += '\t'
-    if count <= 4:
-        s += sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}b}'.format(result, count*8))
+        print(result)
 
-    try:
-        bytes=pack(">Q" if result >= 0 else ">q", result)
-        if isinstance(bytes[0], type('c')):
-            bytes=map(ord, bytes)
-        s += '\t'
-        s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
-    except:
-        pass
-    
-    print(s)
-else:
-    print(result)
-EOD
+if __name__ == '__main__':
+    handle(' '.join(sys.argv[1:]))
