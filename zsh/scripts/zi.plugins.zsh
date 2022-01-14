@@ -1,6 +1,11 @@
 ZI_HOME="${ZDOTDIR:-$HOME}/.zi"
 
 if [[ ! -f "$ZI_HOME/bin/zi.zsh" ]]; then
+    if ! (( $+commands[git] )); then
+        # Doesn't has git, can't install ZI, exiting
+        return
+    fi
+
     print -P "%F{33}▓▒░ %F{220}Installing z-shell/zi …%f"
     command mkdir -p "${ZI_HOME}" && command chmod g-rwX "${ZI_HOME}"
     command git clone https://github.com/z-shell/zi "${ZI_HOME}/bin" && \
