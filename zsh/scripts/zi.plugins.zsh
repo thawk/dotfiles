@@ -111,7 +111,8 @@ PS1="READY >" # provide a nice prompt till the theme loads
 
 #zi light agnoster/agnoster-zsh-theme
 
-source "$DOTFILES_ROOT/zsh/scripts/powerlevel9k.conf.zsh"
+# source "$DOTFILES_ROOT/zsh/scripts/powerlevel9k.conf.zsh"
+source "$DOTFILES_ROOT/zsh/scripts/p10k.conf.zsh"
 #zi light bhilburn/powerlevel9k
 zi light romkatv/powerlevel10k
 

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+ansi_mappings=(
+  Black
+  Red
+  Green
+  Yellow
+  Blue
+  Magenta
+  Cyan
+  White
+  BrightBlack
+  BrightRed
+  BrightGreen
+  BrightYellow
+  BrightBlue
+  BrightMagenta
+  BrightCyan
+  BrightWhite
+)
+color_names=(
+  black
+  red
+  green
+  yellow
+  blue
+  magenta
+  cyan
+  white
+  grey
+  maroon
+  lime
+  olive
+  navy
+  fuchsia
+  aqua
+  silver
+)
+for padded_value in `seq -w 0 15`; do
+  non_padded_value=$((10#$padded_value))
+  text_color=0
+  [[ $non_padded_value -lt 2 ]] && text_color=15
+  color_variable="color${padded_value}"
+  color_name=${color_names[$non_padded_value]}
+  ansi_label=${ansi_mappings[$non_padded_value]} 
+  block=$(printf "\x1b[48;5;${non_padded_value}m______")
+  foreground=$(printf "\x1b[38;5;${non_padded_value}m$color_variable")
+  text_foreground=$(printf "\x1b[38;5;${text_color}m")
+  printf "%s %s %s%-7s %-13s \x1b[0m\n" $foreground $block $text_foreground $color_name ${ansi_label:-""}
+done;
