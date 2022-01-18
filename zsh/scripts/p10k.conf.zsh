@@ -910,7 +910,7 @@
   typeset -g POWERLEVEL9K_CONTEXT_ROOT_BACKGROUND="black"
   # Context color in SSH without privileges.
   typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_FOREGROUND="black"
-  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_BACKGROUND="yellow"
+  typeset -g POWERLEVEL9K_CONTEXT_{REMOTE,REMOTE_SUDO}_BACKGROUND="green"
   # Default context color (no privileges, no SSH).
   typeset -g POWERLEVEL9K_CONTEXT_FOREGROUND="black"
   typeset -g POWERLEVEL9K_CONTEXT_BACKGROUND="green"
