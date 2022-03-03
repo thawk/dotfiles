@@ -4,87 +4,13 @@ import logging
 import os
 import sys
 import json
+import yaml
 
-PROFILE_NAME = "SpaceFN45"
-COND_NAME = "SpaceFN45"
 TRIGGER_KEY = "spacebar"
-
-rules = [
-    {
-        "description": "SpaceFN45: Space+b to Space",
-        "keys": (
-            ("b", "spacebar"),
-        )
-    },
-    {
-        "description": "SpaceFN45: Space+[hjkl] to Left, Down, Up, Right",
-        "keys": (
-            ("h", "left_arrow"),
-            ("j", "down_arrow"),
-            ("k", "up_arrow"),
-            ("l", "right_arrow"),
-        )
-    },
-    {
-        "description": "SpaceFN45: Space+[asdfg] to Ins, Home, PageDown, PageUp, End",
-        "keys": (
-            ("a", "insert"),
-            ("s", "home"),
-            ("d", "page_down"),
-            ("f", "page_up"),
-            ("g", "end"),
-        )
-    },
-    {
-        "description": "SpaceFN45: Space+[q-p] to [0-9]",
-        "keys": (
-            ("tab", "grave_accent_and_tilde"),
-            ("q", "1"),
-            ("w", "2"),
-            ("e", "3"),
-            ("r", "4"),
-            ("t", "5"),
-            ("y", "6"),
-            ("u", "7"),
-            ("i", "8"),
-            ("o", "9"),
-            ("p", "0"),
-        )
-    },
-    {
-        "description": "SpaceFN45: Space+Backquote (`) to Escape, Space+[1-9] to F[1-9], Space+0 to F10, Space+Hyphen (-) to F11, Space+Equal Sign (=) to F12, Space+Slash to BackSlash",
-        "keys": (
-            ("grave_accent_and_tilde", "escape"),
-            #  ("grave_accent_and_tilde", "grave_accent_and_tilde"),
-            ("slash", "backslash"),
-            ("1", "f1"),
-            ("2", "f2"),
-            ("3", "f3"),
-            ("4", "f4"),
-            ("5", "f5"),
-            ("6", "f6"),
-            ("7", "f7"),
-            ("8", "f8"),
-            ("9", "f9"),
-            ("0", "f10"),
-            ("hyphen", "f11"),
-            ("equal_sign", "f12"),
-        )
-    },
-    {
-        "description": "SpaceFN45: Space+p to Print Screen, Space+Open Bracket ([) to Scroll Lock, Space+Close Bracket (]) to Pause, Space+Backspace to Forward Delete, Space+Backslash (\\) to Insert",
-        "keys": (
-            ("return", "print_screen"),
-            ("open_bracket", "scroll_lock"),
-            ("close_bracket", "pause"),
-            ("backslash", "insert"),
-            ("delete_or_backspace", "delete_forward"),
-        )
-    },
-]
 
 def gen_simultaneous_key(cond_name, trigger_key, from_key, to_key):
     return {
+        "type": "basic",
         "from": {
             "modifiers": {
                 "optional": [
@@ -123,11 +49,11 @@ def gen_simultaneous_key(cond_name, trigger_key, from_key, to_key):
                 "key_code": to_key
             }
         ],
-        "type": "basic"
     }
 
 def gen_single_key(cond_name, from_key, to_key):
     return {
+        "type": "basic",
         "conditions": [
             {
                 "name": cond_name,
@@ -148,26 +74,25 @@ def gen_single_key(cond_name, from_key, to_key):
                 "key_code": to_key
             }
         ],
-        "type": "basic"
     }
 
 
-def gen_rule(rule):
+def gen_rule(rule, cond_name):
     manipulators = []
 
-    for (from_key, to_key) in rule["keys"]:
+    for (from_key, to_key) in rule["keys"].items():
         manipulators.append(gen_simultaneous_key(
-            COND_NAME, TRIGGER_KEY, from_key, to_key))
+            cond_name, TRIGGER_KEY, from_key, to_key))
         manipulators.append(gen_single_key(
-            COND_NAME, from_key, to_key))
+            cond_name, from_key, to_key))
 
     return {
         "description" : rule["description"],
         "manipulators" : manipulators,
     }
 
-def gen_rules(rules):
-    return [gen_rule(rule) for rule in rules]
+def gen_rules(rules, cond_name):
+    return [gen_rule(rule, cond_name) for rule in rules]
 
 def gen_function_keys():
     return [
@@ -269,7 +194,7 @@ def gen_function_keys():
         }
     ]
 
-def gen_profile(name, rules):
+def gen_profile(profile_name, rules):
     profile =  {
         "complex_modifications": {
             "parameters": {
@@ -278,11 +203,11 @@ def gen_profile(name, rules):
                 "basic.to_if_alone_timeout_milliseconds": 1000,
                 "basic.to_if_held_down_threshold_milliseconds": 500
             },
-            "rules" : gen_rules(rules),
+            "rules" : gen_rules(rules, profile_name),
         },
         "devices": [],
         "fn_function_keys": gen_function_keys(),
-        "name": name,
+        "name": profile_name,
         "selected": False,
         "simple_modifications": [],
         "virtual_hid_keyboard": {
@@ -292,8 +217,20 @@ def gen_profile(name, rules):
 
     return profile
 
+def load_cfg(cfg_file):
+    with open(cfg_file, 'r') as f:
+        cfg = yaml.safe_load(f)
+
+    return cfg['profile_name'], cfg['rules']
+
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("need to specify the YAML config file")
+        exit(1)
+
+    profile_name, rules = load_cfg(sys.argv[1])
+
     print(json.dumps(
-        gen_profile(PROFILE_NAME, rules),
+        gen_profile(profile_name, rules),
         indent=2
     ))
