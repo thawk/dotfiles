@@ -1,10 +1,12 @@
 ## How to use
 
-1. Run ``./generate_cfg.py | pbcopy`` to copy the generated profile into clipboard
+1. Run ``./SpaceFN.py | pbcopy`` to copy the generated profile into clipboard
 1. Paste the profile into the ``profiles`` list inside ``$HOME/.config/karabiner/karabiner.json``
 1. Select the ``SpaceFN`` profile from ``karabiner-elements``
 
 ## The generated layout
+
+### SpaceFN
 
 ```
 .-----------------------------------------------------------.
@@ -19,3 +21,20 @@
 |    |    |    |                        |    |    |    |    |
 '-----------------------------------------------------------'
 ```
+
+### SpaceFN45
+
+```
+.-----------------------------------------------------------.
+|ESC|F1 |F2 |F3 |F4 |F5 |F6 |F7 |F8 |F9 |F10|F11|F12|   Del |
+|-----------------------------------------------------------|
+|  `  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 |Slk|Pau| Ins |
+|-----------------------------------------------------------|
+|      |Ins|Hom|PgD|PgU|End|Lef|Dow|Up |Rig| ; |  '   | Psc |
+|-----------------------------------------------------------|
+|        |   |   |   |   |SPC|   |   |   |   | \ |          |
+|-----------------------------------------------------------|
+|    |    |    |                        |    |    |    |    |
+'-----------------------------------------------------------'
+```
+
