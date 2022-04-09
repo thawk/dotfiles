@@ -7,14 +7,7 @@ rm -f "$(dirname "$env_file")"/*
 : > "${env_file}"
 : > "${editor_file}"
 
-if [ -d /usr/local/sbin ]; then
-    case ":${PATH:-}:" in
-        *:/usr/local/sbin:*) ;;
-        *) echo "export PATH=/usr/local/sbin:\$PATH" >> "${env_file}" ;;
-    esac
-fi
-
-if [ -d ~/bin ]; then
+if [[ -d ~/bin ]]; then
     echo "export PATH=~/bin:\$PATH" >> "${env_file}"
 fi
 
