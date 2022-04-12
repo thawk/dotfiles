@@ -466,6 +466,18 @@ generate_script_file() {
     done
 }
 
+update_subtrees() {
+    git subtree pull --squash --prefix dynamic-colors/dynamic-colors https://github.com/thawk/dynamic-colors.git master
+    git subtree pull --squash --prefix fasd/src https://github.com/clvv/fasd.git master
+    git subtree pull --squash --prefix fpp/PathPicker https://github.com/facebook/PathPicker.git master
+    git subtree pull --squash --prefix gdb/repos/Boost-Pretty-Printer https://github.com/ruediger/Boost-Pretty-Printer master
+    git subtree pull --squash --prefix gdb/repos/Gdbinit https://github.com/thawk/Gdbinit master
+    git subtree pull --squash --prefix gdb/repos/gdb-automatic-deadlock-detector https://github.com/xmementoit/gdb-automatic-deadlock-detector master
+    git subtree pull --squash --prefix gdb/repos/gdb-colour-filter https://github.com/thawk/gdb-colour-filter master
+    git subtree pull --squash --prefix myrepos/src https://github.com/thawk/myrepos.git master
+    git subtree pull --squash --prefix percol/src https://github.com/mooz/percol.git master
+}
+
 EchoUsage()
 {
     echo "
@@ -473,6 +485,7 @@ Usage: $(basename "$0") [options] [--]
 
     Options:
         -h|help                 Display this message
+        -u|update               Update subtrees
         -V|version              Display script version
         -v|verbose              Display more verbose log
         -t|target <TARGET_DIR>  Target directory, defaults to \$HOME
@@ -484,10 +497,14 @@ DRY_RUN=
 VERBOSE=
 TARGET="$HOME"
 
-while getopts ":hVvt:d" opt; do
+while getopts ":huVvt:d" opt; do
     case $opt in
         h|help)
             EchoUsage
+            exit 0
+            ;;
+        u|update)
+            update_subtrees
             exit 0
             ;;
         V|version)
@@ -528,16 +545,6 @@ info ""
 
 info "Install to $TARGET..."
 info ""
-
-if [ -d "${DOTFILES_ROOT}/.git" ]
-then
-    info 'Setup submodules...'
-    pushd "${DOTFILES_ROOT}" > /dev/null
-    git submodule sync > /dev/null
-    git submodule update --init --no-fetch
-    popd > /dev/null
-    info '    Done'
-fi
 
 typeset -a dirs
 
