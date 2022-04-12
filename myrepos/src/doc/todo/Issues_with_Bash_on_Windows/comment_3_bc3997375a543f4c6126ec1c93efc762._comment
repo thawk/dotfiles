@@ -1,0 +1,9 @@
+[[!comment format=mdwn
+ username="tobias.brandt@7743a4214ef91db7c3e3a7e80d8553e8725dc92c"
+ nickname="tobias.brandt"
+ avatar="http://cdn.libravatar.org/avatar/d8aec090bed3518ebcb66c2063dbdf0b"
+ subject="Encountering the same error on WSL"
+ date="2018-08-19T16:25:34Z"
+ content="""
+I hit the same error just now on WSL. Still getting the 127 error as I'm using Ubuntu 16.04 package version of mr.
+"""]]

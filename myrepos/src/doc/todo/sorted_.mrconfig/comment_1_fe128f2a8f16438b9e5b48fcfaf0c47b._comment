@@ -1,0 +1,27 @@
+[[!comment format=mdwn
+ username="hello@ba09c8bb59ae91163b65dfbd0b66e3f1cc450ffe"
+ nickname="hello"
+ avatar="http://cdn.libravatar.org/avatar/0846020203474ffe096f5cbd58cc98d5"
+ subject="Alternative Sorting Method with GAWK"
+ date="2018-10-01T23:51:42Z"
+ content="""
+I am by no way a command line expert, but I was unable to get the sort-ini method to work for me so I looked into generalized sorting by pattern and came across a site that had an example that was pretty close to what I needed.
+
+A couple of paragraphs down the original example is labeled \"Robbins' awk based shell pipeline\"
+ 
+http://homepage.smc.edu/morgan_david/linadmin/labs/sort-multiline-blocks.htm
+
+From there I came to this
+
+```
+gawk -v RS=\"\" '{ gsub(\"\n\", \"###\"); print }' .mrconfig | sort -f | gawk -v ORS=\"\n\n\" '{ gsub(\"###\", \"\n\"); print }' > .mrconfig.tmp && mv .mrconfig.tmp .mrconfig
+```
+
+The `###` is my temp replacement for the newline so that sort can be used, at which point it is returned to a newline. I had trouble with the `^Z` characters in the example. 
+
+Which I then set up as an alias
+
+```
+alias mrsort=\"gawk -v RS=\\"\\" '{ gsub(\\"\n\\", \\"###\\"); print }' .mrconfig | sort -f | gawk -v ORS=\\"\n\n\\" '{ gsub(\\"###\\", \\"\n\\"); print }' > .mrconfig.tmp && mv .mrconfig.tmp .mrconfig\"
+```
+"""]]

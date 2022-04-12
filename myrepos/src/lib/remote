@@ -1,0 +1,7 @@
+git_remote = git remote -v "$@"
+svn_remote = svn info --show-item url "$@"
+git_svn_remote = git svn info --url "$@"
+cvs_remote = cat CVS/Root CVS/Repository
+git_cvs_remote = sed -n s/^CVSROOT=//p .gitcvsrc ; sed -n s/^MODULE=//p .gitcvsrc
+darcs_remote = darcs show repo "$@"
+hg_remote = hg paths "$@"

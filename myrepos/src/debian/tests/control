@@ -1,0 +1,1 @@
+Test-Command: make test TEST_PREFIX=/usr/bin/

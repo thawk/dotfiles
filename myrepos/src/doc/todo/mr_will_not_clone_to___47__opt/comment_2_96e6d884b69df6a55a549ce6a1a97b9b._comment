@@ -1,0 +1,10 @@
+[[!comment format=mdwn
+ username="PaulWise"
+ avatar="http://cdn.libravatar.org/avatar/3bf5f3b29a3d68ddf11eb1a3d8c5dc65"
+ subject="works for me"
+ date="2018-11-11T07:51:39Z"
+ content="""
+I tried this in a chroot and it works for me.
+
+Which directory are you running `mr up` etc from?
+"""]]

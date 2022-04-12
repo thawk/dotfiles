@@ -1,0 +1,8 @@
+[[!comment format=mdwn
+ username="PaulWise"
+ avatar="http://cdn.libravatar.org/avatar/3bf5f3b29a3d68ddf11eb1a3d8c5dc65"
+ subject="similar changes across multiple repos?"
+ date="2018-07-24T09:45:56Z"
+ content="""
+Would it make sense to run `gbp dch` on multiple repos after making a change using sed or another automated mechanism?
+"""]]

@@ -1,0 +1,10 @@
+[[!comment format=mdwn
+ username="mforbes"
+ avatar="http://cdn.libravatar.org/avatar/e497ff9efad76394e98daa506ebc8fef"
+ subject="Symlinked Repos"
+ date="2018-05-22T08:10:53Z"
+ content="""
+I too would greatly appreciate being able to track symlinks with myrepos.  (Quite often I will store the repo in a common location, but use it in several other projects via a symlinks).
+
+This used to work, but was broken in revision 52e2de0bdeb8b892c8b83fcad54543f874d4e5b8
+"""]]

@@ -1,0 +1,20 @@
+[[!comment format=mdwn
+ username="PaulWise"
+ avatar="http://cdn.libravatar.org/avatar/3bf5f3b29a3d68ddf11eb1a3d8c5dc65"
+ subject="not possible yet"
+ date="2018-11-12T01:37:47Z"
+ content="""
+This isn't possible at this time, the mr command-line options are only able to be set on the command-line.
+
+The minimal option is implemented in mr, not in the *_status values that specify commands. It works by supervising the output of the commands and only printing the mr parts of the output when there is command output or errors.
+
+I can see that this idea would definitely be useful to some folks.
+
+I think any implementation of this idea probably should have these features:
+
+* allow replacing, prepending, appending and setting the default options like the other value setting mechanisms do, for maximum flexibility in setting up the options
+* allow setting the options in the DEFAULT section or in any of the repository sections, to allow setting them on a per-repository basis
+* allow setting the options differently for each command type and each repository type, for maximum flexibility
+* add options for turning off options (like --no-minimal), so that there is more flexibility about when to turn them on/off
+* *only* allow setting a whitelisted set of *safe* options, so that this doesn't cause any security issues
+"""]]

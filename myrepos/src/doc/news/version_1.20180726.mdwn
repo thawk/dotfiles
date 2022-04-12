@@ -1,0 +1,24 @@
+myrepos 1.20180726 released with [[!toggle text="these changes"]]
+[[!toggleable text="""
+ * [ Mark Haber ]
+   * Fix hours_since for git fake bare repos
+
+ * [ Tom Hoover ]
+   * Fix 'no defined update command error' in example config
+
+ * [ Pavel Nakonechnyi ]
+   * More meaningful names for temporary files
+
+ * [ Paul Wise ]
+   * Mitigate vulns caused by git code execution (CVE-2018-7032)
+   * Migrate from ack-grep to ack
+   * More reliable output supervision
+   * Improve the status output for CVS
+   * Improve the git-cvs extension
+   * Allow prepending commands to existing commands
+   * Allow for fallback to default commands
+   * Add support for caching command output
+   * Add shell extension to maintain a repo status cache
+   * Add graph, remote, upgrade extensions
+   * git registration improvements
+   * webcheckout: prefer https transport"""]]

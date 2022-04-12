@@ -1,0 +1,74 @@
+Source: myrepos
+Section: vcs
+Priority: optional
+Build-Depends:
+ debhelper (>= 10~),
+ dpkg-dev (>= 1.9.0),
+Maintainer: Richard Hartmann <richih@debian.org>
+Uploaders:
+ Paul Wise <pabs@debian.org>,
+Standards-Version: 4.1.5
+Rules-Requires-Root: no
+Homepage: https://myrepos.branchable.com/
+Vcs-Git: git://myrepos.branchable.com/
+Vcs-Browser: http://source.myrepos.branchable.com/?p=source.git;a=summary
+
+Package: myrepos
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ perl,
+ ${misc:Depends},
+Suggests:
+ ack (>= 2.15.01) | ack-grep,
+ bzr,
+ curl,
+ cvs,
+ darcs,
+ dgit,
+ fossil,
+ git-annex,
+ git-big-picture,
+ git-core | git (>= 1:1.7),
+ git-svn,
+ gitk | tig,
+ kdesdk-scripts,
+ liburi-perl,
+ mercurial,
+ perl-doc,
+ stow,
+ subversion,
+ subversion-tools,
+ unison,
+ vcsh,
+ xdg-utils,
+Provides:
+ mr,
+Replaces:
+ mr,
+Recommends:
+ libfile-homedir-perl,
+ libhtml-parser-perl,
+ libio-pty-easy-perl,
+ libwww-perl,
+Description: tool to manage all your version control repos
+ The mr(1) command can checkout, update, or perform other actions on
+ a set of repositories as if they were one combined repository. It
+ supports any combination of git, svn, mercurial, bzr, darcs, cvs, vcsh,
+ fossil, and veracity repositories, and support for other version control
+ systems can easily be added. (There are extensions adding support for unison
+ and git-svn, among others.)
+ .
+ It is extremely configurable via simple shell scripting. Some examples
+ of things it can do include:
+ .
+  * Update a repository no more frequently than once every twelve hours.
+  * Run an arbitrary command before committing to a repository.
+  * When updating a git repository, pull from two different upstreams
+    and merge the two together.
+  * Run several repository updates in parallel, greatly speeding up
+    the update process.
+  * Remember actions that failed due to a laptop being offline, so they
+    can be retried when it comes back online.
+  .
+  This package also includes the webcheckout command.

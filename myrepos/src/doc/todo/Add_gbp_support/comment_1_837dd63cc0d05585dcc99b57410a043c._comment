@@ -1,0 +1,21 @@
+[[!comment format=mdwn
+ username="pabs3@49c776417680694a0f3295ee80df4edfca300096"
+ nickname="pabs3"
+ avatar="http://cdn.libravatar.org/avatar/3bf5f3b29a3d68ddf11eb1a3d8c5dc65"
+ subject="please link to a git repository"
+ date="2018-05-24T01:03:48Z"
+ content="""
+Please add a link to a git repository containing the commit you want to add.
+
+Some suggestions for that:
+
+Please include the gbp support as a plugin rather than in mr itself.
+
+Please add a copyright and license notice in comments at the start of the plugin.
+
+Please add some documentation in comments at the start of the plugin.
+
+Please use perl: for the gbp_test/git_test code, it is faster and most of the other *_test code uses it.
+
+Please sync gbp_grep with git_grep, the latter always returns true.
+"""]]

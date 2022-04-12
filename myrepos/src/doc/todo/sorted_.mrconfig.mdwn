@@ -1,0 +1,7 @@
+it would be nice if mr would keep things in order while adding stuff to our every-growing `.mrconfig` files. I try to keep mine sorted, and did that by hand until I had to add a bunch of entries at once (because i managed to [[detect_unregistered_repos_in_tree]]), and it was then really impractical.
+
+I hacked together this ridiculous Python script which reads a .INI file from stdin (or commandline arguments) and spews out a sorted version on stdout. A simple way to use this is:
+
+    sort-ini ~/.mrconfig | sponge ~/.mrconfig
+
+The script is [sort-ini](https://gitlab.com/anarcat/scripts/raw/2dc32c23496b5c3c33d09ed78e7b3acbdc7fe5eb/sort-ini) and is available in my [scripts repo](https://gitlab.com/anarcat/scripts/). --[[anarcat]]

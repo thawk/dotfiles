@@ -1,0 +1,26 @@
+##Possible Bug
+
+I've been using mr to manage dozens of git repos for many years (most live in my home directory). Today, I ran into something that didn't work. I had decided to manage `/opt` in a git repo, and I added the following configuration lines:
+
+    [/opt]
+    checkout = git clone 'https://github.com/tomhoover/docker-compose.git' 'opt'
+    skip = ! test "$(whoami)" = root
+    fixups = chmod 755 /opt
+
+Running `mr up` didn't do anything (nor even list the `/opt` repo within its output--it acted as if it had been skipped), so I deleted the `skip` line above and tried again--still a no-go.
+
+ All of the above was attempted while logged in as **root**, and I verified the **/opt** directory did not already exist.
+
+##Additional info
+To verify git was working properly, I executed `git clone 'https://github.com/tomhoover/docker-compose.git' 'opt' && chmod 755 /opt` from **/**, as **root**, and it worked as expected. After manually cloning the repo into **/opt**, I attemped `mr up`, `mr push`, etc; however, mr continues to ignore the **/opt** git repo.
+
+From my reading of the **mrconfig.complex** example configuration file, there should be nothing preventing a repo from living at **/**, as the following example is included:
+
+    [/etc]
+    # I use etckeeper to keep /etc in git. But it only works if I'm root, 
+    # and if it's not already in etc, skip it.
+    skip = ! test -d /etc/.git || ! test "$(whoami)" = root
+
+*I'm certain I've overlooked something rather simple--please help. Thanks!*
+
+[[done]] --pabs: user error

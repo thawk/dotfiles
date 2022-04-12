@@ -1,0 +1,25 @@
+[[!comment format=mdwn
+ username="https://ao2.it/"
+ nickname="ao2"
+ avatar="http://cdn.libravatar.org/avatar/fe977073a31737b41b0ad0df63c0fba3972c817fdda57399e6d1880eb7194beb"
+ subject="process a repository before anything else"
+ date="2019-01-24T22:06:37Z"
+ content="""
+Hi,
+
+I too experienced this issue with `order` an `jobs`, but in my case I wanted
+to process one specific repository (the vcsh one with `order=1`) **before**
+all the others.
+
+The specific case I wanted to cover is when the main vcsh repository has some
+updated hooks, so I want it to be updated before updating or cloning all the
+other repositories managed by vcsh.
+
+The idea of having some value of `order` mean \"*first*\" or \"*last*\", and
+serialize the repositories which use them outside of the multi-processing
+dispatch is tempting.
+
+Ciao,
+   Antonio
+
+"""]]

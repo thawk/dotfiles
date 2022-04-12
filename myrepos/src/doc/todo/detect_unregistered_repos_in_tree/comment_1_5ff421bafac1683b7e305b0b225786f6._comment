@@ -1,0 +1,12 @@
+[[!comment format=mdwn
+ username="anarcat"
+ avatar="http://cdn.libravatar.org/avatar/b486931ea9d27c0cc41a4e9e4daccb7c"
+ subject="find hack"
+ date="2018-04-29T17:39:42Z"
+ content="""
+I have just used this hack to workaround this issue:
+
+    find -maxdepth 1 -type d -a -\( -execdir grep -q {} ~/.mrconfig \; -o -okdir mr register '{}' \; -\)
+
+What it does is look in the current directory, one level deep, for directories and check if they are in `~/.mrconfig`. If they aren't, ask if they should be registered. Obviously, this should check for stuff like if `.git` exists and so on, but considering the variety of repos supported by mr, i figured I would keep this simple. --[[anarcat]]
+"""]]

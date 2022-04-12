@@ -1,0 +1,10 @@
+[[!comment format=mdwn
+ username="Tom"
+ avatar="http://cdn.libravatar.org/avatar/a39876f3fdeb0295ec9258bbb1b37f88"
+ subject="cd / && mr up"
+ date="2018-11-11T23:38:03Z"
+ content="""
+--->  In order to operate on /opt, you would first need to cd /  <---
+
+Thanks! I knew it had to be something simple. I was under the faulty assumption the absolute path in `[/opt]` would cause it to work when executing from my home directory.
+"""]]
