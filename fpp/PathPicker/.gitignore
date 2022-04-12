@@ -1,0 +1,11 @@
+# Vim swaps
+*.swo
+*.swp
+# python compiled files
+*.pyc
+# hg merge conflicts
+*.orig
+dist/*
+fpp.deb
+fpp*.deb
+debian/usr/
