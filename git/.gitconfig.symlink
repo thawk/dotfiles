@@ -12,13 +12,18 @@
     ci = commit
     st = status -s
     br = branch
-# hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+    # hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
     hist = log --abbrev-commit --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
+    # current branch related log
     lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
+    # log for all branches
     lga = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)' --all
+    # current branch's only, omit merge detail
     lgf = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)' --first-parent
+    # two lines format
     lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
-    lgd = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
+    # log with stat
+    lgs = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
     type = cat-file -t
     dump = cat-file -p
 
