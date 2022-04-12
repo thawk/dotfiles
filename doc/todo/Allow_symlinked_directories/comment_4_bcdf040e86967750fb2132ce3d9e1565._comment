@@ -1,0 +1,21 @@
+[[!comment format=mdwn
+ username="terrynbrown@5ea87878c9b9b78c5042c1c99c2bd387a2703633"
+ nickname="terrynbrown"
+ avatar="http://cdn.libravatar.org/avatar/870687a83f99c5885a6ac18bff762f28"
+ subject="re: Allow symlinked directories "
+ date="2019-02-12T19:07:47Z"
+ content="""
+I made a wrapper <https://github.com/tbnorth/mrls> to handle symlinks, it
+analyses ~/.mrconfig and generates output like:
+
+    N=47  mr -d /mnt/edata
+    N=2   mr -d /mnt/usr1
+    snnm pypanart drifters
+
+the first two lines being mr commands pointing to specific absolute paths
+you can copy paste to run on the relevant devices.
+
+The third line is a list of groups, I ended up adding the ability to define
+groups of repos. to manage together :-}
+
+"""]]

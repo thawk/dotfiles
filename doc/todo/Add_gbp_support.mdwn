@@ -1,0 +1,39 @@
+It would be use to add gbp (git buildpackage) support to myrepos.
+
+Here's the config I have created (I'm not sure where's best to post patches/PRs, so if someone can point me in the right direction I'll create one):
+
+    git_test = test -e "$MR_REPO/.git" && ! test -e "$MR_REPO/debian/gbp.conf"
+    gbp_test = test -e "$MR_REPO/.git" && test -e "$MR_REPO/debian/gbp.conf"
+    gbp_trusted_checkout = gbp clone $url
+    gbp_register = 
+    	   url="`LC_ALL=C git config --get remote.origin.url`" || true
+    	   if [ -z "$url" ]; then
+    	       error "cannot determine gbp url"
+    	   fi
+    	   echo "Registering gbp url: $url in $MR_CONFIG"
+    	   mr -c "$MR_CONFIG" config "`pwd`" checkout="gbp clone '$url'"
+    gbp_update = gbp pull
+    # additional
+    gbp_buildpackage = gbp buildpackage "$@"
+    gbp_importorig = gbp import-orig "$@"
+    gbp_importdsc = gbp import-dsc "$@"
+    gbp_importdscs = gbp import-dscs "$@"
+    gbp_dch = gbp dch "$@"
+    gbp_pq = gbp pq "$@"
+    gbp_createremoterepo = gbp create-remote-repo "$@"
+    # same as git
+    gbp_fetch = git fetch --all --prune --tags "$@"
+    gbp_status = git status -s "$@" || true; git --no-pager log --branches --not --remotes --simplify-by-decoration --decorate --oneline || true; git --no-pager stash list
+    gbp_commit = git commit -a "$@" && git push --all
+    gbp_record = git commit -a "$@"
+    gbp_push = git push "$@"
+    gbp_diff = git diff "$@"
+    gbp_log = git log "$@"
+    gbp_grep = git grep "$@"
+    gbp_clean = 
+    	   if [ "x$1" = x-f ] ; then
+    	       shift
+    	       git clean -dx --force "$@"
+    	   else
+    	       git clean -dx --dry-run "$@"
+    	   fi

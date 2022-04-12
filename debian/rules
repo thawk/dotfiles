@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_install:
+	dh_auto_install
+	sed -i '1s_^#!.*perl_#!/usr/bin/perl_' debian/myrepos/usr/bin/*
+
+# Not intended for use by anyone except the author.
+announcedir:
+	@echo ${HOME}/src/myrepos/doc/news

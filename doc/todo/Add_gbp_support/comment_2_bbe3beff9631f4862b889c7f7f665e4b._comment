@@ -1,0 +1,8 @@
+[[!comment format=mdwn
+ username="spwhitton"
+ avatar="http://cdn.libravatar.org/avatar/9c3f08f80e67733fd506c353239569eb"
+ subject="comment 2"
+ date="2018-05-25T09:36:09Z"
+ content="""
+I don't think I understand the value of this plugin.  The only gbp command that I can imagine wanting to run in batch across all my repos is `gbp clone`, so I could see the value of a short plugin that handles cloning and registering gbp repos.  But I don't see why you would ever want to run `gbp dch` across more than one repo at once.
+"""]]

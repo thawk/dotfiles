@@ -1,0 +1,6 @@
+/.debhelper/
+/debhelper-build-stamp
+/files
+/myrepos.debhelper.log
+/myrepos.substvars
+/myrepos/
