@@ -13,6 +13,11 @@ setproxy() {
     export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"nc -X 5 -x ${MY_SOCKS5_PROXY:-127.0.0.1:1080} %h %p\""
 }
 
+resetproxy() {
+    export all_proxy=
+    export GIT_SSH_COMMAND=
+}
+
 cdd() {
     if type tmux &> /dev/null
     then

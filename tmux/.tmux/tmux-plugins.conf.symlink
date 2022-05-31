@@ -84,11 +84,11 @@ set -g @pane_resize "5"
 #set -g @plugin 'tmux-plugins/tmux-continuum'
 #set -g @continuum-restore 'on'
 
-# In tmux copy mode:
-#   o - "open" a highlighted selection with the system default program. open for OS X or xdg-open for Linux.
-#   Ctrl-o - open a highlighted selection with the $EDITOR
-#   Shift-s - search the highlighted selection directly inside a search engine (defaults to google).
-set -g @plugin 'tmux-plugins/tmux-open'
+## In tmux copy mode:
+##   o - "open" a highlighted selection with the system default program. open for OS X or xdg-open for Linux.
+##   Ctrl-o - open a highlighted selection with the $EDITOR
+##   Shift-s - search the highlighted selection directly inside a search engine (defaults to google).
+#set -g @plugin 'tmux-plugins/tmux-open'
 
 # Enables displaying CPU and GPU information in Tmux status-right and status-left.
 # Configurable percentage and icon display.
@@ -98,7 +98,7 @@ set -g @plugin 'tmux-plugins/tmux-cpu'
 # In any tmux mode:
 #    prefix + f - "fpp" for a new window with a Facebook PathPicker selection of your tty.
 if-shell "type fpp &> /dev/null" "\
-    set -g @plugin 'thawk/tmux-fpp'"
+    set -g @plugin 'tmux-plugins/tmux-fpp'"
 
 # prefix + P - Toggle (start/stop) logging in the current pane.
 #
