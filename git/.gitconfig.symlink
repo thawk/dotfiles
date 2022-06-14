@@ -24,6 +24,8 @@
     lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
     # log with stat
     lgs = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
+    # only merges
+    lgm= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)' --merges
     type = cat-file -t
     dump = cat-file -p
 
