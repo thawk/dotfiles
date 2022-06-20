@@ -8,6 +8,6 @@ then
     # use exists b2 command
     false
 else
-    [ -d "$HOME/workspace" ] && (find -type d -name "boost_*" &> /dev/null)
+    [[ -d "$HOME/workspace" ]] && [[ -n "$(find $HOME/workspace -maxdepth 1 -type d -name "boost_*" &> /dev/null)" ]]
 fi
 
