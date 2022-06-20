@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-type brew &> /dev/null
+test -d ~/.linuxbrew || test -d /home/linuxbrew/.linuxbrew || type brew &> /dev/null
