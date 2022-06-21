@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Time: 2022-06-21 13:55:35
+
+# 读取二进制显示，打印对应的二进制及ASCII字符
+# 支持两种格式的输入：
+#
+# 00000000: 00 01 02
+#
+# 00 01 02
+
+dump_bytes()
+{
+    if type xxd &> /dev/null; then
+        xxd -g1
+    elif type hexdump &> /dev/null; then
+        hexdump -C
+    else
+        </dev/null echo "FATAL: Neither 'xxd' nor 'hexdump' found!" > /dev/stderr
+    fi
+}
+
+xd()
+{
+    sed -n \
+        -e "s/^[0-9a-fA-F]\{4,\}:\? *//" \
+        -e "s/^\(\([0-9a-fA-F]\{2\} \{0,2\}\)\+\).*/\1/" \
+        -e "/\b[0-9a-fA-F]\{2\}/{s//&\n/g;p;}" |
+        sed -e 's/\s/\n/g' |
+        env LC_ALL=C awk '
+            /\<[0-9a-fA-F][0-9a-fA-F]\>/ {
+                printf "%c", strtonum("0x"$0)
+            }' |
+        dump_bytes
+}
+
+if [ $# -eq 0 ]
+then    # 从stdin读取
+    xd
+else
+    echo "$@" | xd
+fi
+
