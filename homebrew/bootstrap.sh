@@ -24,4 +24,8 @@ fi
 eval "$shellenv" | grep -v "\bPATH=" > "${env_file}"
 eval "$shellenv" | grep "\bPATH=" > "${path_file}"
 
-test -n "$homebrew_prefix" && test -x $homebrew_prefix/bin/curl && echo "export HOMEBREW_CURL_PATH=$homebrew_prefix/bin/curl" >> "${env_file}"
+if test -n "$homebrew_prefix" && test -x $homebrew_prefix/bin/curl ; then
+    echo "export HOMEBREW_CURL_PATH=$homebrew_prefix/bin/curl" >> "${env_file}"
+fi
+
+

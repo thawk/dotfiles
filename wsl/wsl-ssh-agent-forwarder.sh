@@ -7,23 +7,26 @@
 
 export SSH_AUTH_SOCK=$HOME/.ssh/agent.sock
 
-sshpid=$(ss -ap | grep "$SSH_AUTH_SOCK")
-if [ "$1" = "-k" ] || [ "$1" = "-r" ]; then
-    sshpid=${sshpid//*pid=/}
-    sshpid=${sshpid%%,*}
-    if [ -n "${sshpid}" ]; then
-        kill "${sshpid}"
-    else
-        echo "'socat' not found or PID not found"
+if type socat > /dev/null ; then
+    sshpid=$(ss -ap | grep "$SSH_AUTH_SOCK")
+    if [ "$1" = "-k" ] || [ "$1" = "-r" ]; then
+        sshpid=${sshpid//*pid=/}
+        sshpid=${sshpid%%,*}
+        if [ -n "${sshpid}" ]; then
+            kill "${sshpid}"
+        else
+            echo "'socat' not found or PID not found"
+        fi
+        if [ "$1" = "-k" ]; then
+            exit
+        fi
+        unset sshpid
     fi
-    if [ "$1" = "-k" ]; then
-        exit
+
+    if [ -z "${sshpid}" ]; then
+        rm -f $SSH_AUTH_SOCK
+        ( setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"$DOTFILES_ROOT/wsl/npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork & ) >/dev/null 2>&1
     fi
-    unset sshpid
+else
+    echo "wsl: socat is required!" 1>&2
 fi
-
-if [ -z "${sshpid}" ]; then
-    rm -f $SSH_AUTH_SOCK
-    ( setsid socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:"$DOTFILES_ROOT/wsl/npiperelay.exe -ei -s //./pipe/openssh-ssh-agent",nofork & ) >/dev/null 2>&1
-fi
-
