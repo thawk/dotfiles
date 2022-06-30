@@ -2,19 +2,35 @@
 
 MAX_PROCESSES=20
 CURCWD=${PWD}
+BOOST_FOUND=
 
 dir="${CURCWD}"
 while [ -d "${dir}" ]
 do
     for d in . lib 3rd lib/cppf/common/3rd lib/msgbus/3rd
     do
-        if [ -d "${dir}/${d}" ]
-        then
-            BOOST_ROOT=$(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_[0-9]*" | sort -r | head -n 1)
-            if [ -d "${BOOST_ROOT}/boost" ]
-            then
-                break 2
+        if [ -d "${dir}/${d}" ]; then
+            if ! ls -1 "${dir}"/boost_[0-9_]* > /dev/null 2>&1 ; then
+                continue
             fi
+
+            for boost_root in "${dir}"/boost_[0-9_]*; do
+                if [[ ! -d "${boost_root}/boost" ]]; then
+                    continue
+                fi
+
+                var_name=$(basename "$boost_root" | sed -e 's/[a-z]\+/\U&/g' -e 's/\./_/g')
+                if [[ -z "${!var_name}" ]]; then
+                    export ${var_name}="${boost_root}"
+                    echo "Detected ${var_name}=${!var_name}"
+                fi
+
+                if [[ -z "$BOOST_FOUND" ]]; then
+                    export BOOST_ROOT=${boost_root}
+                    echo "export BOOST_ROOT=${BOOST_ROOT}"
+                    BOOST_FOUND=yes
+                fi
+            done
         fi
     done
 
@@ -33,17 +49,17 @@ then
     exit 1
 fi
 
-export $(basename "${BOOST_ROOT}" | sed "s/boost_/BOOST_ROOT_/")=${BOOST_ROOT}
 for d in tools/build boost_build
 do
     if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
     then
-        BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
+        export BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
+        echo "export BOOST_BUILD_PATH=${BOOST_BUILD_PATH}"
         B2="${BOOST_BUILD_PATH}/b2"
         if [ ! -e "${B2}" ]
         then
             cd "${BOOST_BUILD_PATH}"
-            ./bootsrap.sh
+            ./bootstrap.sh
             cd "${CURCWD}"
         fi
         break
@@ -55,9 +71,6 @@ then
     echo "b2 ('${B2}') not found or not executable! "
     exit 1
 fi
-
-export BOOST_ROOT
-export BOOST_BUILD_PATH
 
 cpu_count=$(grep "processor" /proc/cpuinfo | wc -l)
 [ $cpu_count -ge 1 ] || cpu_count=1
