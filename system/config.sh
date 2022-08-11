@@ -3,7 +3,7 @@ stty -ixon
 
 HISTIGNORE='&:ls:ll:[bf]g:exit'
 # ignore line begin with spaces
-HISTIGNORE='$HISTIGNORE:[ 	]*'
+HISTIGNORE="$HISTIGNORE:[ 	]*"
 HISTCONTROL=erasedups:ignorespace
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)

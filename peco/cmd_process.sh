@@ -5,7 +5,7 @@ function ppgrep() {
     else
         PERCOL="peco --query $1"
     fi
-    ps aux | eval $PERCOL | awk '{ print $2 }'
+    ps aux | eval "$PERCOL" | awk '{ print $2 }'
 }
 
 function ppkill() {
@@ -13,8 +13,8 @@ function ppkill() {
         QUERY=""            # options only
     else
         QUERY=$1            # with a query
-        [[ $# > 0 ]] && shift
+        [[ $# -gt 0 ]] && shift
     fi
-    ppgrep $QUERY | xargs kill $*
+    ppgrep "$QUERY" | xargs kill "$@"
 }
 

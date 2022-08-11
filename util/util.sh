@@ -9,8 +9,8 @@ vman() {
 setproxy() {
     # 如果命令行没有提供代理地址，使用MY_SOCKS5_PROXY的值，如果也没有设置就用127.0.0.1:1080
     local proxy=${1:-${MY_SOCKS5_PROXY:-127.0.0.1:1080}}
-    export all_proxy=socks5://${MY_SOCKS5_PROXY:-127.0.0.1:1080}
-    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"nc -x ${MY_SOCKS5_PROXY:-127.0.0.1:1080} %h %p\""
+    export all_proxy=socks5://${proxy}
+    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"nc -x ${proxy} %h %p\""
 }
 
 resetproxy() {
@@ -22,11 +22,14 @@ cdd() {
     if type tmux &> /dev/null
     then
         # 如果当前tmux session名称正好是$DOTFILES_SRC_ROOT下的目录名，则进入该目录
-        local proj_name="$(tmux display-message -p '#S')"
-        local src_root="${DOTFILES_SRC_ROOT:-$HOME/workspace}"
+        local proj_name
+        local src_root
+
+        proj_name="$(tmux display-message -p '#S')"
+        src_root="${DOTFILES_SRC_ROOT:-$HOME/workspace}"
     
         if [[ -d "${src_root}/${proj_name}" ]]; then
-            cd "${src_root}/${proj_name}"
+            cd "${src_root}/${proj_name}" || return
             return
         fi
     fi
@@ -50,7 +53,7 @@ cdd() {
     done
     
     if [[ -d "$last_proj_root" ]]; then
-        cd "$last_proj_root"
+        cd "$last_proj_root" || return
     fi
 }
 

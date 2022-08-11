@@ -11,6 +11,6 @@ fix_checksum()
             printf "%03d\n", sum
         }'
     else    # 从命令行读取
-        echo $* | gen_checksum
+        echo "$@" | gen_checksum
     fi
 }

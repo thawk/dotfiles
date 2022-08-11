@@ -57,15 +57,16 @@ if [ -n "$(which svn 2>/dev/null)" ]; then
                     shift;
                 done;
 
-                local tmp=$(mktemp -t svn-diff-vim.XXXXXXXXXX || return 1).${file##*.}
-                command svn cat $rev "$file" > $tmp || return 1
-                chmod a-w $tmp || return 1
-                vimdiff "$file" $tmp || return 1
-                rm -f $tmp || return 1
+                local tmp
+                tmp=$(mktemp -t svn-diff-vim.XXXXXXXXXX || return 1).${file##*.}
+                command svn cat "$rev" "$file" > "$tmp" || return 1
+                chmod a-w "$tmp" || return 1
+                vimdiff "$file" "$tmp" || return 1
+                rm -f "$tmp" || return 1
                 ;;
             diff-filemerge)
                 shift;
-                command svn diff --diff-cmd $HOME/libexec/svndiff -x opendiff "$@"
+                command svn diff --diff-cmd "$HOME/libexec/svndiff" -x opendiff "$@"
                 ;;
             diff-less)
                 shift;
@@ -79,7 +80,7 @@ if [ -n "$(which svn 2>/dev/null)" ]; then
                 propName=$2
                 fromFile=$3
                 shift 3
-                command svn propset $propName "$(command svn propget $propName $fromFile)" "$@"
+                command svn propset "$propName" "$(command svn propget "$propName" "$fromFile")" "$@"
                 ;;
             lg)
                 shift 1

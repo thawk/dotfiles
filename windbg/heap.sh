@@ -1,7 +1,7 @@
 read_input() {
     ret=$2
     if [ -z "$ret" ]; then
-        read -p "$1: " ret
+        read -r -p "$1: " ret
     fi
     echo "${ret}"
 }
@@ -13,7 +13,7 @@ calc_heap_entry_code() {
     heapEntrySize="0x$4"
 
     echo -n "Subsegment: "
-    echo "obase=16; ibase=10; $((((($heapEntryAddress)/8) ^ $rtlpLFHKey ^ $heap ^ $heapEntrySize)))" | bc
+    echo "obase=16; ibase=10; $(((((heapEntryAddress)/8) ^ rtlpLFHKey ^ heap ^ heapEntrySize)))" | bc
 }
 
 heap_entry_code() {
@@ -24,9 +24,9 @@ heap_entry_code() {
         heapEntryAddress=$(read_input "heapEntryAddress" "$3")
         heapEntrySize=$(read_input "heapEntrySize/8" "$4")
 
-        calc_heap_entry_code $rtlpLFHKey $heap $heapEntrySize $heapEntryAddress
+        calc_heap_entry_code "$rtlpLFHKey" "$heap" "$heapEntrySize" "$heapEntryAddress"
     else
         # 输入rtlpLFHKey、HEAP、_HEAP_ENTRY地址、_HEAP_ENTRY开始8个byte的内容
-        calc_heap_entry_code $1 $2 $3 $7$6$5$4
+        calc_heap_entry_code "$1" "$2" "$3" "$7$6$5$4"
     fi
 }

@@ -6,12 +6,12 @@ function pattach() {
         PERCOL="percol --query $1"
     fi
 
-    sessions=$(tmux ls)
+    sessions="$(tmux ls)"
     [ $? -ne 0 ] && return
 
-    session=$(echo $sessions | eval $PERCOL | cut -d : -f 1)
+    session=$(echo "$sessions" | eval "$PERCOL" | cut -d : -f 1)
     if [[ -n "$session" ]]; then
-        tmux att -t $session
+        tmux att -t "$session"
     fi
 }
 
