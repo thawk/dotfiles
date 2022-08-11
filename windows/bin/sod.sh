@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 pull_repos() {
     for repo in "$@"; do
@@ -19,6 +19,6 @@ else
     echo "Private Git Server is NOT reachable"
 fi
 
-pull_repos /e/my/{private_work,scores,study,wiki,presentations} $HOME/{.SpaceVim,.SpaceVim.d}
+pull_repos /e/my/{private_work,scores,study,wiki,presentations} "$HOME"/{.SpaceVim,.SpaceVim.d}
 
 #music

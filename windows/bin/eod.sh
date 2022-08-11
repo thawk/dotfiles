@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 commit_repos() {
     for repo in "$@"; do
@@ -20,6 +20,6 @@ else
     echo "Private Git Server is NOT reachable"
 fi
 
-commit_repos /e/my/{private_work,scores,study,wiki,presentations} $HOME/.SpaceVim.d
+commit_repos /e/my/{private_work,scores,study,wiki,presentations} "$HOME/.SpaceVim.d"
 
 #music

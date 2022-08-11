@@ -8,7 +8,7 @@ s/^[[:space:]]*\*\.?([[:alnum:]]+)[[:space:]]*:[[:space:]]*(#[[:xdigit:]]+).*/\1
 }
 
 if [[ -n "$1" ]]; then
-    cat "$1" | convert
+    convert < "$1"
 else
     convert
 fi

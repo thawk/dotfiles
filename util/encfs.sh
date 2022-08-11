@@ -35,7 +35,7 @@ then
         if [ -z "$1" ]; then
             # umount all
             if mount | grep "^encfs@\|^encfs on " &> /dev/null; then
-                mount | grep "^encfs@\|^encfs on " | cut -d' ' -f3 | while read d
+                mount | grep "^encfs@\|^encfs on " | cut -d' ' -f3 | while read -r d
                 do
                     encfs -u "${d}"
                     rm -d "${d}"
@@ -47,6 +47,6 @@ then
         fi
     }
 
-    alias mp="em '$HOME/my/private'"
-    alias ump="um '$HOME/my/private'"
+    alias mp='em "$HOME/my/private"'
+    alias ump='um "$HOME/my/private"'
 fi

@@ -3,7 +3,7 @@ fasd_cache_dir="${HOME}/.cache/fasd"
 
 fasd_shell="${SHELL##*/}"
 fasd_cache="${fasd_cache_dir}/fasd-init-${fasd_shell}"
-if [ "$(command -v fasd)" -nt "$fasd_cache" -o ! -s "$fasd_cache" ]; then
+if [ "$(command -v fasd)" -nt "$fasd_cache" ] || [ ! -s "$fasd_cache" ]; then
     if [[ "$fasd_shell" == "zsh" ]]; then # zsh
         fasd --init posix-alias zsh-hook zsh-ccomp zsh-ccomp-install zsh-wcomp zsh-wcomp-install >| "$fasd_cache"
     elif [[ "$fasd_shell" == "bash" ]]; then # bash

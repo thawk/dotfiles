@@ -5,7 +5,7 @@
 __ScriptVersion="20190803"
 
 if type perl &> /dev/null; then
-    DOTFILES_ROOT="$(dirname $(perl -e 'use Cwd "abs_path";print abs_path(shift)' $0))"
+    DOTFILES_ROOT="$(dirname "$(perl -e 'use Cwd "abs_path";print abs_path(shift)' "$0")")"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     DOTFILES_ROOT="$(dirname "$(readlink -f "$0")")"
 else
@@ -14,8 +14,6 @@ fi
 
 export DOTFILES_ROOT
 export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
-
-set -e
 
 source "${DOTFILES_ROOT}/logging.sh"
 
@@ -35,16 +33,19 @@ relpath() {
 link_file () {
     local src=$1 dst=$2
 
-    local overwrite= backup= skip=
+    local overwrite=
+    local backup=
+    local skip=
     local action=
 
-    if [ -f "$dst" -o -d "$dst" -o -L "$dst" ]
+    if [ -f "$dst" ] || [ -d "$dst" ] || [ -L "$dst" ]
     then
 
         if [ "$overwrite_all" == "false" ] && [ "$backup_all" == "false" ] && [ "$skip_all" == "false" ]
         then
 
-            local currentSrc="$(readlink $dst)"
+            local currentSrc
+            currentSrc="$(readlink "$dst")"
 
             if [ "$currentSrc" == "$src" ]
             then
@@ -52,7 +53,7 @@ link_file () {
             else
                 user "File already exists: $dst ($(basename "$src")), what do you want to do?\n\
                     [s]kip, [S]kip all, [o]verwrite, [O]verwrite all, [b]ackup, [B]ackup all?"
-                read -n 1 action
+                read -r -n 1 action
 
                 case "$action" in
                     o )
@@ -137,11 +138,12 @@ get_symlinks() {
 
     for dir in "$@"
     do
-        for src in $(find -H "${LINK_BASE}/$dir" -name '*.symlink' -not -path '*.git')
-        do
-            rel=$(relpath "$src" "$LINK_BASE")
-            echo "$rel"
-        done
+        find -H "${LINK_BASE}/$dir" -name '*.symlink' -not -path '*.git' |
+            while read -r src
+            do
+                rel=$(relpath "$src" "$LINK_BASE")
+                echo "$rel"
+            done
     done
 
     unset dir src
@@ -165,7 +167,7 @@ create_symlinks () {
 
     if [ -e "$DOTFILES_LOCAL/$LINK_FILE" ]
     then
-        for link in $( cat "$DOTFILES_LOCAL/$LINK_FILE" )
+        while read -r link
         do
             if [ -z "${links[$link]+isset}" ]
             then
@@ -174,7 +176,7 @@ create_symlinks () {
 
                 if [ -h "$dst" ]
                 then
-                    if [ "$LINK_BASE/$link" == "$(readlink $dst)" ]
+                    if [ "$LINK_BASE/$link" == "$(readlink "$dst")" ]
                     then
                         if [ "${DRY_RUN}" = 'yes' ]
                         then
@@ -190,7 +192,7 @@ create_symlinks () {
                     skip "    $dst is not exists, or not a symbol link, don't need to be remove"
                 fi
             fi
-        done
+        done < "$DOTFILES_LOCAL/$LINK_FILE"
     fi
 
     mkdir -p "$DOTFILES_LOCAL"
@@ -221,7 +223,9 @@ generate_source_list () {
     shopt nullglob > /dev/null && orig_nullglob=1
     shopt -s nullglob
 
+    # shellcheck disable=SC2016
     path_env='export PATH=$PATH'
+    # shellcheck disable=SC2016
     fpath_env='export fpath=($fpath'
 
     while [ $# -gt 1 ]
@@ -286,9 +290,11 @@ generate_source_list () {
 
     for f in "${top_sh_sh[@]}"
     do
-        echo "# Script $f" >> "${stage0_file}"
-        cat "$f" >> "${stage0_file}"
-        echo "" >> "${stage0_file}"
+        (
+            echo "# Script $f"
+            cat "$f"
+            echo ""
+        ) >> "${stage0_file}"
     done
 
     echo "${path_env}" >> "${stage0_file}"
@@ -307,18 +313,22 @@ generate_source_list () {
     echo "### set paths ###" >> "${stage1_file}"
     for f in "${path_sh[@]}"
     do
-        echo "# Script $f" >> "${stage1_file}"
-        cat "$f" >> "${stage1_file}"
-        echo "" >> "${stage1_file}"
+        (
+            echo "# Script $f"
+            cat "$f"
+            echo ""
+        ) >> "${stage1_file}"
     done
 
     echo "" >> "${stage1_file}"
     echo "### set environments ###" >> "${stage1_file}"
     for f in "${env_sh[@]}"
     do
-        echo "# Script $f" >> "${stage1_file}"
-        cat "$f" >> "${stage1_file}"
-        echo "" >> "${stage1_file}"
+        (
+            echo "# Script $f"
+            cat "$f"
+            echo ""
+        ) >> "${stage1_file}"
     done
 
     echo "" >> "${stage1_file}"
@@ -332,18 +342,22 @@ generate_source_list () {
 
     for f in "${others_sh[@]}"
     do
-        echo "# Script $f" >> "${stage2_file}"
-        cat "$f" >> "${stage2_file}"
-        echo "" >> "${stage2_file}"
+        (
+            echo "# Script $f"
+            cat "$f"
+            echo ""
+        ) >> "${stage2_file}"
     done
 
     echo "" >> "${stage2_file}"
     echo "### completion scripts ###" >> "${stage2_file}"
     for f in "${completion_sh[@]}"
     do
-        echo "# Script $f" >> "${stage2_file}"
-        cat "$f" >> "${stage2_file}"
-        echo "" >> "${stage2_file}"
+        (
+            echo "# Script $f"
+            cat "$f"
+            echo ""
+        ) >> "${stage2_file}"
     done
 }
 
@@ -358,7 +372,9 @@ function join_by {
 get_enabled_dir() {
     local dir
     local old_path=$PATH
-    local -a dirs=( $(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort) ) 
+    local -a dirs
+
+    IFS=$'\n' read -r -d '' -a dirs < <(find "$DOTFILES_ROOT" -maxdepth 1 -type d ! -name '.*' | sort)
 
     info "Checking plugins status..."
 
@@ -382,8 +398,8 @@ get_enabled_dir() {
             continue
         fi
 
-        echo "$(basename ${dir})" >> "$DOTFILES_LOCAL/enabled.new.txt"
-        echo $(basename ${dir})
+        basename "${dir}" >> "$DOTFILES_LOCAL/enabled.new.txt"
+        basename "${dir}"
     done
 
     PATH=$old_path
@@ -395,10 +411,10 @@ generate_files() {
 
     if [ -e "$DOTFILES_LOCAL/enabled.txt" ]
     then
-        for dir in $( grep "^[^#]" "$DOTFILES_LOCAL/enabled.txt" )
+        while read -r dir
         do
             old_enabled["$dir"]="0"
-        done
+        done < <( grep "^[^#]" "$DOTFILES_LOCAL/enabled.txt" )
     fi
 
     for dir in "$@"
@@ -456,7 +472,8 @@ generate_files() {
 }
 
 generate_script_file() {
-    local dir= shell= script_name=
+    local dir=
+    local shell=
 
     info "Generating script files for shells..."
 
@@ -499,25 +516,25 @@ TARGET="$HOME"
 
 while getopts ":huVvt:d" opt; do
     case $opt in
-        h|help)
+        h) # |help)
             EchoUsage
             exit 0
             ;;
-        u|update)
+        u) # |update)
             update_subtrees
             exit 0
             ;;
-        V|version)
+        V) # |version)
             echo "$(basename "$0") -- Version $__ScriptVersion"
             exit 0
             ;;
-        v|verbose)
+        v) # |verbose)
             VERBOSE="${VERBOSE}1"
             ;;
-        t|target)
+        t) # |target)
             TARGET="$OPTARG"
             ;;
-        d|dry-run)
+        d) # |dry-run)
             DRY_RUN=yes
             ;;
         * )
@@ -527,7 +544,7 @@ while getopts ":huVvt:d" opt; do
             ;;
     esac
 done
-shift $(($OPTIND-1))
+shift $((OPTIND-1))
 
 if [ "${DRY_RUN}" = 'yes' ]
 then
@@ -548,7 +565,8 @@ info ""
 
 typeset -a dirs
 
-dirs=( $(get_enabled_dir) )
+IFS=$'\n' read -r -d '' -a dirs < <(get_enabled_dir)
+
 generate_files "${dirs[@]}"
 [ -e "$DOTFILES_LOCAL/enabled.new.txt" ] && mv "$DOTFILES_LOCAL/enabled.new.txt" "$DOTFILES_LOCAL/enabled.txt"
 
