@@ -83,7 +83,18 @@ DISABLE_AUTO_UPDATE=true
  
 source "$DOTFILES_ROOT/zsh/scripts/zi.plugins.zsh"
 
-precmd () { echo -n "\x1b]1337;CurrentDir=$(pwd)\x07" }
+precmd () {
+    local ESC="\033"
+    local BEL="\007"
+    local DSC="${ESC}P"
+    local OSC="${ESC}]"
+
+    if [ -z "$TMUX" ]; then
+        echo -n "${OSC}1337;CurrentDir=$(pwd)${BEL}"
+    else
+        echo -n "${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\\"
+    fi
+}
 
 [ -f "$DOTFILES_LOCAL/stage2.zsh" ] && source "$DOTFILES_LOCAL/stage2.zsh"
 
