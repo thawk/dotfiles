@@ -47,5 +47,5 @@ do
 done
 
 # Run the next report, showing only the specific list of tasks.
-task $UUIDS next
+task "$UUIDS" next
 

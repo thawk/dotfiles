@@ -7,7 +7,7 @@ spinner()
     spin="-\\|/"
     #spin="←↖↑↗→↘↓↙"
 
-    echo -ne "\r $@"
+    echo -ne "\r $*"
 
     last_spinner=${last_spinner:-0}
     while kill -0 $pid 2> /dev/null; do
@@ -30,11 +30,13 @@ get_progress_str()
     local msg=$3
 
     local width=30
-    local empty="$(printf '[%*s]' "$width")"
-    local pstr="$(printf '[%*s]' "$width" | tr ' ' '=')"
+    local empty
+    empty="$(printf '[%*s]' "$width" "")"
+    local pstr
+    pstr="$(printf '[%*s]' "$width" ""| tr ' ' '=')"
 
-    pd=$(( $count * $((width+2)) / $total ))
-    printf "%3d.%1d%% %s%s %s" $(( $count * 100 / $total )) $(( ($count * 1000 / $total) % 10 )) "${pstr:0:$pd}" "${empty:$pd}" "$msg"
+    pd=$(( count * $((width+2)) / total ))
+    printf "%3d.%1d%% %s%s %s" $(( count * 100 / total )) $(( (count * 1000 / total) % 10 )) "${pstr:0:$pd}" "${empty:$pd}" "$msg"
 }
 
 progress()

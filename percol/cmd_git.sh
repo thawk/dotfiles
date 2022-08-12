@@ -1,4 +1,5 @@
 function gadd() {
+    # shellcheck disable=SC2046
     git add $(git status -s | percol | awk '{print $2}')
 }
 

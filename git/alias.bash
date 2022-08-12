@@ -113,6 +113,7 @@ alias gstl='git stash list'
 alias gstp='git stash pop'
 alias gsts='git stash show --text'
 alias gsu='git submodule update'
+# shellcheck disable=SC2142
 alias gtl='gtl(){ git tag --sort=-v:refname -n -l ${1}* }; noglob gtl'
 alias gts='git tag -s'
 alias gtv='git tag | sort -V'

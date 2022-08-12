@@ -12,14 +12,14 @@ function complete_remote_paths() {
         basepath=$(echo "${word_to_complete}"|sed -re 's#[^/]+$##')
 
         # Generate a list of words to complete the command.
-        COMPREPLY=($(compgen -W "$(get_remote_paths)" -- ${word_to_complete}))
+        COMPREPLY=($(compgen -W "$(get_remote_paths)" -- "${word_to_complete}"))
     fi
 }
 
 function get_remote_paths() {
     # List all remote paths at given base path. Prepend the basepath to all
     # lines from svn ls in order to work with compgen.
-    svn ls ${basepath} 2>/dev/null | sed -e 's#^#'$basepath'#'
+    svn ls "${basepath}" 2>/dev/null | sed -e 's#^#'"$basepath"'#'
 }
 
 # Add completion for svn command, use function for completing and don't add any

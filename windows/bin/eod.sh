@@ -5,7 +5,7 @@ commit_repos() {
         if [ -d "${repo}" ]
         then
             echo "-= Commiting ${repo}... =-"
-            cd "${repo}"
+            cd "${repo}" || continue
             git add -A && git commit -m " Auto commit at $(date +'%Y-%m-%d %H:%M:%S') on ${HOSTNAME}"
             git diff --exit-code origin/master &> /dev/null || git push
             echo

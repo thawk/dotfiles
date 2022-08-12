@@ -6,8 +6,7 @@ function pattach() {
         PERCOL="percol --query $1"
     fi
 
-    sessions="$(tmux ls)"
-    [ $? -ne 0 ] && return
+    sessions="$(tmux ls)" || return
 
     session=$(echo "$sessions" | eval "$PERCOL" | cut -d : -f 1)
     if [[ -n "$session" ]]; then

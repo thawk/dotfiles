@@ -5,7 +5,7 @@ pull_repos() {
         if [ -d "${repo}" ]
         then
             echo "-= Pulling ${repo}... =-"
-            cd "${repo}"
+            cd "${repo}" || continue
 	    git pull --recurse-submodules --rebase
             echo
         fi

@@ -3,14 +3,14 @@
 
 if [[ -t 1 ]]
 then    # stdout是终端，可以显示颜色
-    FATAL_FORMAT="\\033[31m"
+    # FATAL_FORMAT="\\033[31m"
     TRUNK_FORMAT="\\033[93m"
     BRANCH_FORMAT="\\033[96m"
     TAGS_FORMAT="\\033[92m"
     PEG_FORMAT="\\033[95m"
     CANCEL_FORMAT="\\033[0m"
 else    # stdout不是终端，不显示颜色
-    FATAL_FORMAT=
+    # FATAL_FORMAT=
     TRUNK_FORMAT=
     BRANCH_FORMAT=
     TAGS_FORMAT=
@@ -22,21 +22,24 @@ fi
 getSvnExternals() {
   local svnbase="${1:-.}"
   local svnpath="$2"
-  svn propget svn:externals -R "$svnbase/$svnpath" 2> /dev/null | while read a b c d e; do
+  svn propget svn:externals -R "$svnbase/$svnpath" 2> /dev/null | while read -r a b c d e; do
     [ -n "$a" ] || continue
     if [ "$b" = "-" ]; then
       local wcparent="$a"
       local external="$c"
-      local wcdir=$(echo "$wcparent/$d" | sed 's#^./##')
+      local wcdir
+      wcdir=$(echo "$wcparent/$d" | sed 's#^./##')
       [ -z "$e" ] || echo "WARNING: Invalid format #1. line='$a $b $c $d $e'"
     else
       [ -n "$wcparent" ] || echo "WARNING: Invalid format #2. wcparent=$wcparent"
       local external="$a"
-      local wcdir=$(echo "$wcparent/$b" | sed 's#^./##')
+      local wcdir
+      wcdir=$(echo "$wcparent/$b" | sed 's#^./##')
       [ -z "$c" ] || echo "WARNING: Invalid format #3. line='$a $b $c $d $e'"
     fi
 
-    local curr_url="$(getSvnInfo "$1/$wcdir")"
+    local curr_url
+    curr_url="$(getSvnInfo "$1/$wcdir")"
     local cmp_external="$external"
     local cmp_curr_url="$curr_url"
 
@@ -51,7 +54,8 @@ getSvnExternals() {
 
     if [[ "$external" =~ @[0-9]+$ ]]; then
         # 如果外链有peg，当前URL也加上revision进行比较
-        local peg=$(getSvnInfo "$1/$wcdir" "entry" "revision")
+        local peg
+        peg=$(getSvnInfo "$1/$wcdir" "entry" "revision")
         cmp_curr_url="${cmp_curr_url}@${peg}"
         curr_url="${curr_url}@${peg}"
     fi
@@ -83,7 +87,7 @@ getSvnInfo() {
         svn info --xml "$1" |
             tr '\n' ' ' |
             sed -e 's/ \+/ /g' -e 's/> </></g' -e 's@\s*\(<[^/>]\+>\)\s*@\n\1@g' |
-            sed -n -E -e "/^.*<${propname}\s.*>/{s/^.*<${propname}\b[^>]*\s${attrnam}=\"([^\"]*)\".*\$/\1/;p;q;}"
+            sed -n -E -e "/^.*<${propname}\s.*>/{s/^.*<${propname}\b[^>]*\s${attrname}=\"([^\"]*)\".*\$/\1/;p;q;}"
     fi
 }
 
