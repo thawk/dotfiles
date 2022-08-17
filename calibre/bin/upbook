@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Time: 2022-06-08 22:42:56
+
+url="http://172.31.0.23:10123"
+
+while [[ $# -gt 0 ]]; do
+    printf "Uploading \"%s\"\n  " "$1"
+    curl -F "Filename=$(basename "$1")" -F "Filedata=@$1" -F "Upload=Submit Query" "$url/test.php?action=addBook"
+    printf "\n"
+    shift 1
+done
