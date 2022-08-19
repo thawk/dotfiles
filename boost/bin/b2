@@ -2,69 +2,92 @@
 
 MAX_PROCESSES=20
 CURCWD=${PWD}
-BOOST_FOUND=
+
+ESC='\033'
+
+if [ -t 1 ]
+then # stdout is tty, display color
+    NO_COLOR="${ESC}[0m"
+    NAME_COLOR="${ESC}[0;32m"
+    VALUE_COLOR="${ESC}[0;36m"
+else # stdout isn't tty, no color
+    NO_COLOR=
+    NAME_COLOR=
+    VALUE_COLOR=
+fi
+
+if [ -n "${BOOST_ROOT}" ] && [ ! -d "${BOOST_ROOT}/boost" ]
+then # if BOOST_ROOT is set to an invalid directory, clear it
+    BOOST_ROOT=
+fi
 
 dir="${CURCWD}"
 while [ -d "${dir}" ]
 do
-    for d in . lib 3rd lib/cppf/common/3rd lib/msgbus/3rd
-    do
-        if [ -d "${dir}/${d}" ]; then
-            if ! ls -1 "${dir}"/boost_[0-9_]* > /dev/null 2>&1 ; then
-                continue
+    if [ -z "${BOOST_ROOT}" ]
+    then    # we stop at the first directory that contains at least one boost version
+        for d in . lib 3rd lib/cppf/common/3rd lib/msgbus/3rd
+        do
+            if [ -d "${dir}/${d}" ]
+            then
+                IFS=$'\n' read -r -d '' -a boost_roots < <(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_[0-9]*" | sort -r)
+                for boost_root in "${boost_roots[@]}"
+                do
+                    if [ -d "${boost_root}/boost" ]
+                    then
+                        if [ -z "$BOOST_ROOT" ]; then
+                            echo -e "Detected ${NAME_COLOR}BOOST_ROOT${NO_COLOR}=${VALUE_COLOR}${boost_root}${NO_COLOR}"
+                            export BOOST_ROOT="${boost_root}"
+                        fi
+
+                        var_name=$(basename "$boost_root" | sed -e 's/[a-z]\+/\U&/g' -e 's/\./_/g')
+                        if [ -z "${!var_name}" ]; then
+                            echo -e "Detected ${NAME_COLOR}${var_name}${NO_COLOR}=${VALUE_COLOR}${boost_root}${NO_COLOR}"
+                            export ${var_name}="${boost_root}"
+                        fi
+                    fi
+                done
             fi
+        done
+    fi
 
-            for boost_root in "${dir}"/boost_[0-9_]*; do
-                if [[ ! -d "${boost_root}/boost" ]]; then
-                    continue
-                fi
-
-                var_name=$(basename "$boost_root" | sed -e 's/[a-z]\+/\U&/g' -e 's/\./_/g')
-                if [[ -z "${!var_name}" ]]; then
-                    export ${var_name}="${boost_root}"
-                    echo "Detected ${var_name}=${!var_name}"
-                fi
-
-                if [[ -z "$BOOST_FOUND" ]]; then
-                    export BOOST_ROOT=${boost_root}
-                    echo "export BOOST_ROOT=${BOOST_ROOT}"
-                    BOOST_FOUND=yes
-                fi
-            done
-        fi
-    done
-
-    parent=$(dirname "${dir}")
+    parent="$(dirname "${dir}")"
     if [ "${parent}" = "${dir}" ]
     then
         break
     fi
 
-    dir=${parent}
+    dir="${parent}"
 done
 
 if [ ! -d "${BOOST_ROOT}" ]
 then
-    echo "boost ('${BOOST_ROOT}') not found or not executable! "
+    echo "boost ('${BOOST_ROOT}') not found! "
     exit 1
 fi
 
-for d in tools/build boost_build
-do
-    if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
-    then
-        export BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
-        echo "export BOOST_BUILD_PATH=${BOOST_BUILD_PATH}"
-        B2="${BOOST_BUILD_PATH}/b2"
-        if [ ! -e "${B2}" ]
+if [ -n "$BOOST_BUILD_PATH" ] && [ -x "${BOOST_BUILD_PATH}/b2" ]
+then
+    B2="${BOOST_BUILD_PATH}/b2"
+else
+    for d in tools/build boost_build
+    do
+        if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
         then
-            cd "${BOOST_BUILD_PATH}"
-            ./bootstrap.sh
-            cd "${CURCWD}"
+            export BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
+            echo "Detected ${NAME_COLOR}BOOST_BUILD_PATH${NO_COLOR}=${VALUE_COLOR}${BOOST_BUILD_PATH}${NO_COLOR}"
+
+            B2="${BOOST_BUILD_PATH}/b2"
+            if [ ! -e "${B2}" ]
+            then
+                cd "${BOOST_BUILD_PATH}"
+                ./bootstrap.sh
+                cd "${CURCWD}"
+            fi
+            break
         fi
-        break
-    fi
-done
+    done
+fi
 
 if [ ! -x "${B2}" ]
 then
