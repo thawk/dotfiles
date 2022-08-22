@@ -83,15 +83,16 @@ zi snippet https://github.com/docker/cli/raw/master/contrib/completion/zsh/_dock
 #zi ice wait"0" if'[[ -n "$commands[sudo]" ]]' lucid
 #zi snippet OMZ::plugins/sudo/sudo.plugin.zsh
 
+# H-S-MW: history-search-multi-word
 zi wait"1" lucid light-mode for \
     djui/alias-tips \
     atload"_zsh_autosuggest_start" zsh-users/zsh-autosuggestions \
-    z-shell/history-search-multi-word \
-    atinit"zpcompinit; zpcdreplay" z-shell/fast-syntax-highlighting
+    z-shell/H-S-MW \
+    atinit"ZI[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" z-shell/F-Sy-H
 
-# Utils
-zi ice wait"1" lucid mv"httpstat.sh -> httpstat" pick"httpstat" as"program"
-zi snippet https://github.com/b4b4r07/httpstat/blob/master/httpstat.sh
+## Utils
+#zi ice wait"1" lucid mv"httpstat.sh -> httpstat" pick"httpstat" as"program"
+#zi snippet https://github.com/b4b4r07/httpstat/blob/master/httpstat.sh
 
 # zi ice wait"1" lucid
 # zi light mollifier/cd-gitroot
