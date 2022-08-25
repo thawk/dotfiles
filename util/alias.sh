@@ -3,7 +3,7 @@ alias ap="env all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COM
 #alias aph="env all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} "
 alias aph="all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} "
 # Use a local proxy
-alias apl="env all_proxy=socks5://\${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='nc -X 5 -x \${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
+alias apl="env all_proxy=socks5://\${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='nc -x \${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
 # alias aphl="env all_proxy=socks5://127.0.0.1:1080 "
 alias aphl="all_proxy=socks5://${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} "
 # no proxy

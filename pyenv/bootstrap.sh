@@ -30,14 +30,16 @@ pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
 
 echo "export PYENV_VIRTUALENV_DISABLE_PROMPT=1" >> "${env_file}"
 
+pyenv_root="$(pyenv root)"
+
 # setup neovim pyenv
-if [[ -x "$HOME/.pyenv/versions/neovim2/bin/python" ]]; then
+if [[ -x "${pyenv_root}/versions/neovim2/bin/python" ]]; then
     # shellcheck disable=SC2016
-    echo 'export PYTHON_HOST_PROG="$HOME/.pyenv/versions/neovim2/bin/python"' >> "${env_file}"
+    echo "export PYTHON_HOST_PROG='${pyenv_root}/versions/neovim2/bin/python'" >> "${env_file}"
 fi
 
-if [[ -x "$HOME/.pyenv/versions/neovim3/bin/python" ]]; then
+if [[ -x "${pyenv_root}/versions/neovim3/bin/python" ]]; then
     # shellcheck disable=SC2016
-    echo 'export PYTHON3_HOST_PROG="$HOME/.pyenv/versions/neovim3/bin/python"' >> "${env_file}"
+    echo "export PYTHON3_HOST_PROG='${pyenv_root}/versions/neovim3/bin/python'" >> "${env_file}"
 fi
 
