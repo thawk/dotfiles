@@ -1,0 +1,7 @@
+jupyterlab
+numba
+numpy-quaternion
+pip
+seaborn
+sklearn
+statsmodels
