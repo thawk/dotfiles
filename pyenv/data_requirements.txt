@@ -1,6 +1,8 @@
 jupyterlab
+jupytext
+papermill
 numba
-numpy-quaternion
+#numpy-quaternion
 pip
 seaborn
 sklearn
