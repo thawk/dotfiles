@@ -7,3 +7,5 @@ pip
 seaborn
 sklearn
 statsmodels
+ipympl
+ipyfilechooser
