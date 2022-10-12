@@ -1,33 +1,62 @@
+if [[ -t 1 ]]; then
+    INFO_FORMAT="\\033[00;34m"
+    USER_FORMAT="\\033[00;33m"
+    SUCCESS_FORMAT="\\033[00;32m"
+    WARN_FORMAT="\\033[00;33m"
+    SKIP_FORMAT="\\033[00;35m"
+    FAIL_FORMAT="\\033[00;31m"
+    RESET_FORMAT="\\033[0m"
+else
+    INFO_FORMAT=
+    USER_FORMAT=
+    SUCCESS_FORMAT=
+    WARN_FORMAT=
+    SKIP_FORMAT=
+    FAIL_FORMAT=
+    RESET_FORMAT=
+fi
+
+
 debug () {
-    [[ -n "${VERBOSE}" ]] && printf "\r  [ \033[00;34m..\033[0m ] %s\n" "$*" 1>&2
+    [[ -n "${VERBOSE}" ]] && printf "\r  [ ${INFO_FORMAT}..${RESET_FORMAT} ] %s\n" "$*" 1>&2
     true
 }
 
 info () {
     fmt="$1"
     shift
-    printf "\r  [ \033[00;34m..\033[0m ] ${fmt}\n" "$@" 1>&2
+    printf "  [ ${INFO_FORMAT}..${RESET_FORMAT} ] ${fmt}\n" "$@" 1>&2
 }
 
 user () {
-    printf "\r  [ \033[0;33m??\033[0m ] ${fmt}\n" "$@" 1>&2
+    fmt="$1"
+    shift
+    printf "  [ ${USER_FORMAT}??${RESET_FORMAT} ] ${fmt}\n" "$@" 1>&2
 }
 
 success () {
-    printf "\r\033[2K  [ \033[00;32mOK\033[0m ] ${fmt}\n" "$@" 1>&2
+    fmt="$1"
+    shift
+    printf "  [ ${SUCCESS_FORMAT}OK${RESET_FORMAT} ] ${fmt}\n" "$@" 1>&2
 }
 
 warn () {
-    printf "\r\033[2K  [\033[00;33mWARN\033[0m] ${fmt}\n" "$@" 1>&2
+    fmt="$1"
+    shift
+    printf "  [${WARN_FORMAT}WARN${RESET_FORMAT}] ${fmt}\n" "$@" 1>&2
 }
 
 skip () {
-    printf "\r\033[2K  [\033[00;35mSKIP\033[0m] ${fmt}\n" "$@" 1>&2
+    fmt="$1"
+    shift
+    printf "  [${SKIP_FORMAT}SKIP${RESET_FORMAT}] ${fmt}\n" "$@" 1>&2
     true
 }
 
 fail () {
-    printf "\r\033[2K  [\033[0;31mFAIL\033[0m] ${fmt}\n" "$@" 1>&2
+    fmt="$1"
+    shift
+    printf "  [${FAIL_FORMAT}FAIL${RESET_FORMAT}] ${fmt}\n" "$@" 1>&2
     echo ''
     exit 1
 }
