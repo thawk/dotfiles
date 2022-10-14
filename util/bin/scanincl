@@ -95,7 +95,7 @@ if [[ -d "lib/cppf/sscc/sscc-libs" ]]; then
     >> "${DEST_FILE}" echo "-I./lib/cppf/sscc/sscc-libs"
 fi
 
-find . -type d -name include |
+find . -type d -name include -o -name impl_include |
     grep -v "/unittest/\|/test/\|/examples\?/" |
     grep -v "/boost_[0-9]\+_[0-9_]\+/" |
     sed -n -e '/^[^ ]/{s#^#-I#;p;}' |
