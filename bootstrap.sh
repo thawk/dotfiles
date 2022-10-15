@@ -421,10 +421,10 @@ generate_files() {
     do
         if [ -z "${old_enabled[$dir]+isset}" ]
         then
-            info "    Enable ${dir}"
+            info "    Enable ${INFO_FORMAT}${dir}${RESET_FORMAT}"
         else
             old_enabled["$dir"]="1"
-            debug "    Enable ${dir}"
+            debug "    Enable ${INFO_FORMAT}${dir}${RESET_FORMAT}"
         fi
 
         # run bootstrap file
@@ -453,7 +453,7 @@ generate_files() {
     do
         if [ "${old_enabled[$dir]}" == "0" ]
         then
-            info "    Disable ${dir}"
+            info "    Disable ${WARN_FORMAT}${dir}${RESET_FORMAT}"
         fi
     done
 
@@ -463,6 +463,7 @@ generate_files() {
 
     local overwrite_all=false backup_all=false skip_all=false
 
+    info ""
     info "Creating symbol links..."
 
     create_symlinks "${DOTFILES_ROOT}" "links.txt" "$@"
@@ -475,6 +476,7 @@ generate_script_file() {
     local dir=
     local shell=
 
+    info ""
     info "Generating script files for shells..."
 
     for shell in bash zsh
@@ -576,4 +578,5 @@ generate_files "${dirs[@]}"
 
 unset dirs
 
+info ""
 info 'Done!'
