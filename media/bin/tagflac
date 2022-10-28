@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import logging
+import os
+import sys
+import click
+import subprocess
+from collections import namedtuple
+
+Tag = namedtuple('Tag', ['name', 'value'])
+
+VERSION = u'20221027'
+
+def get_tagger(tag_func, dry_run):
+    def executor(cmd):
+        if dry_run:
+            logging.info(f'  {cmd}...')
+        else:
+            logging.debug(f'  {cmd}...')
+            subprocess.run(cmd)
+
+    return lambda file, tags: tag_func(executor, file, tags)
+
+
+def tag_flac(executor, file, tags):
+    cmd = ['metaflac']
+
+    cmd += list(set([
+        f'--remove-tag={tag.name}'
+        for tag in tags
+    ]))
+
+    cmd += [
+        f'--set-tag={tag.name}={tag.value}'
+        for tag in tags
+        if tag.value is not None
+    ]
+
+    cmd.append(file)
+
+    executor(cmd)
+
+
+def tag_files(tagger, files, **kwargs):
+    renumber, tags = get_tags(**kwargs)
+
+    if not renumber and not tags:
+        logging.info(f'Nothing to do.')
+        return
+
+    logging.info(f'Tagging {len(files)} files...')
+    for i, f in enumerate(files):
+        if renumber:
+            file_tags = tags + [Tag('TRACKNUMBER', renumber+i)]
+        else:
+            file_tags = tags
+
+        tagger(f, file_tags)
+
+    logging.info(f'Done.')
+
+
+def get_tags(**kwargs):
+    TAG_MAP = {
+        'GENRE': 'genre',
+        'ARTIST': 'composer',
+        'COMPOSER': 'composer',
+        'ALBUM': 'album',
+        'PERFORMER': 'performer',
+        'YEAR': 'year',
+    }
+
+    tags = list()
+    for tag, key in TAG_MAP.items():
+        val = kwargs.get(key, None)
+        if val is not None:
+            tags.append(Tag(tag, val))
+
+    comment = kwargs.get('comment', None)
+    performer = kwargs.get('performer', None)
+
+    if performer:
+        # performer作为COMMENT的第一项，comment附加到后面
+        if comment:
+            comment = f'{performer}, {comment}'
+        else:
+            comment = performer
+
+    if comment:
+        tags.append(Tag('COMMENT', comment))
+
+    renumber = kwargs.get('renumber', 0)
+    if renumber and renumber > 0:
+        tags.append(Tag('TRACKNUMBER', None))
+        tags.append(Tag('TRACKTOTAL', None))
+        tags.append(Tag('TOTALTRACKS', None))
+
+    return renumber, tags
+
+
+def setup_logger(quiet=False, verbose=False):
+    """日志初始化
+    """
+    log_format = u'%(asctime)s %(levelname)s %(message)s'
+
+    if quiet:
+        logging.basicConfig(level=logging.WARNING, format=log_format)
+    elif verbose:
+        logging.basicConfig(level=logging.DEBUG, format=log_format)
+    else:
+        logging.basicConfig(level=logging.INFO, format=log_format)
+
+
+@click.command()
+@click.version_option(version=VERSION)
+@click.option('--dry-run', '-n', is_flag=True, help='Show command, not run.')
+@click.option('--verbose', '-v', is_flag=True, help='Verbose mode.')
+@click.option('--genre', '-g', type=str, help='Set GENRE tag')
+@click.option('--composer', '-c', type=str, help='Set COMPOSER/ARTIST tag')
+@click.option('--album', '-a', type=str, help='Set ALBUM tag')
+@click.option('--performer', '-p', type=str, help='Set PERFORMER tag')
+@click.option('--year', '-y', type=int, help='Set YEAR tag')
+@click.option('--comment', '-C', type=str, help='Set COMMENT tag')
+@click.option('--renumber', '-r', type=int, is_flag=False, flag_value=1, help='Renumber track, started from specified number')
+@click.argument('files', nargs=-1, type=click.Path(exists=True))
+def cli(
+    files,
+    help=False,
+    verbose=False,
+    dry_run=False,
+    **kwargs
+):
+    setup_logger(verbose=verbose)
+
+    tag_files(
+        get_tagger(tag_flac, dry_run=dry_run),
+        files, **kwargs)
+
+
+if __name__ == '__main__':
+    cli()
+
