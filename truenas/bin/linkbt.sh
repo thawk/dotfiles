@@ -2,7 +2,7 @@
 
 . "$DOTFILES_ROOT/logging.sh"
 
-VERBOSE=1
+VERBOSE=
 
 transmission_dir=/mnt/media/downloads/transmission
 download_dir=${transmission_dir}/download
@@ -63,12 +63,12 @@ while true ; do
             shift
             break
             ;;
-        *) 
+        *)
             fail "Unexpected option '$1'"
             exit 1
             ;;
     esac
-done 
+done
 
 declare -A db
 declare -A db_all
@@ -81,10 +81,10 @@ do
     if [[ "$s" == '#'* ]]; then
         debug "  Adding # '${s:1}' -> '$t'"
         db_all["${s:1}"]="$t"
-        db["${s:1}"]="$t"
     else
         debug "  Adding   '$s' -> '$t'"
         db_all["$s"]="$t"
+        db["${s}"]="$t"
     fi
 done << HERE
     $(cat "${file_db}")
@@ -123,7 +123,7 @@ else
     for l in "${links[@]}"; do
         real_links["$(readlink "$l")"]="$l"
     done
-    
+
     count=0
     if [ -n "$rename" ]
     then
@@ -134,6 +134,7 @@ else
         source="${download_dir}/$f"
         target="${target_dir}/${db[$f]}"
 
+        debug "$source"
         [ ! -e "$source" ] && continue
 
         debug "Checking '$source'"
@@ -152,7 +153,7 @@ else
             if [ -n "$confirm" ]
             then
                 if [ -n "$rename" ]
-                then 
+                then
                     debug "  mv '$source' '$target'"
                     mv "$source" "$target"
                 else
@@ -161,7 +162,12 @@ else
                 fi
                 success "  %2s: $target ... Done" $count
             else
-                info "  %2s: $target" $count
+                if [ -n "$rename" ]
+                then
+                    info "  %2s: mv '$source' '$target'" $count
+                else
+                    info "  %2s: ln -s '$source' '$target'" $count
+                fi
             fi
         fi
     done
