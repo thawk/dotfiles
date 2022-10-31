@@ -69,6 +69,7 @@ def get_tags(**kwargs):
         'ALBUM': 'album',
         'PERFORMER': 'performer',
         'YEAR': 'year',
+        'TITLE': 'title',
     }
 
     tags = list()
@@ -123,6 +124,7 @@ def setup_logger(quiet=False, verbose=False):
 @click.option('--year', '-y', type=int, help='Set YEAR tag')
 @click.option('--comment', '-C', type=str, help='Set COMMENT tag')
 @click.option('--renumber', '-r', type=int, is_flag=False, flag_value=1, help='Renumber track, started from specified number')
+@click.option('--title', '-t', type=str, help='Set TITLE tag')
 @click.argument('files', nargs=-1, type=click.Path(exists=True))
 def cli(
     files,
