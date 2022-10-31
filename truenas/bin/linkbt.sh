@@ -15,7 +15,7 @@ file_db=download_filename.txt
 EchoUsage()
 {
     echo "
-    Usage: ${0##*/} [options]
+Usage: ${0##*/} [options]
 
     Options:
 
