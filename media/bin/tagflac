@@ -6,21 +6,34 @@ import os
 import sys
 import click
 import subprocess
+import functools
+import pandas as pd
+import re
+from operator import itemgetter, attrgetter
 from collections import namedtuple
+
+VERSION = u'20221031'
+
+class Context(object):
+    def __init__(self):
+        self.quiet = False
+        self.verbose = False
+        self.dry_run = False
+
+pass_context = click.make_pass_decorator(Context, ensure=True)
 
 Tag = namedtuple('Tag', ['name', 'value'])
 
-VERSION = u'20221027'
-
-def get_tagger(tag_func, dry_run):
+def get_cmd_executor(func, dry_run):
     def executor(cmd):
         if dry_run:
             logging.info(f'  {cmd}...')
         else:
             logging.debug(f'  {cmd}...')
-            subprocess.run(cmd)
+            result = subprocess.run(cmd)
+            result.check_returncode()
 
-    return lambda file, tags: tag_func(executor, file, tags)
+    return lambda file, tags: func(executor, file, tags)
 
 
 def tag_flac(executor, file, tags):
@@ -42,26 +55,7 @@ def tag_flac(executor, file, tags):
     executor(cmd)
 
 
-def tag_files(tagger, files, **kwargs):
-    renumber, tags = get_tags(**kwargs)
-
-    if not renumber and not tags:
-        logging.info(f'Nothing to do.')
-        return
-
-    logging.info(f'Tagging {len(files)} files...')
-    for i, f in enumerate(files):
-        if renumber:
-            file_tags = tags + [Tag('TRACKNUMBER', renumber+i)]
-        else:
-            file_tags = tags
-
-        tagger(f, file_tags)
-
-    logging.info(f'Done.')
-
-
-def get_tags(**kwargs):
+def get_tags_from_params(**kwargs):
     TAG_MAP = {
         'GENRE': 'genre',
         'ARTIST': 'composer',
@@ -100,8 +94,89 @@ def get_tags(**kwargs):
     return renumber, tags
 
 
+def get_tags_from_flac(file):
+    RE_LINE = re.compile(r'^(?P<name>[^=]+)=(?P<value>.*)')
+
+    cmd = ['metaflac']
+
+    cmd += ['--export-tags-to=-']
+
+    cmd.append(file)
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    result.check_returncode()
+
+    tags = []
+    tag_name = None
+    tag_value = None
+
+    for line in result.stdout.split('\n'):
+        m = RE_LINE.match(line)
+        if m:
+            if tag_name is not None:
+                tags.append(Tag(tag_name, tag_value))
+
+            tag_name = m.group('name')
+            tag_value = m.group('value')
+        elif tag_name is not None:
+            tag_value = tag_value + '\n' + line
+    else:
+        if tag_name is not None:
+            tags.append(Tag(tag_name, tag_value))
+
+    return tags
+
+
+def tags_to_dict(tags):
+    """Convert tags to dict, keep first tag if duplicated.
+    """
+    result = dict()
+    for tag in tags:
+        if tag.name not in result:
+            result[tag.name] = tag.value
+
+    return result
+
+
+def init_common_params(func):
+    """Used to inject common params to sub-command
+    """
+
+    @click.option('--quiet', '-q', is_flag=True, default=False, help="Quiet mode.")
+    @click.option('--verbose', '-v', is_flag=True, default=False, help="Verbose mode.")
+    @click.option('--dry-run', '-n', is_flag=True, help='Show command, not run.')
+    @pass_context
+    @functools.wraps(func)
+    def wrapper(context, *args, **kwargs):
+        context.quiet = kwargs['quiet']
+        context.verbose = kwargs['verbose']
+        context.dry_run = kwargs['dry_run']
+
+        del kwargs['quiet']
+        del kwargs['verbose']
+        del kwargs['dry_run']
+
+        return func(context, *args, **kwargs)
+
+    return wrapper
+
+
+def common_params(func):
+
+    @init_common_params
+    @functools.wraps(func)
+    def wrapper(context, *args, **kwargs):
+        setup_logger(quiet=context.quiet, verbose=context.verbose)
+
+        return func(context, *args, **kwargs)
+
+    return wrapper
+
+
 def setup_logger(quiet=False, verbose=False):
     """日志初始化
+    Args:
+        args (Dict[string, string]): 命令行参数
     """
     log_format = u'%(asctime)s %(levelname)s %(message)s'
 
@@ -113,10 +188,16 @@ def setup_logger(quiet=False, verbose=False):
         logging.basicConfig(level=logging.INFO, format=log_format)
 
 
-@click.command()
+@click.group()
 @click.version_option(version=VERSION)
-@click.option('--dry-run', '-n', is_flag=True, help='Show command, not run.')
-@click.option('--verbose', '-v', is_flag=True, help='Verbose mode.')
+@init_common_params
+def cli(
+    context,
+):
+    pass
+
+
+@cli.command(help='Tag files with specified tags')
 @click.option('--genre', '-g', type=str, help='Set GENRE tag')
 @click.option('--composer', '-c', type=str, help='Set COMPOSER/ARTIST tag')
 @click.option('--album', '-a', type=str, help='Set ALBUM tag')
@@ -126,20 +207,75 @@ def setup_logger(quiet=False, verbose=False):
 @click.option('--renumber', '-r', type=int, is_flag=False, flag_value=1, help='Renumber track, started from specified number')
 @click.option('--title', '-t', type=str, help='Set TITLE tag')
 @click.argument('files', nargs=-1, type=click.Path(exists=True))
-def cli(
-    files,
-    help=False,
-    verbose=False,
-    dry_run=False,
-    **kwargs
-):
-    setup_logger(verbose=verbose)
+@common_params
+def tag(
+        context,
+        files,
+        **kwargs):
 
-    tag_files(
-        get_tagger(tag_flac, dry_run=dry_run),
-        files, **kwargs)
+    renumber, tags = get_tags_from_params(**kwargs)
 
+    if not renumber and not tags:
+        logging.info(f'Nothing to do.')
+        return
+
+    logging.info(f'Tagging {len(files)} files...')
+    for i, f in enumerate(files):
+        if renumber:
+            file_tags = tags + [Tag('TRACKNUMBER', renumber+i)]
+        else:
+            file_tags = tags
+
+        get_cmd_executor(tag_flac, dry_run=context.dry_run)(f, file_tags)
+
+    logging.info(f'Done.')
+
+
+@cli.command(help='Show existed tags')
+@click.option('--output', '-o', required=False, type=click.File('wb'))
+@click.argument('files', nargs=-1, type=click.Path(exists=True))
+@common_params
+def export_tags(
+        context,
+        output,
+        files):
+    
+    logging.info(f'Exporting tags for {len(files)} files...')
+
+    file_tags = list()
+    for i, f in enumerate(files):
+        logging.debug(f'  Handling {f}...')
+
+        tags = get_tags_from_flac(f)
+        d = tags_to_dict(tags)
+        file_tag = {'filename':f}
+        file_tag.update(d)
+        file_tags.append(file_tag)
+
+        logging.info(f'  {len(d)}/{len(tags)} tags for "{f}"')
+        for tag in tags:
+            logging.debug(f'    {tag.name} = {tag.value}')
+    
+    df = pd.DataFrame(file_tags)
+
+    if output is not None:
+        df.to_csv(output, index=False)
+        logging.info(f'Tags exported to "{output.name}"')
+
+
+@cli.command(help='Import tags from file')
+@click.argument('tags_file', nargs=1, type=click.File('rb'))
+@common_params
+def import_tags(
+        context,
+        tags_file):
+    
+    logging.info(f'Importing tags for {tags_file.name} files...')
+
+    df = pd.read_csv(tags_file)
+
+    tag_names = [ c for c in df.columns if c != 'filename' ]
+    logging.info(f'  Total {df.shape[0]} files, {len(tag_names)} tags: {",".join(tag_names)}')
 
 if __name__ == '__main__':
     cli()
-
