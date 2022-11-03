@@ -264,6 +264,8 @@ def export_tags(
 
 
 @cli.command(help='Import tags from file')
+@click.option('--clear', '-c', is_flag=True, help='Clear unused tags')
+@click.option('--rename', '-r', is_flag=True, help='rename music file')
 @click.argument('tags_file', nargs=1, type=click.File('rb'))
 @common_params
 def import_tags(
