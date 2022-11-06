@@ -33,16 +33,19 @@ def get_cmd_executor(func, dry_run):
             result = subprocess.run(cmd)
             result.check_returncode()
 
-    return lambda file, tags: func(executor, file, tags)
+    return lambda file, tags, *args, **kwargs: func(executor, file, tags, *args, **kwargs)
 
 
-def tag_flac(executor, file, tags):
+def tag_flac(executor, file, tags, remove_all_tags=False):
     cmd = ['metaflac']
 
-    cmd += list(set([
-        f'--remove-tag={tag.name}'
-        for tag in tags
-    ]))
+    if remove_all_tags:
+        cmd += ['--remove-all-tags']
+    else:
+        cmd += list(set([
+            f'--remove-tag={tag.name}'
+            for tag in tags
+        ]))
 
     cmd += [
         f'--set-tag={tag.name}={tag.value}'
@@ -55,7 +58,7 @@ def tag_flac(executor, file, tags):
     executor(cmd)
 
 
-def get_tags_from_params(**kwargs):
+def tags_from_params(**kwargs):
     TAG_MAP = {
         'GENRE': 'genre',
         'ARTIST': 'composer',
@@ -94,7 +97,7 @@ def get_tags_from_params(**kwargs):
     return renumber, tags
 
 
-def get_tags_from_flac(file):
+def tags_from_flac(file):
     RE_LINE = re.compile(r'^(?P<name>[^=]+)=(?P<value>.*)')
 
     cmd = ['metaflac']
@@ -126,6 +129,15 @@ def get_tags_from_flac(file):
 
     return tags
 
+def tags_from_dict(d):
+    """Get tags from dict like or Series.
+    """
+    tags = list()
+
+    for n, v in d.items():
+        tags.append(Tag(n, v))
+
+    return tags
 
 def tags_to_dict(tags):
     """Convert tags to dict, keep first tag if duplicated.
@@ -213,7 +225,7 @@ def tag(
         files,
         **kwargs):
 
-    renumber, tags = get_tags_from_params(**kwargs)
+    renumber, tags = tags_from_params(**kwargs)
 
     if not renumber and not tags:
         logging.info(f'Nothing to do.')
@@ -239,14 +251,14 @@ def export_tags(
         context,
         output,
         files):
-    
+
     logging.info(f'Exporting tags for {len(files)} files...')
 
     file_tags = list()
     for i, f in enumerate(files):
         logging.debug(f'  Handling {f}...')
 
-        tags = get_tags_from_flac(f)
+        tags = tags_from_flac(f)
         d = tags_to_dict(tags)
         file_tag = {'filename':f}
         file_tag.update(d)
@@ -255,7 +267,7 @@ def export_tags(
         logging.info(f'  {len(d)}/{len(tags)} tags for "{f}"')
         for tag in tags:
             logging.debug(f'    {tag.name} = {tag.value}')
-    
+
     df = pd.DataFrame(file_tags)
 
     if output is not None:
@@ -270,14 +282,20 @@ def export_tags(
 @common_params
 def import_tags(
         context,
+        clear,
+        rename,
         tags_file):
-    
+
     logging.info(f'Importing tags for {tags_file.name} files...')
 
     df = pd.read_csv(tags_file)
 
     tag_names = [ c for c in df.columns if c != 'filename' ]
     logging.info(f'  Total {df.shape[0]} files, {len(tag_names)} tags: {",".join(tag_names)}')
+
+    for f, row in df.set_index('filename').iterrows():
+        get_cmd_executor(tag_flac, dry_run=context.dry_run)(
+            f, tags_from_dict(row), remove_all_tags=clear)
 
 if __name__ == '__main__':
     cli()
