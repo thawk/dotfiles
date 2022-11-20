@@ -1,11 +1,56 @@
 #!/usr/bin/env bash
-# Time: 2022-06-08 22:42:56
 
-url="http://172.31.0.23:10123"
+EchoUsage()
+{
+    echo "
+Usage: $(basename "$0") [options] [--] <files>...
+
+    Options:
+        -h|help       Display this message
+        -v|verbose    Display more verbose log
+        -d|dest <ip>  Device IP
+" >&2
+}
+
+IP=172.31.0.23
+VERBOSE=
+while getopts ":hvd:" opt; do
+    case $opt in
+        h|help)
+            EchoUsage
+            exit 0
+            ;;
+        v|verbose)
+            VERBOSE="${VERBOSE}1"
+            ;;
+        d|dest)
+            IP="$OPTARG"
+            ;;
+        * )
+            echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
+            EchoUsage
+            exit 1
+            ;;
+    esac
+done
+shift $(($OPTIND-1))
+
+# 参数个数最少为1
+if [ $# -lt 1 ]
+then
+    EchoUsage
+    exit 1
+fi
+
+
+url="http://${IP}:10123"
+
+echo "Uploading $# file(s) to '$url'..."
 
 while [[ $# -gt 0 ]]; do
-    printf "Uploading \"%s\"\n  " "$1"
+    printf "  Uploading \"%s\"\n  " "$1"
     curl -F "Filename=$(basename "$1")" -F "Filedata=@$1" -F "Upload=Submit Query" "$url/test.php?action=addBook"
     printf "\n"
     shift 1
 done
+

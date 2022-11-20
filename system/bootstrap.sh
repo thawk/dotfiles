@@ -39,15 +39,15 @@ if type nvim &> /dev/null ; then
 
     type vi &> /dev/null || echo "alias vi=nvim" >> "${editor_file}"
 
-    # vimu不使用vim配置，适合打开大文件
-    echo "alias vimu='nvim -u /dev/null'" >> "${editor_file}"
+    # viu不使用vim配置，适合打开大文件
+    echo "alias viu='nvim -u /dev/null'" >> "${editor_file}"
 elif type vim &> /dev/null ; then
     echo "export EDITOR='vim'" >> "${editor_file}"
     # echo "export MANPAGER=\"vim +'set ft=man' -\"" >> "${env_file}"
     type vi &> /dev/null || echo "alias vi=vim" >> "${editor_file}"
 
-    # vimu不使用vim配置，适合打开大文件
-    echo "alias vimu='vim -u /dev/null'" >> "${editor_file}"
+    # viu不使用vim配置，适合打开大文件
+    echo "alias viu='vim -u /dev/null'" >> "${editor_file}"
 elif type vi &> /dev/null ; then
     echo "export EDITOR='vi'" >> "${editor_file}"
 fi
