@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -o errexit # exit on command failure
+set -o pipefail # pipes fail when any command fails, not just the last one
+set -o nounset # exit on use of undeclared var
+
+START=HEAD # TODO: make an option
+
+# First, remove all ancestors of other commits
+COMMITS="$( git merge-base --independent $@ )"
+# Now we're left with commits on different (merged) branches. Figure out
+# the merge commit that contains all of them
+
+if [ "$( echo "$COMMITS" | wc -l )" -eq 1 ]; then
+	echo "$COMMITS"
+	exit 0
+fi
+
+FIRST_RUN=1
+CANDIDATES=
+while read COMMIT; do
+	T="$( git rev-list --merges --ancestry-path $START ^$COMMIT )"
+	if [ $FIRST_RUN -eq 0 ]; then
+		CANDIDATES="$( comm -1 -2 <(echo "$CANDIDATES") <(echo "$T") )"
+	else
+		CANDIDATES="$T"
+		FIRST_RUN=0
+	fi
+done < <( echo "$COMMITS" )
+echo "$CANDIDATES" | tail -n1
