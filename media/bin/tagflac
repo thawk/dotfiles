@@ -10,7 +10,7 @@ import functools
 import pandas as pd
 import re
 from operator import itemgetter, attrgetter
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 VERSION = u'20221031'
 
@@ -44,13 +44,14 @@ def tag_flac(executor, file, tags, remove_all_tags=False):
     else:
         cmd += list(set([
             f'--remove-tag={tag.name}'
-            for tag in tags
+            for tag in tags.keys()
         ]))
 
     cmd += [
-        f'--set-tag={tag.name}={tag.value}'
-        for tag in tags
-        if tag.value is not None
+        f'--set-tag={tag}={val}'
+        for tag, vals in tags
+        if vals is not None
+        for val in vals
     ]
 
     cmd.append(file)
@@ -69,11 +70,11 @@ def tags_from_params(**kwargs):
         'TITLE': 'title',
     }
 
-    tags = list()
+    tags = defaultdict(list)
     for tag, key in TAG_MAP.items():
         val = kwargs.get(key, None)
         if val is not None:
-            tags.append(Tag(tag, val))
+            tags[tag].append(val)
 
     comment = kwargs.get('comment', None)
     performer = kwargs.get('performer', None)
@@ -86,13 +87,13 @@ def tags_from_params(**kwargs):
             comment = performer
 
     if comment:
-        tags.append(Tag('COMMENT', comment))
+        tags['COMMENT'].append(comment)
 
     renumber = kwargs.get('renumber', 0)
     if renumber and renumber > 0:
-        tags.append(Tag('TRACKNUMBER', None))
-        tags.append(Tag('TRACKTOTAL', None))
-        tags.append(Tag('TOTALTRACKS', None))
+        tags['TRACKNUMBER'].clear()
+        tags['TRACKTOTAL'].clear()
+        tags['TOTALTRACKS'].clear()
 
     return renumber, tags
 
@@ -109,7 +110,7 @@ def tags_from_flac(file):
     result = subprocess.run(cmd, capture_output=True, text=True)
     result.check_returncode()
 
-    tags = []
+    tags = defaultdict(list)
     tag_name = None
     tag_value = None
 
@@ -117,7 +118,7 @@ def tags_from_flac(file):
         m = RE_LINE.match(line)
         if m:
             if tag_name is not None:
-                tags.append(Tag(tag_name, tag_value))
+                tags[tag_name].append(tag_value)
 
             tag_name = m.group('name')
             tag_value = m.group('value')
@@ -125,17 +126,17 @@ def tags_from_flac(file):
             tag_value = tag_value + '\n' + line
     else:
         if tag_name is not None:
-            tags.append(Tag(tag_name, tag_value))
+            tags[tag_name].append(tag_value)
 
     return tags
 
 def tags_from_dict(d):
     """Get tags from dict like or Series.
     """
-    tags = list()
+    tags = defaultdict(list)
 
     for n, v in d.items():
-        tags.append(Tag(n, v))
+        tags[n].append(v)
 
     return tags
 
@@ -143,9 +144,9 @@ def tags_to_dict(tags):
     """Convert tags to dict, keep first tag if duplicated.
     """
     result = dict()
-    for tag in tags:
-        if tag.name not in result:
-            result[tag.name] = tag.value
+    for tag, vals in tags.items():
+        if len(vals) > 0:
+            result[tag] = vals[0]
 
     return result
 
@@ -234,7 +235,8 @@ def tag(
     logging.info(f'Tagging {len(files)} files...')
     for i, f in enumerate(files):
         if renumber:
-            file_tags = tags + [Tag('TRACKNUMBER', renumber+i)]
+            file_tags = tags.copy()
+            file_tags['TRACKNUMBER'] = [renumber+i]
         else:
             file_tags = tags
 
@@ -265,8 +267,9 @@ def export_tags(
         file_tags.append(file_tag)
 
         logging.info(f'  {len(d)}/{len(tags)} tags for "{f}"')
-        for tag in tags:
-            logging.debug(f'    {tag.name} = {tag.value}')
+        for tag, vals in tags:
+            for val in vals:
+                logging.debug(f'    {tag} = {val}')
 
     df = pd.DataFrame(file_tags)
 
@@ -274,16 +277,18 @@ def export_tags(
         df.to_csv(output, index=False)
         logging.info(f'Tags exported to "{output.name}"')
 
+def path_from_tags(root, tags):
+    pass
 
 @cli.command(help='Import tags from file')
 @click.option('--clear', '-c', is_flag=True, help='Clear unused tags')
-@click.option('--rename', '-r', is_flag=True, help='rename music file')
+@click.option('--outdir', '-o', required=False, type=click.Path(writable=True, dir_okay=True, file_okay=False), help='Output directory')
 @click.argument('tags_file', nargs=1, type=click.File('rb'))
 @common_params
 def import_tags(
         context,
         clear,
-        rename,
+        outdir,
         tags_file):
 
     logging.info(f'Importing tags for {tags_file.name} files...')
