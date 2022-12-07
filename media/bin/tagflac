@@ -49,7 +49,7 @@ def tag_flac(executor, file, tags, remove_all_tags=False):
 
     cmd += [
         f'--set-tag={tag}={val}'
-        for tag, vals in tags
+        for tag, vals in tags.items()
         if vals is not None
         for val in vals
     ]
@@ -267,9 +267,12 @@ def export_tags(
         file_tags.append(file_tag)
 
         logging.info(f'  {len(d)}/{len(tags)} tags for "{f}"')
-        for tag, vals in tags:
+        for tag, vals in tags.items():
             for val in vals:
-                logging.debug(f'    {tag} = {val}')
+                if output is None:
+                    logging.info(f'    {tag} = {val}')
+                else:
+                    logging.debug(f'    {tag} = {val}')
 
     df = pd.DataFrame(file_tags)
 
