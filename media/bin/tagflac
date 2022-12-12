@@ -22,8 +22,6 @@ class Context(object):
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
 
-Tag = namedtuple('Tag', ['name', 'value'])
-
 def get_cmd_executor(func, dry_run):
     def executor(cmd):
         if dry_run:
@@ -281,6 +279,7 @@ def export_tags(
         logging.info(f'Tags exported to "{output.name}"')
 
 def path_from_tags(root, tags):
+
     pass
 
 @cli.command(help='Import tags from file')
