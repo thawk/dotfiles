@@ -22,6 +22,21 @@ class Context(object):
 
 pass_context = click.make_pass_decorator(Context, ensure=True)
 
+
+class Tags(object):
+    album = 'ALBUM'
+    artist = 'ARTIST'
+    composer = 'COMPOSER'
+    genre = 'GENRE'
+    performer = 'PERFORMER'
+    title = 'TITLE'
+    year = 'YEAR'
+    comment = 'COMMENT'
+    track_number = 'TRACKNUMBER'
+    track_total = 'TRACKTOTAL'
+    total_tracks = 'TOTALTRACKS'
+
+
 def get_cmd_executor(func, dry_run):
     def executor(cmd):
         if dry_run:
@@ -59,13 +74,13 @@ def tag_flac(executor, file, tags, remove_all_tags=False):
 
 def tags_from_params(**kwargs):
     TAG_MAP = {
-        'GENRE': 'genre',
-        'ARTIST': 'composer',
-        'COMPOSER': 'composer',
-        'ALBUM': 'album',
-        'PERFORMER': 'performer',
-        'YEAR': 'year',
-        'TITLE': 'title',
+        Tags.genre: 'genre',
+        Tags.artist: 'composer',
+        Tags.composer: 'composer',
+        Tags.album: 'album',
+        Tags.performer: 'performer',
+        Tags.year: 'year',
+        Tags.title: 'title',
     }
 
     tags = defaultdict(list)
@@ -85,13 +100,13 @@ def tags_from_params(**kwargs):
             comment = performer
 
     if comment:
-        tags['COMMENT'].append(comment)
+        tags[Tags.comment].append(comment)
 
     renumber = kwargs.get('renumber', 0)
     if renumber and renumber > 0:
-        tags['TRACKNUMBER'].clear()
-        tags['TRACKTOTAL'].clear()
-        tags['TOTALTRACKS'].clear()
+        tags[Tags.track_number].clear()
+        tags[Tags.track_total].clear()
+        tags[Tags.total_tracks].clear()
 
     return renumber, tags
 
@@ -278,9 +293,34 @@ def export_tags(
         df.to_csv(output, index=False)
         logging.info(f'Tags exported to "{output.name}"')
 
-def path_from_tags(root, tags):
+def path_from_tags(root, file_ext, tags):
+    """Get file path frm tags.
 
-    pass
+    Args:
+        root: root directory
+        file_ext: .flac/.mp3 ...
+        tags: tags of file
+
+    Return:
+        file path, include file name
+    """
+    paths = [root]
+    paths.append(tags[Tags.performer][0])
+
+    if Tags.genre in tags:
+        paths.append(tags[Tags.genre][0])
+
+    paths.append(tags[Tags.album][0])
+
+    if Tags.track_number in tags:
+        name = f'{tags[Tags.track_number][0]:02} {tags[Tags.title][0]}'
+    else:
+        name = tags[Tags.title][0]
+
+    paths.append(name + file_ext)
+    
+    return os.path.join(*paths)
+
 
 @cli.command(help='Import tags from file')
 @click.option('--clear', '-c', is_flag=True, help='Clear unused tags')
