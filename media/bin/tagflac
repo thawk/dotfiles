@@ -293,6 +293,23 @@ def export_tags(
         df.to_csv(output, index=False)
         logging.info(f'Tags exported to "{output.name}"')
 
+def safe_path(path_elem):
+    replacements = {
+        ':': '：',
+        '/': '／',
+        '<': '＜',
+        '>': '＞',
+        '?': '？',
+        '*': '＊',
+        '"': '＂',
+        '\\': '＼',
+    }
+
+    for f, t in replacements.items():
+        path_elem = path_elem.replace(f, t)
+
+    return path_elem
+
 def path_from_tags(root, file_ext, tags):
     """Get file path frm tags.
 
@@ -305,19 +322,19 @@ def path_from_tags(root, file_ext, tags):
         file path, include file name
     """
     paths = [root]
-    paths.append(tags[Tags.performer][0])
+    paths.append(safe_path(tags[Tags.performer][0]))
 
     if Tags.genre in tags:
-        paths.append(tags[Tags.genre][0])
+        paths.append(safe_path(tags[Tags.genre][0]))
 
-    paths.append(tags[Tags.album][0])
+    paths.append(safe_path(tags[Tags.album][0]))
 
     if Tags.track_number in tags:
         name = f'{tags[Tags.track_number][0]:02} {tags[Tags.title][0]}'
     else:
         name = tags[Tags.title][0]
 
-    paths.append(name + file_ext)
+    paths.append(safe_path(name + file_ext))
     
     return os.path.join(*paths)
 
