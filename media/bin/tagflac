@@ -6,9 +6,11 @@ import os
 import sys
 import click
 import subprocess
+import shutil
 import functools
 import pandas as pd
 import re
+from pathlib import Path
 from operator import itemgetter, attrgetter
 from collections import namedtuple, defaultdict
 
@@ -321,22 +323,22 @@ def path_from_tags(root, file_ext, tags):
     Return:
         file path, include file name
     """
-    paths = [root]
-    paths.append(safe_path(tags[Tags.performer][0]))
+    path = Path(root)
+    path /= safe_path(tags[Tags.artist][0])
 
     if Tags.genre in tags:
-        paths.append(safe_path(tags[Tags.genre][0]))
+        path /= safe_path(tags[Tags.genre][0])
 
-    paths.append(safe_path(tags[Tags.album][0]))
+    path /= safe_path(tags[Tags.album][0])
 
     if Tags.track_number in tags:
         name = f'{tags[Tags.track_number][0]:02} {tags[Tags.title][0]}'
     else:
         name = tags[Tags.title][0]
 
-    paths.append(safe_path(name + file_ext))
+    path /= safe_path(name) + file_ext
     
-    return os.path.join(*paths)
+    return path
 
 
 @cli.command(help='Import tags from file')
@@ -357,9 +359,28 @@ def import_tags(
     tag_names = [ c for c in df.columns if c != 'filename' ]
     logging.info(f'  Total {df.shape[0]} files, {len(tag_names)} tags: {",".join(tag_names)}')
 
+    i = 0
     for f, row in df.set_index('filename').iterrows():
+        i += 1
+        tags = tags_from_dict(row)
+
+        if outdir:
+            src = Path(f)
+            dest_file = path_from_tags(outdir, src.suffix, tags)
+            
+            if not context.dry_run:
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(src, dest_file, follow_symlinks=True)
+            else:
+                logging.info(f'  copy "{src}" to "{dest_file}"...')
+        else:
+            dest_file = f
+
+        if not context.dry_run:
+            logging.info(f'  {i:02}: "{dest_file}"...')
+
         get_cmd_executor(tag_flac, dry_run=context.dry_run)(
-            f, tags_from_dict(row), remove_all_tags=clear)
+            dest_file, tags_from_dict(row), remove_all_tags=clear)
 
 if __name__ == '__main__':
     cli()
