@@ -493,6 +493,7 @@ update_subtrees() {
     git subtree pull --squash --prefix gdb/repos/Gdbinit https://github.com/thawk/Gdbinit master
     git subtree pull --squash --prefix gdb/repos/gdb-automatic-deadlock-detector https://github.com/xmementoit/gdb-automatic-deadlock-detector master
     git subtree pull --squash --prefix gdb/repos/gdb-colour-filter https://github.com/thawk/gdb-colour-filter master
+    git subtree pull --squash --prefix gdb/repos/pwndbg https://github.com/pwndbg/pwndbg dev
     git subtree pull --squash --prefix myrepos/src https://github.com/thawk/myrepos.git master
     git subtree pull --squash --prefix percol/src https://github.com/mooz/percol.git master
 }
