@@ -39,7 +39,7 @@ set -g @plugin 'tmux-plugins/tmux-yank'
 # To copy a highlighted match:
 #   Enter - if you're using Tmux vi mode
 #   ctrl-w or alt-w - if you're using Tmux emacs mode
-set -g @plugin 'tmux-plugins/tmux-copycat'
+#set -g @plugin 'tmux-plugins/tmux-copycat'
 
 # prefix + g - prompts for session name and switches to it. Performs 'kind-of' name completion.
 #              Faster than the built-in prefix + s prompt for long session lists.
