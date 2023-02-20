@@ -23,7 +23,9 @@
     # only merges
     lgm= lg --merges
     # two lines format
-    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n''          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
+    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
+    # show commit Body
+    lgb = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n%C(white)%s%C(reset) %C(blue)- %an%C(reset)%n%n%-b' --all
     # log with stat
     lgst = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
     # log with stat and patch
