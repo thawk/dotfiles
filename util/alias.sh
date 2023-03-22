@@ -1,9 +1,24 @@
-# Use a local proxy
-alias ap="env all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='netcat -x \${MY_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
+# Detect netcat executable
+netcat=
+if type netcat &> /dev/null; then
+    netcat=netcat
+elif type nc &> /dev/null; then
+    netcat=netcat
+fi
+
+if [[ -n "$netcat" ]]; then
+    # Use a local proxy
+    alias ap="env all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='${netcat} -x \${MY_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
+    # Use a local proxy
+    alias apl="env all_proxy=socks5://\${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='${netcat} -x \${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
+else
+    # no netcat found, only support HTTP proxy
+    alias ap=aph
+    alias apl=aphl
+fi
+
 #alias aph="env all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} "
 alias aph="all_proxy=socks5://\${MY_SOCKS5_PROXY:-127.0.0.1:1080} "
-# Use a local proxy
-alias apl="env all_proxy=socks5://\${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand='netcat -x \${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} %h %p'\" "
 # alias aphl="env all_proxy=socks5://127.0.0.1:1080 "
 alias aphl="all_proxy=socks5://${LOCAL_SOCKS5_PROXY:-127.0.0.1:1080} "
 # no proxy

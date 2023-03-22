@@ -9,8 +9,19 @@ vman() {
 setproxy() {
     # 如果命令行没有提供代理地址，使用MY_SOCKS5_PROXY的值，如果也没有设置就用127.0.0.1:1080
     local proxy=${1:-${MY_SOCKS5_PROXY:-127.0.0.1:1080}}
+    # Detect netcat executable
+    local netcat=
+    if type netcat &> /dev/null; then
+        netcat=netcat
+    elif type nc &> /dev/null; then
+        netcat=netcat
+    fi
+
     export all_proxy=socks5://${proxy}
-    export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"netcat -x ${proxy} %h %p\""
+
+    if [[ -n "$netcat" ]]; then
+        export GIT_SSH_COMMAND="ssh -o ProxyCommand=\"${netcat} -x ${proxy} %h %p\""
+    fi
 }
 
 resetproxy() {
