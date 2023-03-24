@@ -14,7 +14,7 @@ setproxy() {
     if type netcat &> /dev/null; then
         netcat=netcat
     elif type nc &> /dev/null; then
-        netcat=netcat
+        netcat=nc
     fi
 
     export all_proxy=socks5://${proxy}

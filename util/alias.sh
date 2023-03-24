@@ -3,7 +3,7 @@ netcat=
 if type netcat &> /dev/null; then
     netcat=netcat
 elif type nc &> /dev/null; then
-    netcat=netcat
+    netcat=nc
 fi
 
 if [[ -n "$netcat" ]]; then
