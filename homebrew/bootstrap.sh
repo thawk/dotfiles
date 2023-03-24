@@ -2,7 +2,7 @@
 # Time: 2022-04-08 22:12:02
 
 env_file="${DOTFILES_LOCAL}/homebrew/env.sh"
-path_file="${DOTFILES_LOCAL}/homebrew/path.sh"
+top_file="${DOTFILES_LOCAL}/homebrew/top_sh.sh"
 
 mkdir -p "$(dirname "$env_file")"
 rm -f "$(dirname "$env_file")"/*
@@ -19,5 +19,5 @@ if test -d /home/linuxbrew/.linuxbrew ; then
 fi
 
 eval "$shellenv" | grep -v "\bPATH=" > "${env_file}"
-eval "$shellenv" | grep "\bPATH=" > "${path_file}"
+eval "$shellenv" | grep "\bPATH=" > "${top_file}"
 
