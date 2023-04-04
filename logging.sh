@@ -18,8 +18,9 @@ fi
 
 
 debug () {
-    [[ -n "${VERBOSE}" ]] && printf "\r  [ ${INFO_FORMAT}..${RESET_FORMAT} ] %s\n" "$*" 1>&2
-    true
+    fmt="$1"
+    shift
+    [[ -n "${VERBOSE}" ]] && printf "  [ ${INFO_FORMAT}..${RESET_FORMAT} ] ${fmt}\n" "$@" 1>&2
 }
 
 info () {
@@ -50,7 +51,6 @@ skip () {
     fmt="$1"
     shift
     printf "  [${SKIP_FORMAT}SKIP${RESET_FORMAT}] ${fmt}\n" "$@" 1>&2
-    true
 }
 
 fail () {

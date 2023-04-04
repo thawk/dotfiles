@@ -102,7 +102,7 @@ link_file () {
 
         if [ "$skip" == "true" ]
         then
-            debug "      skipped $src"
+            debug "      ${WARN_FORMAT}skipped${RESET_FORMAT} ${INFO_FORMAT}$src${RESET_FORMAT}"
         fi
     fi
 
@@ -233,16 +233,16 @@ generate_source_list () {
         shift
 
         dir=$1
-        debug "    Handling subdir ${dir}..."
+        debug "    Handling subdir ${SUCCESS_FORMAT}${dir}${RESET_FORMAT}..."
 
         if [ -d "${DOTFILES_ROOT}/${dir}/bin" ]; then
             path_env="${path_env}:${DOTFILES_ROOT}/${dir}/bin"
-            debug "      Add ${dir}/bin to \$PATH..."
+            debug "      Add ${INFO_FORMAT}${dir}/bin${RESET_FORMAT} to ${INFO_FORMAT}\$PATH${RESET_FORMAT}..."
         fi
 
         if [ -d "${DOTFILES_ROOT}/${dir}/zsh-completion" ]; then
             fpath_env="${fpath_env} ${DOTFILES_ROOT}/${dir}/zsh-completion"
-            debug "      Add ${dir}/zsh-completion to \$fpath..."
+            debug "      Add ${INFO_FORMAT}${dir}/zsh-completion${RESET_FORMAT} to ${INFO_FORMAT}\$fpath${RESET_FORMAT}..."
         fi
 
         for f in "${DOTFILES_ROOT}/${dir}"/*.{sh,"${shell}"} "${DOTFILES_LOCAL}/${dir}"/*.{sh,"${shell}"}
@@ -253,16 +253,16 @@ generate_source_list () {
 
             if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
                 path_sh[${#path_sh[*]}]="$f"
-                debug "      Add $f to path.sh..."
+                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}path.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^env\.[^.]*$ ]]; then
                 env_sh[${#env_sh[*]}]="$f"
-                debug "      Add $f to env.sh..."
+                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}env.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
                 completion_sh[${#completion_sh[*]}]="$f"
-                debug "      Add $f to completion.sh..."
+                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}completion.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^top_sh\.[^.]*$ ]]; then
                 top_sh_sh[${#top_sh_sh[*]}]="$f"
-                debug "      Add $f to top_sh.sh..."
+                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}top_sh.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
                 # debug "      Ignoring $f..."
                 true
@@ -271,7 +271,7 @@ generate_source_list () {
                 true
             else
                 others_sh[${#others_sh[*]}]="$f"
-                debug "      Add $f to others.sh..."
+                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}others.sh${RESET_FORMAT}..."
             fi
         done
     done
@@ -282,7 +282,7 @@ generate_source_list () {
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
     # stage0 - for top shell, SHLVL=1
-    info "        ${stage0_file}"
+    info "        ${INFO_FORMAT}${stage0_file}${RESET_FORMAT}"
     cat /dev/null > "${stage0_file}"
 
     echo "### top_sh scripts ###" >> "${stage0_file}"
@@ -300,7 +300,7 @@ generate_source_list () {
     echo "${path_env}" >> "${stage0_file}"
 
     # stage1
-    info "        ${stage1_file}"
+    info "        ${INFO_FORMAT}${stage1_file}${RESET_FORMAT}"
 
     cat /dev/null > "${stage1_file}"
 
@@ -334,7 +334,7 @@ generate_source_list () {
     echo "" >> "${stage1_file}"
 
     # stage2
-    info "        ${stage2_file}"
+    info "        ${INFO_FORMAT}${stage2_file}${RESET_FORMAT}"
     cat /dev/null > "${stage2_file}"
 
     echo "### others scripts ###" >> "${stage2_file}"
@@ -390,11 +390,13 @@ get_enabled_dir() {
     do
         if [ -e "${dir}/disabled" ] || [ -e "${dir}/disabled.global" ]
         then
+            debug "    ${WARN_FORMAT}Disable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT} for global"
             continue
         fi
 
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
         then
+            debug "    ${WARN_FORMAT}Disable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT} for requirements.sh"
             continue
         fi
 
@@ -421,10 +423,10 @@ generate_files() {
     do
         if [ -z "${old_enabled[$dir]+isset}" ]
         then
-            info "    Enable ${INFO_FORMAT}${dir}${RESET_FORMAT}"
+            info "    ${SUCCESS_FORMAT}Enable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT}"
         else
             old_enabled["$dir"]="1"
-            debug "    Enable ${INFO_FORMAT}${dir}${RESET_FORMAT}"
+            debug "    ${SUCCESS_FORMAT}Enable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT}"
         fi
 
         # run bootstrap file
@@ -453,11 +455,11 @@ generate_files() {
     do
         if [ "${old_enabled[$dir]}" == "0" ]
         then
-            info "    Disable ${WARN_FORMAT}${dir}${RESET_FORMAT}"
+            info "    ${WARN_FORMAT}Disable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT}"
         fi
     done
 
-    info '    Done'
+    info "    ${SUCCESS_FORMAT}Done${RESET_FORMAT}"
 
     generate_script_file "$@"
 
@@ -469,7 +471,7 @@ generate_files() {
     create_symlinks "${DOTFILES_ROOT}" "links.txt" "$@"
     create_symlinks "${DOTFILES_LOCAL}" "links_local.txt" .
 
-    info '    Done'
+    info "    ${SUCCESS_FORMAT}Done${RESET_FORMAT}"
 }
 
 generate_script_file() {
@@ -551,16 +553,16 @@ shift $((OPTIND-1))
 
 if [ "${DRY_RUN}" = 'yes' ]
 then
-    info "!!! DRY RUN !!!"
+    info "!!! ${WARN_FORMAT}DRY RUN${RESET_FORMAT} !!!"
     info ""
 else
-    info "!!! Apply mode !!!"
+    info "!!! ${SUCCESS_FORMAT}Apply mode${RESET_FORMAT} !!!"
     info ""
 fi
 
 info "Environments:"
-info "    DOTFILES_ROOT  = ${DOTFILES_ROOT}"
-info "    DOTFILES_LOCAL = ${DOTFILES_LOCAL}"
+info "    ${INFO_FORMAT}DOTFILES_ROOT${RESET_FORMAT}  = ${INFO_FORMAT}${DOTFILES_ROOT}${RESET_FORMAT}"
+info "    ${INFO_FORMAT}DOTFILES_LOCAL${RESET_FORMAT} = ${INFO_FORMAT}${DOTFILES_LOCAL}${RESET_FORMAT}"
 info ""
 
 info "Install to $TARGET..."
@@ -580,4 +582,4 @@ generate_files "${dirs[@]}"
 unset dirs
 
 info ""
-info 'Done!'
+info "${SUCCESS_FORMAT}Done!${RESET_FORMAT}"
