@@ -213,7 +213,7 @@ generate_source_list () {
 
     shell="$1"
 
-    info "    Generating script files for ${shell}..."
+    info "    Generating script files for ${HIGHLIGHT1_FORMAT}${shell}${RESET_FORMAT}..."
 
     stage0_file="$DOTFILES_LOCAL/stage0.${shell}"
     stage1_file="$DOTFILES_LOCAL/stage1.${shell}"
@@ -282,7 +282,7 @@ generate_source_list () {
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
     # stage0 - for top shell, SHLVL=1
-    info "        ${INFO_FORMAT}${stage0_file}${RESET_FORMAT}"
+    info "        ${stage0_file%/*}/${HIGHLIGHT2_FORMAT}${stage0_file##*/}${RESET_FORMAT}"
     cat /dev/null > "${stage0_file}"
 
     echo "### top_sh scripts ###" >> "${stage0_file}"
@@ -300,7 +300,7 @@ generate_source_list () {
     echo "${path_env}" >> "${stage0_file}"
 
     # stage1
-    info "        ${INFO_FORMAT}${stage1_file}${RESET_FORMAT}"
+    info "        ${stage1_file%/*}/${HIGHLIGHT2_FORMAT}${stage1_file##*/}${RESET_FORMAT}"
 
     cat /dev/null > "${stage1_file}"
 
@@ -334,7 +334,7 @@ generate_source_list () {
     echo "" >> "${stage1_file}"
 
     # stage2
-    info "        ${INFO_FORMAT}${stage2_file}${RESET_FORMAT}"
+    info "        ${stage2_file%/*}/${HIGHLIGHT2_FORMAT}${stage2_file##*/}${RESET_FORMAT}"
     cat /dev/null > "${stage2_file}"
 
     echo "### others scripts ###" >> "${stage2_file}"
@@ -561,8 +561,8 @@ else
 fi
 
 info "Environments:"
-info "    ${INFO_FORMAT}DOTFILES_ROOT${RESET_FORMAT}  = ${INFO_FORMAT}${DOTFILES_ROOT}${RESET_FORMAT}"
-info "    ${INFO_FORMAT}DOTFILES_LOCAL${RESET_FORMAT} = ${INFO_FORMAT}${DOTFILES_LOCAL}${RESET_FORMAT}"
+info "    ${HIGHLIGHT1_FORMAT}DOTFILES_ROOT${RESET_FORMAT}  = ${HIGHLIGHT2_FORMAT}${DOTFILES_ROOT}${RESET_FORMAT}"
+info "    ${HIGHLIGHT1_FORMAT}DOTFILES_LOCAL${RESET_FORMAT} = ${HIGHLIGHT2_FORMAT}${DOTFILES_LOCAL}${RESET_FORMAT}"
 info ""
 
 info "Install to $TARGET..."
