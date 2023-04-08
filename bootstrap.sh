@@ -209,7 +209,7 @@ create_symlinks () {
 generate_source_list () {
     local f dir shell orig_nullglob
     local path_env fpath_env
-    local -a path_sh env_sh completion_sh others_sh
+    local -a path_sh env_sh completion_sh others_sh top_sh_sh
 
     shell="$1"
 
@@ -233,16 +233,16 @@ generate_source_list () {
         shift
 
         dir=$1
-        debug "    Handling subdir ${SUCCESS_FORMAT}${dir}${RESET_FORMAT}..."
+        debug "      Handling subdir ${SUCCESS_FORMAT}${dir}${RESET_FORMAT}..."
 
         if [ -d "${DOTFILES_ROOT}/${dir}/bin" ]; then
             path_env="${path_env}:${DOTFILES_ROOT}/${dir}/bin"
-            debug "      Add ${INFO_FORMAT}${dir}/bin${RESET_FORMAT} to ${INFO_FORMAT}\$PATH${RESET_FORMAT}..."
+            debug "        Add ${INFO_FORMAT}${dir}/bin${RESET_FORMAT} to ${INFO_FORMAT}\$PATH${RESET_FORMAT}..."
         fi
 
         if [ -d "${DOTFILES_ROOT}/${dir}/zsh-completion" ]; then
             fpath_env="${fpath_env} ${DOTFILES_ROOT}/${dir}/zsh-completion"
-            debug "      Add ${INFO_FORMAT}${dir}/zsh-completion${RESET_FORMAT} to ${INFO_FORMAT}\$fpath${RESET_FORMAT}..."
+            debug "        Add ${INFO_FORMAT}${dir}/zsh-completion${RESET_FORMAT} to ${INFO_FORMAT}\$fpath${RESET_FORMAT}..."
         fi
 
         for f in "${DOTFILES_ROOT}/${dir}"/*.{sh,"${shell}"} "${DOTFILES_LOCAL}/${dir}"/*.{sh,"${shell}"}
@@ -253,25 +253,25 @@ generate_source_list () {
 
             if [[ "${f##*/}" =~ ^path\.[^.]*$ ]]; then
                 path_sh[${#path_sh[*]}]="$f"
-                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}path.sh${RESET_FORMAT}..."
+                debug "        Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}path.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^env\.[^.]*$ ]]; then
                 env_sh[${#env_sh[*]}]="$f"
-                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}env.sh${RESET_FORMAT}..."
+                debug "        Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}env.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^completion\.[^.]*$ ]]; then
                 completion_sh[${#completion_sh[*]}]="$f"
-                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}completion.sh${RESET_FORMAT}..."
+                debug "        Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}completion.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^top_sh\.[^.]*$ ]]; then
                 top_sh_sh[${#top_sh_sh[*]}]="$f"
-                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}top_sh.sh${RESET_FORMAT}..."
+                debug "        Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}top_sh.sh${RESET_FORMAT}..."
             elif [[ "${f##*/}" =~ ^requirements\.[^.]*$ ]]; then
-                # debug "      Ignoring $f..."
+                # debug "        Ignoring $f..."
                 true
             elif [[ "${f##*/}" =~ ^bootstrap\.[^.]*$ ]]; then
-                # debug "      Ignoring $f..."
+                # debug "        Ignoring $f..."
                 true
             else
                 others_sh[${#others_sh[*]}]="$f"
-                debug "      Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}others.sh${RESET_FORMAT}..."
+                debug "        Add ${INFO_FORMAT}$f${RESET_FORMAT} to ${INFO_FORMAT}others.sh${RESET_FORMAT}..."
             fi
         done
     done
@@ -282,7 +282,7 @@ generate_source_list () {
     [ -z "$orig_nullglob" ] && shopt -u nullglob
 
     # stage0 - for top shell, SHLVL=1
-    info "        ${stage0_file%/*}/${HIGHLIGHT2_FORMAT}${stage0_file##*/}${RESET_FORMAT}"
+    info "      ${stage0_file%/*}/${HIGHLIGHT2_FORMAT}${stage0_file##*/}${RESET_FORMAT}"
     cat /dev/null > "${stage0_file}"
 
     echo "### top_sh scripts ###" >> "${stage0_file}"
@@ -290,6 +290,8 @@ generate_source_list () {
 
     for f in "${top_sh_sh[@]}"
     do
+        debug "        ${f%/*}/${HIGHLIGHT2_FORMAT}${f##*/}${RESET_FORMAT}"
+
         (
             echo "# Script $f"
             cat "$f"
@@ -300,7 +302,7 @@ generate_source_list () {
     echo "${path_env}" >> "${stage0_file}"
 
     # stage1
-    info "        ${stage1_file%/*}/${HIGHLIGHT2_FORMAT}${stage1_file##*/}${RESET_FORMAT}"
+    info "      ${stage1_file%/*}/${HIGHLIGHT2_FORMAT}${stage1_file##*/}${RESET_FORMAT}"
 
     cat /dev/null > "${stage1_file}"
 
@@ -313,6 +315,8 @@ generate_source_list () {
     echo "### set paths ###" >> "${stage1_file}"
     for f in "${path_sh[@]}"
     do
+        debug "        ${f%/*}/${HIGHLIGHT2_FORMAT}${f##*/}${RESET_FORMAT}"
+
         (
             echo "# Script $f"
             cat "$f"
@@ -324,6 +328,8 @@ generate_source_list () {
     echo "### set environments ###" >> "${stage1_file}"
     for f in "${env_sh[@]}"
     do
+        debug "        ${f%/*}/${HIGHLIGHT2_FORMAT}${f##*/}${RESET_FORMAT}"
+
         (
             echo "# Script $f"
             cat "$f"
@@ -334,7 +340,7 @@ generate_source_list () {
     echo "" >> "${stage1_file}"
 
     # stage2
-    info "        ${stage2_file%/*}/${HIGHLIGHT2_FORMAT}${stage2_file##*/}${RESET_FORMAT}"
+    info "      ${stage2_file%/*}/${HIGHLIGHT2_FORMAT}${stage2_file##*/}${RESET_FORMAT}"
     cat /dev/null > "${stage2_file}"
 
     echo "### others scripts ###" >> "${stage2_file}"
@@ -342,6 +348,8 @@ generate_source_list () {
 
     for f in "${others_sh[@]}"
     do
+        debug "        ${f%/*}/${HIGHLIGHT2_FORMAT}${f##*/}${RESET_FORMAT}"
+
         (
             echo "# Script $f"
             cat "$f"
@@ -353,6 +361,8 @@ generate_source_list () {
     echo "### completion scripts ###" >> "${stage2_file}"
     for f in "${completion_sh[@]}"
     do
+        debug "        ${f%/*}/${HIGHLIGHT2_FORMAT}${f##*/}${RESET_FORMAT}"
+
         (
             echo "# Script $f"
             cat "$f"
