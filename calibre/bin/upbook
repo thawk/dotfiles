@@ -12,7 +12,7 @@ Usage: $(basename "$0") [options] [--] <files>...
 " >&2
 }
 
-IP=172.31.0.23
+IP=172.31.0.118
 VERBOSE=
 while getopts ":hvd:" opt; do
     case $opt in
