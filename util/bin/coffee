@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+
+if len(sys.argv) != 4:
+    print(u'咖啡粒径分布计算')
+    print(u'需要三个参数：含所有筛网的重量 拿走0.85筛网的重量 只含底座的重量')
+    exit(1)
+    
+# 底座、0.60筛网、0.85筛网及盖子的净重
+weight_base = 72.1
+weight_60 = 125.5
+weight_85 = 135.3
+weight_cover = 41.5
+
+# 所有筛网加咖啡的重量
+coffee_all = float(sys.argv[1])
+# 拿掉0.85筛网及上面咖啡的重量
+coffee_60 = float(sys.argv[2])
+# 继续拿掉0.60筛网，只剩底座及细粉的重量
+coffee_base = float(sys.argv[3])
+
+total  = coffee_all  - weight_base - weight_60 - weight_85
+ge85   = coffee_all  - coffee_60   - weight_85
+lt85   = total       - ge85
+bt6085 = coffee_60   - coffee_base - weight_60
+lt60   = coffee_base - weight_base
+
+print(u'0.85筛网过筛率: {:>5.1%}'.format(lt85/total))
+print(u'0.60筛网过筛率: {:>5.1%}'.format(lt60/total))
+print(u'')
+print(u'粒径分布：')
+print(u'{:>5}  {:>9}  {:>5}  {}'.format('>0.85', '0.60-0.85', '<0.60', u'总计'))
+print(u'{:>5.1f}  {:>9.1f}  {:>5.1f}  {:>4.1f}'.format(ge85, bt6085, lt60, total))
+print(u'{:>5.1%}  {:>9.1%}  {:>5.1%}  {:>4.0%}'.format(ge85/total, bt6085/total, lt60/total, 1.0))
