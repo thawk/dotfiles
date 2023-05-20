@@ -14,6 +14,14 @@ do
         continue
     fi
 
-    ebook-convert "$book" "${book%.*}.epub"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$name" --authors="$author" --cover="${book%.*}.jpg"
+    cover="${book%.*}.jpg"
+    for ext in jpg jpeg webp; do
+        if [[ -f "${book%.*}.${ext}" ]]; then
+            cover="${book%.*}.${ext}"
+            break
+        fi
+    done
+
+    ebook-convert "$book" "${book%.*}.epub"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$name" --authors="$author" --cover="${cover}"
     # kindlegen "${book%.*}.epub"
 done
