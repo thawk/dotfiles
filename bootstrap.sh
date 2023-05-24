@@ -136,9 +136,11 @@ get_symlinks() {
     LINK_BASE="$1"
     shift 1
 
+    local curr_env="${DOTFILES_ENV:-inet}"
+
     for dir in "$@"
     do
-        find -H "${LINK_BASE}/$dir" -name '*.symlink' -not -path '*.git' |
+        find -H "${LINK_BASE}/$dir" -name '*.symlink' -o -name "*.symlink-${curr_env}" -not -path '*.git' |
             while read -r src
             do
                 rel=$(relpath "$src" "$LINK_BASE")
@@ -172,7 +174,7 @@ create_symlinks () {
             if [ -z "${links[$link]+isset}" ]
             then
                 dst="$TARGET/${link#*/}"
-                dst="${dst%.symlink}"
+                dst="${dst%.symlink*}"
 
                 if [ -h "$dst" ]
                 then

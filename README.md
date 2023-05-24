@@ -63,6 +63,8 @@ git clone https://github.com/thawk/dotfiles.git ~/.dotfiles
 > - 在顶层shell中（``$SHLVL`` == ``1``），会以``top``为参数被调用，以便进行启动``gpg-agent``之类等动作，因此可以根据``$1``是否等于``top``判断是否顶层shell
 > - 在普通shell中，``$1``为空
 
+### 调整配置的环境变量
+
 除了各个插件或系统自带的选项外，还可以设置下列以``DOTFILES_``开头的本配置专用的变量:
 
 * ``DOTFILES_THEME``：控制使用的配色方案
@@ -80,4 +82,9 @@ git clone https://github.com/thawk/dotfiles.git ~/.dotfiles
 
 * ``DOTFILES_SRC_ROOT``: 代码库的根。如``$HOME/workspace``
 * ``MY_SOCKS5_PROXY``: 设置SOCK5代理的地址和端口，用于``ap``和``setproxy``。缺省为``127.0.0.1:1080``
+* ``DOTFILES_ENV``: 运行环境。部分功能只在特定环境提供。缺省为`inet`环境，表示互联网
 
+## 暴露环境变量
+
+* ``DOTFILES_ROOT``: dotfiles目录，一般为`$HOME/.dotfiles`
+* ``DOTFILES_LOCAL``: dotfiles本地配置目录，一般为`$HOME/.cache/dotfiles`
