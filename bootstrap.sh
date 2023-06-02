@@ -14,6 +14,7 @@ fi
 
 export DOTFILES_ROOT
 export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
+export DOTFILES_ENV=${DOTFILES_ENV:-inet}
 
 source "${DOTFILES_ROOT}/logging.sh"
 
@@ -136,11 +137,9 @@ get_symlinks() {
     LINK_BASE="$1"
     shift 1
 
-    local curr_env="${DOTFILES_ENV:-inet}"
-
     for dir in "$@"
     do
-        find -H "${LINK_BASE}/$dir" -name '*.symlink' -o -name "*.symlink-${curr_env}" -not -path '*.git' |
+        find -H "${LINK_BASE}/$dir" -name '*.symlink' -o -name "*.symlink-${DOTFILES_ENV}" -not -path '*.git' |
             while read -r src
             do
                 rel=$(relpath "$src" "$LINK_BASE")
@@ -203,7 +202,7 @@ create_symlinks () {
     do
         echo "$link" >> "$DOTFILES_LOCAL/$LINK_FILE"
         dst="$TARGET/${link#*/}"
-        dst="${dst%.symlink}"
+        dst="${dst%.symlink*}"
         link_file "$LINK_BASE/$link" "$dst"
     done
 }
@@ -575,6 +574,7 @@ fi
 info "Environments:"
 info "    ${HIGHLIGHT1_FORMAT}DOTFILES_ROOT${RESET_FORMAT}  = ${HIGHLIGHT2_FORMAT}${DOTFILES_ROOT}${RESET_FORMAT}"
 info "    ${HIGHLIGHT1_FORMAT}DOTFILES_LOCAL${RESET_FORMAT} = ${HIGHLIGHT2_FORMAT}${DOTFILES_LOCAL}${RESET_FORMAT}"
+info "    ${HIGHLIGHT1_FORMAT}DOTFILES_ENV${RESET_FORMAT}   = ${HIGHLIGHT2_FORMAT}${DOTFILES_ENV}${RESET_FORMAT}"
 info ""
 
 info "Install to $TARGET..."
