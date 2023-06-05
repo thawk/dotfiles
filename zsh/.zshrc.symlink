@@ -60,11 +60,11 @@ then
             ;;
         *)
             if (( $+commands[tmux] )); then
-                command tmux attach
+                command tmux -2 attach
 
                 # Failed to attach, start new session
                 if [[ $? -ne 0 ]]; then
-                    command tmux new-session
+                    command tmux -2 new-session
                 fi
             fi
             ;;
