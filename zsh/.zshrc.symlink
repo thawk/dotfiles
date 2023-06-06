@@ -1,6 +1,6 @@
 #zmodload zsh/zprof
 
-autoload colors && colors
+autoload -U colors && colors
 
 # User specific aliases and functions
 export LC_ALL=en_US.UTF-8
