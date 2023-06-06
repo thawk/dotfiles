@@ -3,21 +3,136 @@
 
 from math import *
 from struct import pack
+from collections.abc import Sequence
 import re
 import sys
 
 TAB_SIZE = 8
 
+def parse_input(s):
+    if re.match(r'^\s*([0-9a-fA-F]{2}|[0-9a-fA-F]{4})(\s+([0-9a-fA-F]{2}|[0-9a-fA-F]{4}))+\s*$', s):
+        s = '0x' + re.sub(r'\s+', '', s)
+
+    return eval(s)
+
+def join_result(result):
+    s = ""
+    for r in result:
+        s += r
+        s += padding(s)
+
+    return s.strip()
+
+def match_target_types(target_types, types):
+    """从target_types中判断是否支持types中的类型
+
+    如果target_types为空，代表支持所有类型
+
+    返回：支持则返回非空串，内容为支持的类型
+    """
+    if len(target_types) == 0:
+        return types
+
+    return [ c for c in types if c in target_types ]
+
+def is_int(num):
+    return isinstance(num, int) or (sys.version_info[0]<3 and isinstance(num, long))
+
 def padding(s):
     """
     >>> padding('')
-    '        '
+    ''
+
+    >>> padding(' ')
+    '       '
     """
+    if len(s) == 0:
+        return ''
+
     pos = int(floor((len(s)+TAB_SIZE)/TAB_SIZE))*TAB_SIZE
     return (pos - len(s))*' '
 
+def byte_count(num):
+    """Return byte count of num
+    >>> byte_count(0)
+    0
 
-def handle(s):
+    >>> byte_count(1)
+    1
+
+    >>> byte_count(255)
+    1
+
+    >>> byte_count(256)
+    2
+    """
+    return int(ceil(num.bit_length()/8.0))
+
+def convert10(num):
+    """convert num to 10-base string.
+    """
+    return ['{0}'.format(num)]
+
+def convert16(num, types=''):
+    """convert num to 16-base string.
+    """
+    count = byte_count(num)
+
+    if num >= 0:
+        return ['0x{0:0>{1}X}'.format(num, count*2)]
+
+    result = []
+
+    # unsigned
+    if match_target_types(types, 'x'):
+        result.append(
+            '0x{0:0>{1}X}'.format(num+256**count, count*2))
+
+    # signed
+    if match_target_types(types, 'X'):
+        result.append(
+            re.sub(
+                r'^0x(0*)-', r'-0x\1',
+                '0x{0:0>{1}X}'.format(num, count*2)))
+
+    return result
+
+def convert8(num):
+    """convert num to 8-base string.
+    """
+    return [
+        re.sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(num))
+    ]
+
+def convert2(num):
+    """convert num to binary-base string.
+    """
+    return [
+        re.sub(
+            r'^0b(0*)-', r'-0b\1',
+            '0b{0:0>{1}b}'.format(
+                num, byte_count(num)*8))
+    ]
+
+def convert_chars(num):
+    """convert num toars8-base string.
+    """
+    try:
+        bytes=pack(">Q" if num >= 0 else ">q", num)
+        if isinstance(bytes[0], type('c')):
+            bytes=map(ord, bytes)
+
+        return [
+            ''.join([
+                chr(c)
+                if c>=0x20 and c<=0x7e else '.'
+                for c in bytes[8-byte_count(num):]
+            ])
+        ]
+    except:
+        return []
+
+def handle(s, target_types=''):
     """Print the value of expression s in a resonable way.
 
     >>> handle("0")
@@ -80,44 +195,59 @@ def handle(s):
 
     >>> handle("1+2 * 3 + sqrt(4)")
     9.0
+
+    >>> handle("-1")
+    -1      0xFF    -0x1    -0o1    -0b0000001      .
+
+    >>> handle("-123")
+    -123    0x85    -0x7B   -0o173  -0b1111011      .
+
+    >>> handle("-1234")
+    -1234   0xFB2E  -0x4D2  -0o2322 -0b000010011010010      ..
+
+    >>> handle("-1234", 'x')
+    0xFB2E
+
+    >>> handle("-1234", 'X')
+    -0x4D2
     """
 
-    if re.match(r'^\s*([0-9a-fA-F]{2}|[0-9a-fA-F]{4})(\s+([0-9a-fA-F]{2}|[0-9a-fA-F]{4}))+\s*$', s):
-        s = '0x' + re.sub(r'\s+', '', s)
+    num = parse_input(s)
+    if not is_int(num):
+        if len(target_types) == 0:
+            print(num)
 
-    result = eval(s)
-    if isinstance(result, int) or (sys.version_info[0]<3 and isinstance(result, long)):
-        count=int(ceil(result.bit_length()/8.0))
+        return
 
-        s = '{0}'.format(result)
-        s += padding(s)
-        if result >= 0:
-            s += '0x{0:0>{1}X}'.format(result, count*2)
-        else:
-            s += '0x{0:0>{1}X}'.format(result+256**count, count*2)
-            s += padding(s)
-            s += re.sub(r'^0x(0*)-', r'-0x\1', '0x{0:0>{1}X}'.format(result, count*2))
+    result = []
 
-        s += padding(s)
-        s += re.sub(r'^0o(0*)-', r'-0o\1', '0o{0:>o}'.format(result))
+    if match_target_types(target_types, 'd'):
+        result += convert10(num)
 
-        if count <= 4:
-            s += padding(s)
-            s += re.sub(r'^0b(0*)-', r'-0b\1', '0b{0:0>{1}b}'.format(result, count*8))
+    if match_target_types(target_types, 'xX'):
+        result += convert16(num, match_target_types(target_types, 'xX'))
 
-        try:
-            bytes=pack(">Q" if result >= 0 else ">q", result)
-            if isinstance(bytes[0], type('c')):
-                bytes=map(ord, bytes)
+    if match_target_types(target_types, 'o'):
+        result += convert8(num)
 
-            s += padding(s)
-            s += ''.join([chr(c) if c>=0x20 and c<=0x7e else '.' for c in bytes[8-count:]])
-        except:
-            pass
+    if match_target_types(target_types, 'b'):
+        if byte_count(num) <= 4:
+            result += convert2(num)
 
-        print(s.strip())
-    else:
-        print(result)
+    if match_target_types(target_types, 'c'):
+        result += convert_chars(num)
+
+    print(join_result(result))
 
 if __name__ == '__main__':
-    handle(' '.join(sys.argv[1:]))
+    args = sys.argv[1:]
+    if len(args) < 1:
+        exit(0)
+
+    target_types = ''
+
+    if re.match(r'-[xXdobc]', args[0]):
+        target_types = args[0][1]
+        args = args[1:]
+
+    handle(' '.join(args), target_types)
