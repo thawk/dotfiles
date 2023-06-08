@@ -9,8 +9,16 @@ import sys
 
 TAB_SIZE = 8
 
-def parse_input(s):
-    if re.match(r'^\s*([0-9a-fA-F]{2}|[0-9a-fA-F]{4})(\s+([0-9a-fA-F]{2}|[0-9a-fA-F]{4}))+\s*$', s):
+def parse_input(args):
+    """Convert input to number
+    """
+    s = ' '.join(args)
+
+    if re.match(r'^\s*[0-9a-fA-F]*[a-fA-F]+[0-9a-fA-F]*\s*$', s):
+        # hex-digits with at least one [a-f]
+        s = '0x' + s
+    elif re.match(r'^\s*([0-9a-fA-F]{2}|[0-9a-fA-F]{4})(\s+([0-9a-fA-F]{2}|[0-9a-fA-F]{4}))+\s*$', s):
+        # groups of two or four hex-digits
         s = '0x' + re.sub(r'\s+', '', s)
 
     return eval(s)
@@ -135,80 +143,89 @@ def convert_chars(num):
 def handle(s, target_types=''):
     """Print the value of expression s in a resonable way.
 
-    >>> handle("0")
+    >>> handle(['0'])
     0       0x0     0o0     0b0
 
-    >>> handle("1")
+    >>> handle(['1'])
     1       0x01    0o1     0b00000001      .
 
-    >>> handle("1.")
+    >>> handle(['1.'])
     1.0
 
-    >>> handle("2")
+    >>> handle(['2'])
     2       0x02    0o2     0b00000010      .
 
-    >>> handle("8")
+    >>> handle(['8'])
     8       0x08    0o10    0b00001000      .
 
-    >>> handle("65")
+    >>> handle(['65'])
     65      0x41    0o101   0b01000001      A
 
-    >>> handle("5432")
+    >>> handle(['ff'])
+    255     0xFF    0o377   0b11111111      .
+
+    >>> handle(['ffff'])
+    65535   0xFFFF  0o177777        0b1111111111111111      ..
+
+    >>> handle(['5432'])
     5432    0x1538  0o12470 0b0001010100111000      .8
 
-    >>> handle("1234567890")
+    >>> handle(['1234567890'])
     1234567890      0x499602D2      0o11145401322   0b01001001100101100000001011010010      I...
 
-    >>> handle("12345678901")
+    >>> handle(['12345678901'])
     12345678901     0x02DFDC1C35    0o133767016065  ....5
 
-    >>> handle("0x1538")
+    >>> handle(['0x1538'])
     5432    0x1538  0o12470 0b0001010100111000      .8
 
-    >>> handle("0x02DFDC1C35")
+    >>> handle(['0x02DFDC1C35'])
     12345678901     0x02DFDC1C35    0o133767016065  ....5
 
-    >>> handle("0x11223344556677889900")
+    >>> handle(['0x11223344556677889900'])
     80911113678783024503040 0x11223344556677889900  0o21104315042526316742114400
 
-    >>> handle("44 55 66 77")
+    >>> handle(['44', '55', '66', '77'])
     1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
 
-    >>> handle("4455 6677")
+    >>> handle(['4455', '6677'])
     1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
 
-    >>> handle("4455 66 77")
+    >>> handle(['4455', '66', '77'])
     1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
 
-    >>> handle("44 5566 77")
+    >>> handle(['44', '5566', '77'])
     1146447479      0x44556677      0o10425263167   0b01000100010101010110011001110111      DUfw
 
-    >>> handle("0x44 55 66 77")
+    >>> handle(['0x44', '55', '66', '77'])
     Traceback (most recent call last):
     SyntaxError: invalid syntax
 
-    >>> handle("aa BB cc DD")
+    >>> handle(['aa', 'BB', 'cc', 'DD'])
     2864434397      0xAABBCCDD      0o25256746335   0b10101010101110111100110011011101      ....
 
-    >>> handle("1+2 * 3")
+    >>> handle(['1+2 * 3'])
     7       0x07    0o7     0b00000111      .
 
-    >>> handle("1+2 * 3 + sqrt(4)")
+    >>> handle(['1+2*3+sqrt(4)'])
     9.0
 
-    >>> handle("-1")
+    >>> handle(['1+2', '* 3', '+', 'sqrt(4)'])
+    9.0
+
+    >>> handle(['-1'])
     -1      0xFF    -0x1    -0o1    -0b0000001      .
 
-    >>> handle("-123")
+    >>> handle(['-123'])
     -123    0x85    -0x7B   -0o173  -0b1111011      .
 
-    >>> handle("-1234")
+    >>> handle(['-1234'])
     -1234   0xFB2E  -0x4D2  -0o2322 -0b000010011010010      ..
 
-    >>> handle("-1234", 'x')
+    >>> handle(['-1234'], 'x')
     0xFB2E
 
-    >>> handle("-1234", 'X')
+    >>> handle(['-1234'], 'X')
     -0x4D2
     """
 
@@ -250,4 +267,4 @@ if __name__ == '__main__':
         target_types = args[0][1]
         args = args[1:]
 
-    handle(' '.join(args), target_types)
+    handle(args, target_types)
