@@ -4,6 +4,9 @@
 
 __ScriptVersion="20190803"
 
+# import ~/.localrc to set environments correctly
+[[ -a "$HOME/.localrc" ]] && source "$HOME/.localrc" top
+
 if type perl &> /dev/null; then
     DOTFILES_ROOT="$(dirname "$(perl -e 'use Cwd "abs_path";print abs_path(shift)' "$0")")"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
