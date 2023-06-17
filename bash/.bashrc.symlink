@@ -84,6 +84,3 @@ if [ -z "$TMUX" ]; then
 else
     export PS1="$PS1\[${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\\\]"
 fi
-
-# Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
-export PATH="$PATH:$HOME/.rvm/bin"
