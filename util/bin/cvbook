@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Time: 2021-02-02 13:53:59
+
+gen_pandoc_meta() {
+    title="$1"
+    author="$2"
+    cover="$3"
+
+    echo "---"
+    echo "title: $title"
+    echo "author: $author"
+
+    if [[ -n "$cover" ]]; then
+        echo "cover-image: $cover"
+    fi
+
+    echo "---"
+}
+
+convert_book_pandoc() {
+    src_file="$1"
+    epub_file="$2"
+    title="$3"
+    author="$4"
+    cover="$5"
+
+    pandoc \
+        -o "$epub_file" \
+        <(gen_pandoc_meta "$title" "$author" "$cover") \
+        "$src_file"
+}
+
+convert_book_calibre() {
+    src_file="$1"
+    epub_file="$2"
+    title="$3"
+    author="$4"
+    cover="$5"
+
+    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover"
+}
+
+convert_book() {
+    src_file="$1"
+    title="$2"
+    author="$3"
+    cover="$4"
+    epub_file="${src_file%.*}.epub"
+
+    if type pandoc &> /dev/null; then
+        convert_book_pandoc "$src_file" "$epub_file" "$title" "$author" "$cover"
+    else
+        convert_book_calibre "$src_file" "$epub_file" "$title" "$author" "$cover"
+    fi
+
+    # kindlegen "${book%.*}.epub"
+}
+
+while [[ -n "$1" ]]
+do
+    book="$1"
+    shift
+
+    name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
+    author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
+    if [[ -z "$name" ]] || [[ -z "$author" ]]
+    then
+        echo "!!! Failed to parse '$book' !!!"
+        continue
+    fi
+
+    cover="${book%.*}.jpg"
+    for ext in jpg jpeg webp; do
+        if [[ -f "${book%.*}.${ext}" ]]; then
+            cover="${book%.*}.${ext}"
+            break
+        fi
+    done
+
+    convert_book "$book" "$name" "$author" "$cover"
+done
