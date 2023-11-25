@@ -3,6 +3,45 @@
 epoch=
 subsecs=
 
+function timestamp_one() {
+    ts=$1
+
+    if [[ "$ts" =~ ^0x ]]; then
+        # convert hex to dec
+        ts=$((16#${ts:2}))
+    fi
+
+    if [[ ${#ts} -ge 19 ]]; then
+        # timestamp, nanoseconds
+        l=${#ts}
+        epoch=${ts:0:$(($l-9))}
+        subsecs=.$(printf "%09d" ${ts:$(($l-9))})
+    elif [[ $ts -lt 253402300800 ]]; then
+        # timestamp, seconds
+        epoch=$ts
+        subsecs=
+    elif [[ $ts -lt 253402300800000 ]]; then
+        # timestamp, milliseconds
+        epoch=$((ts / 1000))
+        subsecs=.$(printf "%03d" $((ts % 1000)))
+    elif [[ $ts -lt 64060588800000000 ]]; then
+        # timestamp, microseconds
+        epoch=$((ts / 1000000))
+        subsecs=.$(printf "%06d" $((ts % 1000000)))
+    else
+        # FILETIME, 100ns count from 1601-01-01, 109205 days before 1900-01-01,
+        # 25569 more days before 1970-01-01
+        epoch=$((ts / 10000000 - (109205 + 25569) * 24 * 60 * 60))
+        subsecs=.$(printf "%07d" $((ts % 10000000)))
+    fi
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        date -u -r ${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
+    else
+        date --utc -d @${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
+    fi
+}
+
 if [[ $# -eq 0 ]]; then
     # Current time
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -15,40 +54,16 @@ if [[ $# -eq 0 ]]; then
         date +"%s%N"
     fi
 else
-    # Cnvert time from parameters
-    while [ $# -gt 0 ]
-    do
-        ts=$1
-        if [[ ${#ts} -ge 19 ]]; then
-            # timestamp, nanoseconds
-            l=${#ts}
-            epoch=${ts:0:$(($l-9))}
-            subsecs=.$(printf "%09d" ${ts:$(($l-9))})
-        elif [[ $ts -lt 253402300800 ]]; then
-            # timestamp, seconds
-            epoch=$ts
-            subsecs=
-        elif [[ $ts -lt 253402300800000 ]]; then
-            # timestamp, milliseconds
-            epoch=$((ts / 1000))
-            subsecs=.$(printf "%03d" $((ts % 1000)))
-        elif [[ $ts -lt 64060588800000000 ]]; then
-            # timestamp, microseconds
-            epoch=$((ts / 1000000))
-            subsecs=.$(printf "%06d" $((ts % 1000000)))
-        else
-            # FILETIME, 100ns count from 1601-01-01, 109205 days before 1900-01-01,
-            # 25569 more days before 1970-01-01
-            epoch=$((ts / 10000000 - (109205 + 25569) * 24 * 60 * 60))
-            subsecs=.$(printf "%07d" $((ts % 10000000)))
-        fi
-
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            date -u -r ${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
-        else
-            date --utc -d @${epoch} +"%Y-%m-%d %T"${subsecs}" UTC"
-        fi
-
-        shift
-    done
+    # Convert time from parameters
+    if [[ "$@" =~ ^\ *[0-9a-fA-F]{2}(\ +[0-9a-fA-F]{2})*\ *$ ]]; then
+        # input are pairs of hex digits, concat it
+        ts="$@"
+        timestamp_one "0x${ts// /}"
+    else
+        while [ $# -gt 0 ]
+        do
+            timestamp_one "$1"
+            shift
+        done
+    fi
 fi
