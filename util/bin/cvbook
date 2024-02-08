@@ -47,11 +47,11 @@ convert_book() {
     cover="$4"
     epub_file="${src_file%.*}.epub"
 
-    if type pandoc &> /dev/null; then
-        convert_book_pandoc "$src_file" "$epub_file" "$title" "$author" "$cover"
-    else
+    # if type pandoc &> /dev/null; then
+        # convert_book_pandoc "$src_file" "$epub_file" "$title" "$author" "$cover"
+    # else
         convert_book_calibre "$src_file" "$epub_file" "$title" "$author" "$cover"
-    fi
+    # fi
 
     # kindlegen "${book%.*}.epub"
 }
