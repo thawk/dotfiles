@@ -15,7 +15,7 @@
     # hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
     hist = log --abbrev-commit --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
     # current branch related log
-    lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%ar)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
+    lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%as)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
     # log for all branches
     lga = lg --all
     # current branch's only, omit merge detail
