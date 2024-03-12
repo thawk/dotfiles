@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 # Time: 2021-02-02 13:53:59
 
+VERBOSE=
+METHOD=pandoc
+
+EchoUsage()
+{
+    echo "
+Usage: $(basename "$0") [options] [--] <filename>...
+
+    Options:
+        -h|help       Display this message
+        -v|verbose    Display more verbose log
+        -m|method <val> pandoc/calibre, defaults to calibre
+" >&2
+}
+
 gen_pandoc_meta() {
     title="$1"
     author="$2"
@@ -46,36 +61,72 @@ convert_book() {
     author="$3"
     cover="$4"
     epub_file="${src_file%.*}.epub"
-
-    # if type pandoc &> /dev/null; then
-        # convert_book_pandoc "$src_file" "$epub_file" "$title" "$author" "$cover"
-    # else
-        convert_book_calibre "$src_file" "$epub_file" "$title" "$author" "$cover"
-    # fi
+    epub_file=$(basename "${epub_file}")
+    
+    "convert_book_${METHOD}" "$src_file" "$epub_file" "$title" "$author" "$cover"
 
     # kindlegen "${book%.*}.epub"
 }
 
-while [[ -n "$1" ]]
-do
+convert_one() {
     book="$1"
-    shift
 
     name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
     author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
     if [[ -z "$name" ]] || [[ -z "$author" ]]
     then
         echo "!!! Failed to parse '$book' !!!"
-        continue
+        return
     fi
 
     cover="${book%.*}.jpg"
-    for ext in jpg jpeg webp; do
+    for ext in jpg jpeg png webp; do
         if [[ -f "${book%.*}.${ext}" ]]; then
             cover="${book%.*}.${ext}"
             break
         fi
     done
 
+    if [[ $cover == *.webp ]] && type convert &> /dev/null; then
+        old_cover="$cover"
+        cover="${cover%.*}.png"
+        convert "$old_cover" "$cover"
+    fi
+
     convert_book "$book" "$name" "$author" "$cover"
+}
+
+while getopts ":hvm:" opt; do
+    case $opt in
+        h|help)
+            EchoUsage
+            exit 0
+            ;;
+        v|verbose)
+            VERBOSE="${VERBOSE}1"
+            ;;
+        m|method)
+            METHOD=$OPTARG
+            ;;
+        * )
+            echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
+            EchoUsage
+            exit 1
+            ;;
+    esac
 done
+shift $(($OPTIND-1))
+
+# 参数个数最少为1
+if [ $# -lt 1 ]
+then
+    EchoUsage
+    exit 1
+fi
+
+while [[ -n "$1" ]]
+do
+    convert_one "$1"
+    shift
+done
+
