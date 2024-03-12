@@ -39,8 +39,15 @@ convert_book_pandoc() {
     author="$4"
     cover="$5"
 
+    verbose=
+
+    if [[ -n "$VERBOSE" ]]; then
+        verbose="--verbose"
+    fi
+
     pandoc \
         -o "$epub_file" \
+        "$verbose" \
         <(gen_pandoc_meta "$title" "$author" "$cover") \
         "$src_file"
 }
@@ -51,8 +58,13 @@ convert_book_calibre() {
     title="$3"
     author="$4"
     cover="$5"
+    verbose=
 
-    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover"
+    if [[ -n "$VERBOSE" ]]; then
+        verbose="--verbose"
+    fi
+
+    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover" "$verbose"
 }
 
 convert_book() {
@@ -115,7 +127,7 @@ while getopts ":hvm:" opt; do
             ;;
     esac
 done
-shift $(($OPTIND-1))
+shift $((OPTIND-1))
 
 # 参数个数最少为1
 if [ $# -lt 1 ]
