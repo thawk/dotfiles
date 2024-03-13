@@ -4,6 +4,11 @@
 VERBOSE=
 METHOD=pandoc
 
+TMPDIR="$(mktemp -d cvbook.XXXXXX)"
+trap "rm -rf '$TMPDIR'" 0               # EXIT
+trap "rm -rf '$TMPDIR'; exit 1" 2       # INT
+trap "rm -rf '$TMPDIR'; exit 1" 1 15    # HUP TERM
+
 EchoUsage()
 {
     echo "
@@ -45,9 +50,21 @@ convert_book_pandoc() {
         verbose="--verbose"
     fi
 
+    if [[ -n "$cover" ]]; then
+        old_cover="$cover"
+        cover="$TMPDIR/cover.${cover##*.}"
+
+        if [[ $cover == *.webp ]] && type convert &> /dev/null; then
+            cover="${cover%.*}.png"
+            convert "$old_cover" "$cover"
+        else
+            cp "$old_cover" "$cover"
+        fi
+    fi
+
     pandoc \
         -o "$epub_file" \
-        "$verbose" \
+        $verbose \
         <(gen_pandoc_meta "$title" "$author" "$cover") \
         "$src_file"
 }
@@ -98,12 +115,6 @@ convert_one() {
             break
         fi
     done
-
-    if [[ $cover == *.webp ]] && type convert &> /dev/null; then
-        old_cover="$cover"
-        cover="${cover%.*}.png"
-        convert "$old_cover" "$cover"
-    fi
 
     convert_book "$book" "$name" "$author" "$cover"
 }
