@@ -1,6 +1,8 @@
-env_file="${DOTFILES_LOCAL}/java/env.sh"
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
+#!/usr/bin/env bash
+
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "java"
+env_file="$(create_plugin_file env.sh)"
 
 java_home=/usr/libexec/java_home
 if [ -x "$java_home" ]; then

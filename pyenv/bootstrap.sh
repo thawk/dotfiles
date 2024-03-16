@@ -1,16 +1,12 @@
 #!/bin/bash
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+
+init_plugin pyenv
+conf_dir="$(get_config_dir)"
+env_file="$(create_plugin_file env.sh)"
+path_file="$(create_plugin_file path.sh)"
 
 PATH=$HOME/.pyenv/bin:$PATH
-
-conf_dir="${DOTFILES_LOCAL}/pyenv"
-mkdir -p "${conf_dir}"
-rm -f "${conf_dir}"/*
-
-env_file="${conf_dir}/env.sh"
-: > "${env_file}"
-
-path_file="${conf_dir}/path.sh"
-: > "${path_file}"
 
 # shellcheck disable=SC2016
 echo 'export PYENV_ROOT="$HOME/.pyenv"' >> "${env_file}"
@@ -22,11 +18,11 @@ pyenv init --path >> "${path_file}"
 # set path to suppress the warning prompt of pyenv init -
 eval "$(pyenv init --path)"
 
-pyenv init - bash > "${conf_dir}/init.bash"
-pyenv virtualenv-init - bash > "${conf_dir}/virtualenv-init.bash"
+pyenv init - bash > "$(create_plugin_file init.bash)"
+pyenv virtualenv-init - bash > "$(create_plugin_file virtualenv-init.bash)"
 
-pyenv init - zsh > "${conf_dir}/init.zsh"
-pyenv virtualenv-init - zsh > "${conf_dir}/virtualenv-init.zsh"
+pyenv init - zsh > "$(create_plugin_file init.zsh)"
+pyenv virtualenv-init - zsh > "$(create_plugin_file virtualenv-init.zsh)"
 
 echo "export PYENV_VIRTUALENV_DISABLE_PROMPT=1" >> "${env_file}"
 

@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-env_file="${DOTFILES_LOCAL}/go/path.sh"
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
-: > "${env_file}"
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "go"
+env_file="$(create_plugin_file env.sh)"
+path_file="$(create_plugin_file path.sh)"
 
 # Reset environment to correctly handle golang upgrade
 export GOPATH=
@@ -22,10 +22,10 @@ echo "export GOROOT=${go_root}" >> "${env_file}"
 
 if [ -d "${go_root}/bin" ]
 then
-    echo "export PATH=\$PATH:${go_root}/bin" >> "${env_file}"
+    echo "export PATH=\$PATH:${go_root}/bin" >> "${path_file}"
 fi
 
 if [ "${go_path}" != "${go_root}" ] && [ -d "${go_path}/bin" ]
 then
-    echo "export PATH=\$PATH:${go_path}/bin" >> "${env_file}"
+    echo "export PATH=\$PATH:${go_path}/bin" >> "${path_file}"
 fi

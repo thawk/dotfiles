@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-conf_dir="${DOTFILES_LOCAL}/haskell"
-mkdir -p "${conf_dir}"
-rm -f "${conf_dir}"/*
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "haskell"
+env_file="$(create_plugin_file env.sh)"
 
 # shellcheck disable=SC2016
-echo '[[ -f "$HOME/.ghcup/env" ]] && source "$HOME/.ghcup/env"' >> "${conf_dir}/env.sh"
+echo '[[ -f "$HOME/.ghcup/env" ]] && source "$HOME/.ghcup/env"' >> "${env_file}"
 

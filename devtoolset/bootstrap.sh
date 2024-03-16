@@ -1,6 +1,8 @@
-env_file="${DOTFILES_LOCAL}/devtoolset/env.sh"
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
+#!/usr/bin/env bash
+
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "devtoolset"
+env_file="$(create_plugin_file env.sh)"
 
 echo 'for d in $(ls -d /opt/rh/llvm-toolset-* | sort -Vr); do
     if [[ -e "$d/enable" ]]; then

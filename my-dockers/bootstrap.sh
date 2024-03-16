@@ -3,8 +3,8 @@
 source "${DOTFILES_ROOT}/util.sh"
 
 plug_name=my-dockers
-conf_path="$(init_local_config "${plug_name}")"
-func_file="${conf_path}/functions.sh"
+init_plugin ${plug_name}
+func_file="$(create_plugin_file functions.sh)"
 
 for script in "${DOTFILES_ROOT}/${plug_name}/scripts/"*; do
     cmd="${script##*/}"

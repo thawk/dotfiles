@@ -2,10 +2,8 @@
 # Time: 2024-03-16 11:46:25
 source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
 
-PLUGIN_NAME=python
-
-init_config_dir "$PLUGIN_NAME"
-env_file="$(init_config_file "$PLUGIN_NAME" env.sh)"
+init_plugin python
+env_file="$(create_plugin_file env.sh)"
 
 ## pyenv related
 PATH="$HOME/.pyenv/bin:$PATH"

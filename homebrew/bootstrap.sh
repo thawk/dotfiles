@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Time: 2022-04-08 22:12:02
 
-env_file="${DOTFILES_LOCAL}/homebrew/env.sh"
-top_file="${DOTFILES_LOCAL}/homebrew/top_sh.sh"
-
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
-# : > "${env_file}"
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "homebrew"
+env_file="$(create_plugin_file env.sh)"
+top_file="$(create_plugin_file top_sh.sh)"
 
 shellenv="brew shellenv"
 

@@ -1,8 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-env_file="${DOTFILES_LOCAL}/gem/path.sh"
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
-: > "${env_file}"
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "gem"
+path_file="$(create_plugin_file path.sh)"
 
-echo "export PATH=\${PATH}:$(ruby -rrubygems -e "puts Gem.user_dir")/bin" >> "${env_file}"
+echo "export PATH=\${PATH}:$(ruby -rrubygems -e "puts Gem.user_dir")/bin" >> "${path_file}"

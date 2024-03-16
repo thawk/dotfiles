@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Time: 2023-06-01 06:21:02
 
-alias_file="${DOTFILES_LOCAL}/util/alias.sh"
-editor_file="${DOTFILES_LOCAL}/system/editor.sh"
-mkdir -p "$(dirname "$alias_file")"
-rm -f "$(dirname "$alias_file")"/*
-: > "${alias_file}"
-: > "${editor_file}"
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "util"
+alias_file="$(create_plugin_file alias.sh)"
+editor_file="$(create_plugin_file editor.sh)"
 
 # Detect netcat executable
 netcat=

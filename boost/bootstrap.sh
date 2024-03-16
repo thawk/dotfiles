@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-ROOTS=("$HOME/workspace/cs/lib/cppf/common/3rd/" "$HOME/workspace/")
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "boost"
+env_file="$(create_plugin_file env.sh)"
 
-env_file="${DOTFILES_LOCAL}/boost/env.sh"
-mkdir -p "$(dirname "${env_file}")"
-rm -f "$(dirname "$env_file")"/*
-: > "${env_file}"
+ROOTS=("$HOME/workspace/cs/lib/cppf/common/3rd/" "$HOME/workspace/")
 
 for i in $(seq 0 $((${#ROOTS[*]} - 1)))
 do

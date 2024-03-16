@@ -1,15 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-env_file="${DOTFILES_LOCAL}/pip/path.sh"
-mkdir -p "$(dirname "$env_file")"
-rm -f "$(dirname "$env_file")"/*
-: > "${env_file}"
+source "$(dirname "$(dirname "${BASH_SOURCE[0]}")")/util.sh"
+init_plugin "pip"
+path_file="$(create_plugin_file path.sh)"
 
 #Not work at macos
 
-echo "export PATH=$(python -m site --user-base)/bin:\${PATH}" >> "${env_file}"
+echo "export PATH=$(python -m site --user-base)/bin:\${PATH}" >> "${path_file}"
 
-#if [ -n "$(python -c 'import site; print(site.USER_SITE)')" ]
-#then
-#    echo "export PYTHONPATH=$(python -c "import site; print(site.USER_SITE)"):\${PYTHONPATH:+:\${PYTHONPATH}}" >> "${env_file}"
-#fi
