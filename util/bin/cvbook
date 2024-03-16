@@ -2,7 +2,7 @@
 # Time: 2021-02-02 13:53:59
 
 VERBOSE=
-METHOD=pandoc
+METHOD=calibre
 
 TMPDIR="$(mktemp -d cvbook.XXXXXX)"
 trap "rm -rf '$TMPDIR'" 0               # EXIT
@@ -78,10 +78,10 @@ convert_book_calibre() {
     verbose=
 
     if [[ -n "$VERBOSE" ]]; then
-        verbose="--verbose"
+        verbose=--verbose
     fi
 
-    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover" "$verbose"
+    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover" $verbose
 }
 
 convert_book() {
