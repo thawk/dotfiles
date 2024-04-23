@@ -82,5 +82,6 @@ OSC="${ESC}]"
 if [ -z "$TMUX" ]; then
     export PS1="$PS1\[${OSC}1337;CurrentDir=$(pwd)${BEL}\]"
 else
-    export PS1="$PS1\[${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\\\]"
+    export PS1="$PS1\[${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\]"
 fi
+. "$HOME/.cargo/env"
