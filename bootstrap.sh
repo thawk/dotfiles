@@ -405,12 +405,14 @@ get_enabled_dir() {
         if [ -e "${dir}/disabled" ] || [ -e "${dir}/disabled.global" ]
         then
             debug "    ${WARN_FORMAT}Disable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT} for global"
+            echo "# $(basename "${dir}")" >> "$DOTFILES_LOCAL/enabled.new.txt"
             continue
         fi
 
         if [ -f "${dir}/requirements.sh" ] && ! "${dir}/requirements.sh" &> /dev/null
         then
             debug "    ${WARN_FORMAT}Disable${RESET_FORMAT} ${INFO_FORMAT}${dir}${RESET_FORMAT} for requirements.sh"
+            echo "# $(basename "${dir}")" >> "$DOTFILES_LOCAL/enabled.new.txt"
             continue
         fi
 
