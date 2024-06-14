@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from typing import NamedTuple
 
@@ -103,20 +105,17 @@ parser = argparse.ArgumentParser(description="Checks for kernel hardening config
 
 @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.KERNEL)
 @pwndbg.commands.OnlyWhenQemuKernel
-@pwndbg.commands.OnlyWithKernelDebugSyms
 @pwndbg.commands.OnlyWhenPagingEnabled
 def kchecksec() -> None:
     kconfig = pwndbg.gdblib.kernel.kconfig()
 
-    if len(kconfig) == 0:
+    if not kconfig:
         print(
             M.warn(
                 "No kernel configuration found, make sure the kernel was built with CONFIG_IKCONFIG"
             )
         )
         return
-
-    cmdline = pwndbg.gdblib.kernel.kcmdline()
 
     options = _hardening_options + _arch_hardening_options.get(pwndbg.gdblib.arch.name, [])
     for opt in options:

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import shlex
 import string
 
 import pwndbg.auxv
@@ -5,7 +8,8 @@ import pwndbg.commands
 import pwndbg.gdblib.file
 import pwndbg.gdblib.net
 import pwndbg.gdblib.proc
-import pwndbg.lib.memoize
+import pwndbg.lib.cache
+from pwndbg.color import message
 from pwndbg.commands import CommandCategory
 
 """
@@ -74,14 +78,26 @@ class Process:
         self.tid = tid
 
     @property
-    @pwndbg.lib.memoize.reset_on_stop
+    @pwndbg.lib.cache.cache_until("stop")
     def selinux(self):
         path = "/proc/%i/task/%i/attr/current" % (self.pid, self.tid)
         raw = pwndbg.gdblib.file.get(path)
         return raw.decode().rstrip("\x00").strip()
 
     @property
-    @pwndbg.lib.memoize.reset_on_stop
+    @pwndbg.lib.cache.cache_until("stop")
+    def cmdline(self):
+        raw = pwndbg.gdblib.file.get(f"/proc/{self.pid}/cmdline")
+        return " ".join(map(shlex.quote, raw.decode().split("\x00")))
+
+    @property
+    @pwndbg.lib.cache.cache_until("stop")
+    def cwd(self) -> str:
+        link = pwndbg.gdblib.file.readlink(f"/proc/{self.pid}/cwd")
+        return f"'{link}'"
+
+    @property
+    @pwndbg.lib.cache.cache_until("stop")
     def status(self):
         raw = pwndbg.gdblib.file.get("/proc/%i/task/%i/status" % (self.pid, self.tid))
 
@@ -120,7 +136,7 @@ class Process:
                 v = int(v)
 
             # uid and gid and groups
-            elif all((s.isdigit() for s in v.split())):
+            elif all(s.isdigit() for s in v.split()):
                 v = list(map(int, v.split()))
 
             # capability sets
@@ -136,7 +152,7 @@ class Process:
         return status
 
     @property
-    @pwndbg.lib.memoize.reset_on_stop
+    @pwndbg.lib.cache.cache_until("stop")
     def open_files(self):
         fds = {}
 
@@ -149,7 +165,7 @@ class Process:
         return fds
 
     @property
-    @pwndbg.lib.memoize.reset_on_stop
+    @pwndbg.lib.cache.cache_until("stop")
     def connections(self):
         # Connections look something like this:
         # socket:[102422]
@@ -191,7 +207,15 @@ def procinfo() -> None:
     """
     Display information about the running process.
     """
-    exe = str(pwndbg.auxv.get()["AT_EXECFN"])
+    if pwndbg.gdblib.qemu.is_qemu():
+        print(
+            message.error(
+                "QEMU target detected: showing result for the qemu process"
+                " - so it will be a bit inaccurate (excessive for the parts"
+                " used directly by the qemu process)"
+            )
+        )
+    exe = pwndbg.auxv.get().AT_EXECFN
     print("%-10s %r" % ("exe", exe))
 
     proc = Process()
@@ -199,6 +223,10 @@ def procinfo() -> None:
     # qemu-usermode fail!
     if not proc.status:
         return
+
+    print("%-10s %s" % ("cmdline", proc.cmdline))
+
+    print("%-10s %s" % ("cwd", proc.cwd))
 
     files = dict(proc.open_files)
 

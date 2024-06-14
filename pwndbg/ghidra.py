@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import gdb
@@ -6,6 +8,24 @@ import pwndbg.color.context as C
 import pwndbg.color.syntax_highlight as H
 import pwndbg.gdblib.regs
 import pwndbg.radare2
+import pwndbg.rizin
+from pwndbg.color import message
+
+r2decompiler = pwndbg.gdblib.config.add_param(
+    "r2decompiler", "radare2", "framework that your ghidra plugin installed (radare2/rizin)"
+)
+
+
+@pwndbg.gdblib.config.trigger(r2decompiler)
+def set_r2decompiler() -> None:
+    if r2decompiler.value in ["radare2", "rizin"]:
+        return
+    print(
+        message.warn(
+            f"Invalid r2decompiler: `{r2decompiler.value}`, please select from radare2 or rizin"
+        )
+    )
+    r2decompiler.revert_default()
 
 
 def decompile(func=None):
@@ -13,19 +33,26 @@ def decompile(func=None):
     Return the source of the given function decompiled by ghidra.
 
     If no function is given, decompile the function within the current pc.
-    This function requires radare2, r2pipe and r2ghidra.
+    This function requires radare2, r2pipe and r2ghidra, or their related rizin counterparts.
 
     Raises Exception if any fatal error occurs.
     """
     try:
-        r2 = pwndbg.radare2.r2pipe()
+        if r2decompiler == "radare2":
+            r2 = pwndbg.radare2.r2pipe()
+            # LD -> list supported decompilers (e cmd.pdc=?)
+            # Outputs for example: pdc\npdg
+            if "pdg" not in r2.cmd("LD").split("\n"):
+                raise Exception("radare2 plugin r2ghidra must be installed and available from r2")
+        elif r2decompiler == "rizin":
+            r2 = pwndbg.rizin.rzpipe()
+            # Lc -> list core plugins
+            if "ghidra" not in r2.cmd("Lc"):
+                raise Exception("rizin plugin rzghidra must be installed and available from rz")
+        else:
+            raise Exception(f"{r2decompiler} not support. Plz select from (radare2/rizin)")
     except ImportError:
-        raise Exception("r2pipe not available, but required for r2->ghidra bridge")
-
-    # LD -> list supported decompilers (e cmd.pdc=?)
-    # Outputs for example: pdc\npdg
-    if "pdg" not in r2.cmd("LD").split("\n"):
-        raise Exception("radare2 plugin r2ghidra must be installed and available from r2")
+        raise Exception("r2pipe or rzpipe not available, but required for r2/rz->ghidra bridge")
 
     if not func:
         func = (
@@ -34,9 +61,9 @@ def decompile(func=None):
             else "main"
         )
 
-    src = r2.cmdj("pdgj @" + func)
+    src = r2.cmdj("pdgj @ " + func)
     if not src:
-        raise Exception("Decompile command failed, check if '{}' is a valid target".format(func))
+        raise Exception(f"Decompile command failed, check if '{func}' is a valid target")
 
     current_line_marker = "/*%%PWNDBG_CODE_MARKER%%*/"
     source = src.get("code", "")

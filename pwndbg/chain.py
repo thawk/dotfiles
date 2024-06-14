@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import List
+
 import gdb
 
 import pwndbg.color.memory as M
@@ -27,14 +31,14 @@ c = ColorConfig(
 
 
 def get(
-    address,
-    limit=LIMIT,
-    offset=0,
-    hard_stop=None,
-    hard_end=0,
-    include_start=True,
-    safe_linking=False,
-):
+    address: int | None,
+    limit: int = int(LIMIT),
+    offset: int = 0,
+    hard_stop: int | None = None,
+    hard_end: int = 0,
+    include_start: bool = True,
+    safe_linking: bool = False,
+) -> List[int] | None:
     """
     Recursively dereferences an address. For bare metal, it will stop when the address is not in any of vmmap pages to avoid redundant dereference.
 
@@ -50,10 +54,13 @@ def get(
     Returns:
         A list representing pointers of each ```address``` and reference
     """
+    if address is None:
+        return None
+
     limit = int(limit)
 
     result = [address] if include_start else []
-    for i in range(limit):
+    for _ in range(limit):
         # Don't follow cycles, except to stop at the second occurrence.
         if result.count(address) >= 2:
             break
@@ -70,12 +77,18 @@ def get(
             if not pwndbg.gdblib.abi.linux and not pwndbg.gdblib.vmmap.find(address):
                 break
 
-            next_address = int(pwndbg.gdblib.memory.poi(pwndbg.gdblib.typeinfo.ppvoid, address))
+            next_address = int(
+                pwndbg.gdblib.memory.get_typed_pointer_value(pwndbg.gdblib.typeinfo.ppvoid, address)
+            )
             address = next_address ^ ((address >> 12) if safe_linking else 0)
             address &= pwndbg.gdblib.arch.ptrmask
             result.append(address)
         except gdb.MemoryError:
             break
+        except gdb.error as e:
+            if str(e) == "value is not available":
+                break
+            raise
 
     return result
 
@@ -87,7 +100,16 @@ config_contiguous = theme.add_param(
 )
 
 
-def format(value, limit=LIMIT, code=True, offset=0, hard_stop=None, hard_end=0, safe_linking=False):
+def format(
+    value: int | List[int] | None,
+    limit: int = int(LIMIT),
+    code: bool = True,
+    offset: int = 0,
+    hard_stop: int | None = None,
+    hard_end: int = 0,
+    safe_linking: bool = False,
+    enhance_string_len: int | None = None,
+) -> str:
     """
     Recursively dereferences an address into string representation, or convert the list representation
     of address dereferences into string representation.
@@ -100,28 +122,31 @@ def format(value, limit=LIMIT, code=True, offset=0, hard_stop=None, hard_end=0, 
         hard_stop(int): Value to stop on
         hard_end: Value to append when hard_stop is reached: null, value of hard stop, a string.
         safe_linking(bool): whether this chain use safe-linking
-
+        enhance_string_len(int): The length of string to display for enhancement of the last pointer
     Returns:
         A string representing pointers of each address and reference
         Strings format: 0x0804a10 —▸ 0x08061000 ◂— 0x41414141
     """
+    if value is None:
+        return "<unavailable>"
+
     limit = int(limit)
 
     # Allow results from get function to be passed to format
     if isinstance(value, list):
         chain = value
     else:
-        chain = get(value, limit, offset, hard_stop, hard_end, safe_linking=safe_linking)
+        chain = get(value, limit, offset, hard_stop, hard_end, safe_linking=safe_linking) or []
 
-    arrow_left = c.arrow(" %s " % config_arrow_left)
-    arrow_right = c.arrow(" %s " % config_arrow_right)
+    arrow_left = c.arrow(f" {config_arrow_left} ")
+    arrow_right = c.arrow(f" {config_arrow_right} ")
 
     # Colorize the chain
-    rest = []
+    rest: List[str] = []
     for link in chain:
         symbol = pwndbg.gdblib.symbol.get(link) or None
         if symbol:
-            symbol = "%#x (%s)" % (link, symbol)
+            symbol = f"{link:#x} ({symbol})"
         rest.append(M.get(link, symbol))
 
     # If the dereference limit is zero, skip any enhancements.
@@ -134,16 +159,31 @@ def format(value, limit=LIMIT, code=True, offset=0, hard_stop=None, hard_end=0, 
     # If there are no pointers (e.g. eax = 0x41414141), then enhance
     # the only element there is.
     if len(chain) == 1:
-        enhanced = pwndbg.enhance.enhance(chain[-1], code=code)
-
-    # Otherwise, the last element in the chain is the non-pointer value.
+        # Note the "attempt_dereference" argument, which is set to False.
+        # In general, this function assumes that the caller has manually fully dereferenced the input list of pointers.
+        # If the only value in the list is a pointer, the function assumes this is purposeful and that that pointer cannot be dereferenced.
+        # This is because the code that generated the list determined that we cannot safely reason about the dereferenced value at the current program state.
+        # This case only applies to lists of length one, because if the list has more than one value, we already know
+        # that the second to last value, chain[-2], can be safely dereferenced - how else would chain[-1] exist?
+        # In other case where chain[-1] is not a pointer, the argument has no effect.
+        enhanced = pwndbg.enhance.enhance(
+            chain[-1],
+            code=code,
+            attempt_dereference=False,
+            enhance_string_len=enhance_string_len,
+        )
     # We want to enhance the last pointer value. If an offset was used
     # chain failed at that offset, so display that offset.
     elif len(chain) < limit + 1:
-        enhanced = pwndbg.enhance.enhance(chain[-2] + offset, code=code, safe_linking=safe_linking)
+        enhanced = pwndbg.enhance.enhance(
+            chain[-2] + offset,
+            code=code,
+            safe_linking=safe_linking,
+            enhance_string_len=enhance_string_len,
+        )
 
     else:
-        enhanced = c.contiguous_marker("%s" % config_contiguous)
+        enhanced = c.contiguous_marker(f"{config_contiguous}")
 
     if len(chain) == 1:
         return enhanced

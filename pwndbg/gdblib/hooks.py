@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pwndbg.gdblib.abi
 import pwndbg.gdblib.events
 import pwndbg.gdblib.file
@@ -6,14 +8,6 @@ import pwndbg.gdblib.next
 import pwndbg.gdblib.tls
 import pwndbg.gdblib.typeinfo
 from pwndbg.gdblib import arch_mod
-from pwndbg.lib.memoize import reset_on_cont
-from pwndbg.lib.memoize import reset_on_exit
-from pwndbg.lib.memoize import reset_on_objfile
-from pwndbg.lib.memoize import reset_on_prompt
-from pwndbg.lib.memoize import reset_on_start
-from pwndbg.lib.memoize import reset_on_stop
-from pwndbg.lib.memoize import reset_on_thread
-from pwndbg.lib.memoize import while_running
 
 # TODO: Combine these `update_*` hook callbacks into one method
 
@@ -45,7 +39,6 @@ def on_start() -> None:
 
 @pwndbg.gdblib.events.exit
 def on_exit() -> None:
-    pwndbg.gdblib.tls.reset()
     pwndbg.gdblib.file.reset_remote_files()
     pwndbg.gdblib.next.clear_temp_breaks()
 
@@ -55,43 +48,32 @@ def on_stop() -> None:
     pwndbg.gdblib.strings.update_length()
 
 
-@pwndbg.gdblib.events.stop
-@pwndbg.gdblib.events.mem_changed
-@pwndbg.gdblib.events.reg_changed
-def memoize_on_stop() -> None:
-    reset_on_stop._reset()
+import pwndbg.lib.cache
 
-
-@pwndbg.gdblib.events.before_prompt
-def memoize_before_prompt() -> None:
-    reset_on_prompt._reset()
-
-
-@pwndbg.gdblib.events.cont
-def memoize_on_cont() -> None:
-    reset_on_cont._reset()
-
-
-@pwndbg.gdblib.events.new_objfile
-def memoize_on_new_objfile() -> None:
-    reset_on_objfile._reset()
-
-
-@pwndbg.gdblib.events.start
-def memoize_on_start() -> None:
-    while_running._start_caching()
-    reset_on_start._reset()
-
-
-@pwndbg.gdblib.events.exit
-def memoize_on_exit() -> None:
-    while_running._reset()
-    reset_on_exit._reset()
-
-
-@pwndbg.gdblib.events.thread
-def memoize_on_new_thread() -> None:
-    reset_on_thread._reset()
+pwndbg.lib.cache.connect_clear_caching_events(
+    {
+        # Any cache that should be cleared when the program is stopped should also be cleared
+        # if the user does an operation to modify memory or registers while the program is stopped.
+        # We don't do this for the other events, because they hopefully don't change memory or
+        # registers
+        "stop": (
+            pwndbg.gdblib.events.stop,
+            pwndbg.gdblib.events.mem_changed,
+            pwndbg.gdblib.events.reg_changed,
+        ),
+        "exit": (pwndbg.gdblib.events.exit,),
+        "objfile": (pwndbg.gdblib.events.new_objfile,),
+        "start": (pwndbg.gdblib.events.start,),
+        "cont": (
+            pwndbg.gdblib.events.cont,
+            pwndbg.gdblib.events.mem_changed,
+            pwndbg.gdblib.events.reg_changed,
+        ),
+        "thread": (pwndbg.gdblib.events.thread,),
+        "prompt": (pwndbg.gdblib.events.before_prompt,),
+        "forever": (),
+    }
+)
 
 
 def init() -> None:

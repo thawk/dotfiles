@@ -2,6 +2,8 @@
 Hexdump implementation, ~= stolen from pwntools.
 """
 
+from __future__ import annotations
+
 import math
 import string
 
@@ -18,7 +20,7 @@ color_scheme = None
 printable = None
 
 
-def groupby(width, array, fill=None):
+def groupby(width: int, array, fill=None):
     return pwnlib.util.lists.group(width, array, underfull_action="fill", fill_value=fill)
 
 
@@ -52,9 +54,7 @@ def load_color_scheme() -> None:
     ):
         color_scheme[c] = H.printable("%02x" % c)
         printable[c] = (
-            H.printable("%s" % chr(c))
-            if pwndbg.gdblib.config.hexdump_colorize_ascii
-            else "%s" % chr(c)
+            H.printable(f"{chr(c)}") if pwndbg.gdblib.config.hexdump_colorize_ascii else f"{chr(c)}"
         )
 
     for c in bytearray(b"\x00"):
@@ -74,7 +74,7 @@ def hexdump(
     address=0,
     width=16,
     group_width=4,
-    flip_group_endianess=False,
+    flip_group_endianness=False,
     skip=True,
     offset=0,
     size=0,
@@ -134,9 +134,9 @@ def hexdump(
             ]
 
             for group in groupby(group_width, line):
-                group = reversed(group) if flip_group_endianess else group
+                group = reversed(group) if flip_group_endianness else group
                 for idx, char in enumerate(group):
-                    if flip_group_endianess and idx == group_width - 1:
+                    if flip_group_endianness and idx == group_width - 1:
                         hexline.append(H.highlight_group_lsb(color_scheme[char]))
                     else:
                         hexline.append(color_scheme[char])
@@ -166,7 +166,7 @@ def hexdump(
 
         for i in range(count):
             try:
-                gval = pwndbg.gdblib.memory.poi(size_type, address + i * size)
+                gval = pwndbg.gdblib.memory.get_typed_pointer_value(size_type, address + i * size)
                 values.append(int(gval))
             except gdb.MemoryError:
                 break

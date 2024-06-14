@@ -1,22 +1,16 @@
 version: "3.8"
 services:
-  main: &base-spec
+  base: &base-spec
     build: .
-    volumes:
-      - .:/pwndbg
     platform: linux/amd64
     security_opt:
       - seccomp:unconfined
     cap_add:
       - SYS_PTRACE
-
-  ubuntu18.04:
+  main:
     <<: *base-spec
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        image: ubuntu:18.04
+    volumes:
+      - .:/pwndbg
 
   ubuntu20.04:
     <<: *base-spec
@@ -33,14 +27,6 @@ services:
       dockerfile: Dockerfile
       args:
         image: ubuntu:22.04
-
-  debian10:
-    <<: *base-spec
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        image: debian:10
 
   debian11:
     <<: *base-spec

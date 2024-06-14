@@ -8,6 +8,8 @@ We need to catch on the fly.  We do this by swapping out the base classes of the
 Structure type, and incurring a performance penalty for foreign-endianness targets.
 """
 
+from __future__ import annotations
+
 import ctypes
 import sys
 
@@ -21,6 +23,7 @@ Structure = ctypes.LittleEndianStructure  # default Structure type
 @pwndbg.gdblib.events.start
 @pwndbg.gdblib.events.new_objfile
 def update() -> None:
+    global Structure
     if pwndbg.gdblib.arch.endian == "little":
         Structure = ctypes.LittleEndianStructure
     else:

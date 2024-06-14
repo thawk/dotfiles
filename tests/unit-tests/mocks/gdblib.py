@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import types
 from unittest.mock import MagicMock
@@ -10,6 +12,8 @@ from mocks.typeinfo import Amd64TypeInfo
 class GdbLib(types.ModuleType):
     def __init__(self, module_name):
         super().__init__(module_name)
+
+        self.gdb_version = (12, 0)
 
         self.config_mod = Config(module_name + ".config")
         self.arch = Amd64Arch(module_name + ".arch")

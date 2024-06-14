@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 import gdb
@@ -46,7 +48,7 @@ def test_find_fake_fast_command(start_binary):
     gdb.execute("continue")
 
     # Ensure memory at fake_chunk's heap_info struct isn't mapped.
-    unmapped_heap_info = pwndbg.heap.ptmalloc.heap_for_ptr(
+    unmapped_heap_info = pwndbg.gdblib.heap.ptmalloc.heap_for_ptr(
         int(gdb.lookup_global_symbol("fake_chunk").value())
     )
     assert pwndbg.gdblib.memory.peek(unmapped_heap_info) is None
@@ -68,10 +70,10 @@ def test_find_fake_fast_command(start_binary):
 
     # setup_mem(0x2F, 0x8)
     result = gdb.execute("find_fake_fast &target_address", to_string=True)
-    check_result(result, 0x2F)
+    check_result(result, 0x28)
 
     result = gdb.execute("find_fake_fast --align &target_address", to_string=True)
-    check_result(result, 0x2F)
+    check_result(result, 0x28)
     gdb.execute("continue")
 
     # setup_mem(0x20, 0x9)
@@ -149,4 +151,12 @@ def test_find_fake_fast_command(start_binary):
 
     result = gdb.execute("find_fake_fast &target_address 0x100", to_string=True)
     check_no_results(result)
+    gdb.execute("continue")
+
+    # setup_mem(0xAABBCCDD00000020, 0x8)
+    result = gdb.execute("find_fake_fast &target_address", to_string=True)
+    check_no_results(result)
+
+    result = gdb.execute("find_fake_fast &target_address --glibc-fastbin-bug", to_string=True)
+    check_result(result, 0xAABBCCDD00000020)
     gdb.execute("continue")

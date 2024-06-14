@@ -1,0 +1,45 @@
+name: Docs
+on: [push, pull_request, workflow_dispatch]
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+
+      - name: Install poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install --with docs
+
+      - name: Build site
+        run: |
+          source .venv/bin/activate
+          mkdocs build
+
+  deploy:
+    if: github.event_name == 'push' && contains(fromJson('["refs/heads/dev"]'), github.ref)
+    needs: build
+    name: Deploy docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+
+      - name: Install poetry
+        run: curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install --with docs
+
+      - name: Deploy site
+        run: |
+          source .venv/bin/activate
+          mkdocs gh-deploy --force

@@ -2,15 +2,24 @@
 Allows describing functions, specifically enumerating arguments which
 may be passed in a combination of registers and stack values.
 """
+
+from __future__ import annotations
+
+from typing import List
+from typing import Tuple
+
 import gdb
 from capstone import CS_GRP_CALL
 from capstone import CS_GRP_INT
 
 import pwndbg.chain
 import pwndbg.constants
-import pwndbg.disasm
 import pwndbg.gdblib.arch
+import pwndbg.gdblib.disasm
+import pwndbg.gdblib.disasm.arch
+import pwndbg.gdblib.file
 import pwndbg.gdblib.memory
+import pwndbg.gdblib.proc
 import pwndbg.gdblib.regs
 import pwndbg.gdblib.symbol
 import pwndbg.gdblib.typeinfo
@@ -18,6 +27,7 @@ import pwndbg.ida
 import pwndbg.lib.abi
 import pwndbg.lib.funcparser
 import pwndbg.lib.functions
+from pwndbg.gdblib.disasm.instruction import PwndbgInstruction
 from pwndbg.gdblib.nearpc import c as N
 
 ida_replacements = {
@@ -48,12 +58,12 @@ ida_replacements = {
 }
 
 
-def get_syscall_name(instruction):
+def get_syscall_name(instruction: PwndbgInstruction) -> str | None:
     if CS_GRP_INT not in instruction.groups:
         return None
 
     syscall_register = pwndbg.lib.abi.ABI.syscall().syscall_register
-    syscall_arch = pwndbg.gdblib.arch.current
+    syscall_arch = pwndbg.gdblib.arch.name
 
     # On x86/x64 `syscall` and `int <value>` instructions are in CS_GRP_INT
     # but only `syscall` and `int 0x80` actually execute syscalls on Linux.
@@ -62,7 +72,7 @@ def get_syscall_name(instruction):
     if syscall_register in ("eax", "rax"):
         mnemonic = instruction.mnemonic
 
-        is_32bit = mnemonic == "int" and instruction.op_str == "0x80"
+        is_32bit = mnemonic == "int" and instruction.operands[0].before_value == 0x80
         if not (mnemonic == "syscall" or is_32bit):
             return None
 
@@ -75,10 +85,10 @@ def get_syscall_name(instruction):
     return pwndbg.constants.syscall(syscall_number, syscall_arch) or "<unk_%d>" % syscall_number
 
 
-def get(instruction):
+def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argument, int]]:
     """
     Returns an array containing the arguments to the current function,
-    if $pc is a 'call' or 'bl' type instruction.
+    if $pc is a 'call', 'bl', or 'jalr' type instruction.
 
     Otherwise, returns None.
     """
@@ -96,11 +106,7 @@ def get(instruction):
         except KeyError:
             return []
 
-        # Not sure of any OS which allows multiple operands on
-        # a call instruction.
-        assert len(instruction.operands) == 1
-
-        target = instruction.operands[0].int
+        target = instruction.target
 
         if not target:
             return []
@@ -172,7 +178,7 @@ def get(instruction):
     return result
 
 
-def argname(n, abi=None):
+def argname(n: int, abi: pwndbg.lib.abi.ABI | None = None) -> str:
     abi = abi or pwndbg.lib.abi.ABI.default()
     regs = abi.register_arguments
 
@@ -182,7 +188,7 @@ def argname(n, abi=None):
     return "arg[%i]" % n
 
 
-def argument(n, abi=None):
+def argument(n: int, abi: pwndbg.lib.abi.ABI | None = None) -> int:
     """
     Returns the nth argument, as if $pc were a 'call' or 'bl' type
     instruction.
@@ -198,10 +204,10 @@ def argument(n, abi=None):
 
     sp = pwndbg.gdblib.regs.sp + (n * pwndbg.gdblib.arch.ptrsize)
 
-    return int(pwndbg.gdblib.memory.poi(pwndbg.gdblib.typeinfo.ppvoid, sp))
+    return int(pwndbg.gdblib.memory.get_typed_pointer_value(pwndbg.gdblib.typeinfo.ppvoid, sp))
 
 
-def arguments(abi=None):
+def arguments(abi: pwndbg.lib.abi.ABI | None = None):
     """
     Yields (arg_name, arg_value) tuples for arguments from a given ABI.
     Works only for ABIs that use registers for arguments.
@@ -213,7 +219,7 @@ def arguments(abi=None):
         yield argname(i, abi), argument(i, abi)
 
 
-def format_args(instruction):
+def format_args(instruction: PwndbgInstruction) -> List[str]:
     result = []
     for arg, value in get(instruction):
         code = arg.type != "char"
@@ -221,9 +227,12 @@ def format_args(instruction):
 
         # Enhance args display
         if arg.name == "fd" and isinstance(value, int):
-            path = pwndbg.gdblib.file.readlink("/proc/%d/fd/%d" % (pwndbg.gdblib.proc.pid, value))
-            if path:
-                pretty += " (%s)" % path
+            # Cannot find PID of the QEMU program: perhaps it is in a different pid namespace or we have no permission to read the QEMU process' /proc/$pid/fd/$fd file.
+            pid = pwndbg.gdblib.proc.pid
+            if pid is not None:
+                path = pwndbg.gdblib.file.readlink("/proc/%d/fd/%d" % (pid, value))
+                if path:
+                    pretty += f" ({path})"
 
         result.append("%-10s %s" % (N.argument(arg.name) + ":", pretty))
     return result

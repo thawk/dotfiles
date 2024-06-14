@@ -2,6 +2,8 @@
 Dumps all pwndbg-specific configuration points.
 """
 
+from __future__ import annotations
+
 import argparse
 
 import pwndbg.commands
@@ -13,18 +15,26 @@ from pwndbg.color.message import hint
 from pwndbg.commands import CommandCategory
 
 
-def print_row(name, value, default, set_show_doc, ljust_optname, ljust_value, empty_space=6):
+def print_row(
+    name: str,
+    value: str,
+    default: str,
+    set_show_doc: str,
+    ljust_optname: int,
+    ljust_value: int,
+    empty_space: int = 6,
+):
     name = ljust_colored(name, ljust_optname + empty_space)
     defval = extend_value_with_default(value, default)
     defval = ljust_colored(defval, ljust_value + empty_space)
-    result = " ".join((name, defval, set_show_doc))
+    result = f"{name} {defval} {set_show_doc}"
     print(result)
     return result
 
 
 def extend_value_with_default(value, default):
     if strip(value) != strip(default):
-        return "%s (%s)" % (value, default)
+        return f"{value} ({default})"
     return value
 
 
@@ -69,7 +79,7 @@ def display_config(filter_pattern: str, scope: str, has_file_command: bool = Tru
         map(len, [extend_value_with_default(repr(v.value), repr(v.default)) for v in values])
     )
 
-    header = print_row("Name", "Value", "Def", "Documentation", longest_optname, longest_value)
+    header = print_row("Name", "Value", "Default", "Documentation", longest_optname, longest_value)
     print("-" * (len(header)))
 
     for v in sorted(values):
@@ -140,7 +150,7 @@ def themefile(show_all=False) -> None:
     configfile_print_scope("theme", show_all)
 
 
-def configfile_print_scope(scope, show_all=False) -> None:
+def configfile_print_scope(scope: str, show_all: bool = False) -> None:
     params = pwndbg.gdblib.config.get_params(scope)
 
     if not show_all:
@@ -150,9 +160,15 @@ def configfile_print_scope(scope, show_all=False) -> None:
         if not show_all:
             print(hint("Showing only changed values:"))
         for p in params:
-            print("# %s: %s" % (p.name, p.set_show_doc))
-            print("# default: %s" % p.native_default)
-            print("set %s %s" % (p.name, p.native_value))
+            native_default = pwndbg.gdblib.config_mod.Parameter._value_to_gdb_native(
+                p.default, param_class=p.param_class
+            )
+            native_value = pwndbg.gdblib.config_mod.Parameter._value_to_gdb_native(
+                p.value, param_class=p.param_class
+            )
+            print(f"# {p.name}: {p.set_show_doc}")
+            print(f"# default: {native_default}")
+            print(f"set {p.name} {native_value}")
             print()
     else:
-        print(hint("No changed values. To see current values use `%s`." % scope))
+        print(hint(f"No changed values. To see current values use `{scope}`."))

@@ -1,17 +1,20 @@
+from __future__ import annotations
+
 import argparse
 import errno
 from collections import defaultdict
 
 import gdb
 
-import pwndbg.auxv
 import pwndbg.color as C
 import pwndbg.commands
 import pwndbg.gdblib.regs
 import pwndbg.gdblib.symbol
 from pwndbg.commands import CommandCategory
+from pwndbg.gdblib.scheduler import parse_and_eval_with_scheduler_lock
 
-errno.errorcode[0] = "OK"  # type: ignore # manually add error code 0 for "OK"
+# Manually add error code 0 for "OK"
+errno.errorcode[0] = "OK"  # type: ignore[index]
 
 parser = argparse.ArgumentParser(
     description="Converts errno (or argument) to its string representation."
@@ -44,7 +47,11 @@ def errno_(err) -> None:
                 if errno_loc_gotplt is None or pwndbg.gdblib.vmmap.find(
                     pwndbg.gdblib.memory.pvoid(errno_loc_gotplt)
                 ):
-                    err = int(gdb.parse_and_eval("*((int *(*) (void)) __errno_location) ()"))
+                    err = int(
+                        parse_and_eval_with_scheduler_lock(
+                            "*((int *(*) (void)) __errno_location) ()"
+                        )
+                    )
                 else:
                     print(
                         "Could not determine error code automatically: the __errno_location@got.plt has no valid address yet (perhaps libc.so hasn't been loaded yet?)"
@@ -57,7 +64,7 @@ def errno_(err) -> None:
                 return
 
     msg = errno.errorcode.get(int(err), "Unknown error code")
-    print("Errno %s: %s" % (err, msg))
+    print(f"Errno {err}: {msg}")
 
 
 parser = argparse.ArgumentParser(description="Prints out a list of all pwndbg commands.")
@@ -65,6 +72,14 @@ parser = argparse.ArgumentParser(description="Prints out a list of all pwndbg co
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--shell", action="store_true", help="Only display shell commands")
 group.add_argument("--all", dest="all_", action="store_true", help="Only display shell commands")
+
+cat_group = parser.add_mutually_exclusive_group()
+cat_group.add_argument(
+    "-c", "--category", type=str, default=None, dest="category_", help="Filter commands by category"
+)
+cat_group.add_argument(
+    "--list-categories", dest="list_categories", action="store_true", help="List command categories"
+)
 
 parser.add_argument(
     "filter_pattern",
@@ -76,7 +91,12 @@ parser.add_argument(
 
 
 @pwndbg.commands.ArgparsedCommand(parser, command_name="pwndbg", category=CommandCategory.PWNDBG)
-def pwndbg_(filter_pattern, shell, all_) -> None:
+def pwndbg_(filter_pattern, shell, all_, category_, list_categories) -> None:
+    if list_categories:
+        for category in CommandCategory:
+            print(C.bold(C.green(f"{category.value}")))
+        return
+
     if all_:
         shell_cmds = True
         pwndbg_cmds = True
@@ -89,12 +109,11 @@ def pwndbg_(filter_pattern, shell, all_) -> None:
 
     from tabulate import tabulate
 
-    table_data = defaultdict(lambda: [])
+    table_data = defaultdict(list)
     for name, aliases, category, docs in list_and_filter_commands(
         filter_pattern, pwndbg_cmds, shell_cmds
     ):
         alias_str = ""
-        aliases_len = 0
         if aliases:
             aliases = map(C.blue, aliases)
             alias_str = f" [{', '.join(aliases)}]"
@@ -103,7 +122,7 @@ def pwndbg_(filter_pattern, shell, all_) -> None:
         table_data[category].append((command_names, docs))
 
     for category in CommandCategory:
-        if category not in table_data:
+        if category not in table_data or category_ and category_.lower() not in category.lower():
             continue
         data = table_data[category]
 

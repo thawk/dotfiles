@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import os
 import re
-from collections import namedtuple
-from typing import Any
+from typing import Callable
+from typing import Dict
 from typing import List
+from typing import NamedTuple
 
-import pwndbg.lib.memoize
+from pwndbg.lib.config import Parameter
 
 from . import theme
 
@@ -42,87 +45,87 @@ UNDERLINE = "\x1b[4m"
 none = str
 
 
-def normal(x):
+def normal(x: str) -> str:
     return colorize(x, NORMAL)
 
 
-def black(x):
+def black(x: str) -> str:
     return colorize(x, BLACK)
 
 
-def red(x):
+def red(x: str) -> str:
     return colorize(x, RED)
 
 
-def green(x):
+def green(x: str) -> str:
     return colorize(x, GREEN)
 
 
-def yellow(x):
+def yellow(x: str) -> str:
     return colorize(x, YELLOW)
 
 
-def blue(x):
+def blue(x: str) -> str:
     return colorize(x, BLUE)
 
 
-def purple(x):
+def purple(x: str) -> str:
     return colorize(x, PURPLE)
 
 
-def cyan(x):
+def cyan(x: str) -> str:
     return colorize(x, CYAN)
 
 
-def light_gray(x):
+def light_gray(x: str) -> str:
     return colorize(x, LIGHT_GRAY)
 
 
-def foreground(x):
+def foreground(x: str) -> str:
     return colorize(x, FOREGROUND)
 
 
-def gray(x):
+def gray(x: str) -> str:
     return colorize(x, GRAY)
 
 
-def light_red(x):
+def light_red(x: str) -> str:
     return colorize(x, LIGHT_RED)
 
 
-def light_green(x):
+def light_green(x: str) -> str:
     return colorize(x, LIGHT_GREEN)
 
 
-def light_yellow(x):
+def light_yellow(x: str) -> str:
     return colorize(x, LIGHT_YELLOW)
 
 
-def light_blue(x):
+def light_blue(x: str) -> str:
     return colorize(x, LIGHT_BLUE)
 
 
-def light_purple(x):
+def light_purple(x: str) -> str:
     return colorize(x, LIGHT_PURPLE)
 
 
-def light_cyan(x):
+def light_cyan(x: str) -> str:
     return colorize(x, LIGHT_CYAN)
 
 
-def white(x):
+def white(x: str) -> str:
     return colorize(x, WHITE)
 
 
-def bold(x):
+def bold(x: str) -> str:
     return colorize(x, BOLD)
 
 
-def underline(x):
+def underline(x: str) -> str:
     return colorize(x, UNDERLINE)
 
 
-def colorize(x, color):
+def colorize(x: str, color: str) -> str:
     return color + terminateWith(str(x), color) + NORMAL
 
 
@@ -133,27 +136,31 @@ disable_colors = theme.add_param(
 )
 
 
-@pwndbg.lib.memoize.reset_on_stop
-def generateColorFunctionInner(old, new):
-    def wrapper(text):
+def generateColorFunctionInner(
+    old: Callable[[object], str], new: Callable[[str], str]
+) -> Callable[[object], str]:
+    def wrapper(text: object) -> str:
         return new(old(text))
 
     return wrapper
 
 
-ColorParamSpec = namedtuple("ColorParamSpec", ["name", "default", "doc"])
+class ColorParamSpec(NamedTuple):
+    name: str
+    default: str
+    doc: str
 
 
 class ColorConfig:
     def __init__(self, namespace: str, params: List[ColorParamSpec]) -> None:
         self._namespace = namespace
-        self._params = {}
+        self._params: Dict[str, Parameter] = {}
         for param in params:
             self._params[param.name] = theme.add_color_param(
                 f"{self._namespace}-{param.name}-color", param.default, param.doc
             )
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Callable[[str], str]:
         param_name = attr.replace("_", "-")
         if param_name in self._params:
             return generateColorFunction(self._params[param_name])
@@ -161,7 +168,9 @@ class ColorConfig:
         raise AttributeError(f"ColorConfig object for {self._namespace} has no attribute '{attr}'")
 
 
-def generateColorFunction(config: str, _globals=globals()):
+def generateColorFunction(
+    config: str | Parameter, _globals: Dict[str, Callable[[str], str]] = globals()
+) -> Callable[[object], str]:
     # the `config` here may be a config Parameter object
     # and if we run with disable_colors or if the config value
     # is empty, we need to ensure we cast it to string
@@ -178,19 +187,19 @@ def generateColorFunction(config: str, _globals=globals()):
     return function
 
 
-def strip(x):
+def strip(x: str) -> str:
     return re.sub("\x1b\\[[\\d;]+m", "", x)
 
 
-def terminateWith(x, color):
+def terminateWith(x: str, color: str) -> str:
     return x.replace("\x1b[0m", NORMAL + color)
 
 
-def ljust_colored(x, length, char=" "):
+def ljust_colored(x: str, length: int, char: str = " ") -> str:
     remaining = length - len(strip(x))
     return x + ((remaining // len(char) + 1) * char)[:remaining]
 
 
-def rjust_colored(x, length, char=" "):
+def rjust_colored(x: str, length: int, char: str = " "):
     remaining = length - len(strip(x))
     return ((remaining // len(char) + 1) * char)[:remaining] + x

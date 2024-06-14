@@ -28,11 +28,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+from __future__ import annotations
+
 import os
 import stat
+from typing import Set
 
 
-def which(name: str, all: bool = False):
+def which(name: str, all: bool = False) -> Set[str] | str | None:
     """which(name, flags = os.X_OK, all = False) -> str or str set
 
     Works as the system command ``which``; searches $PATH for ``name`` and
@@ -58,7 +61,7 @@ def which(name: str, all: bool = False):
         return name
 
     isroot = os.getuid() == 0
-    out = set()
+    out: Set[str] = set()
     try:
         path = os.environ["PATH"]
     except KeyError:

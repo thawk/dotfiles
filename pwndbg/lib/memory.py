@@ -2,6 +2,8 @@
 Reading, writing, and describing memory.
 """
 
+from __future__ import annotations
+
 import os
 
 import pwndbg.gdblib.arch
@@ -94,7 +96,7 @@ class Page:
 
     @property
     def is_memory_mapped_file(self) -> bool:
-        return len(self.objfile) != 0 and self.objfile[0] != "[" and self.objfile != "<pt>"
+        return len(self.objfile) != 0 and self.objfile[0] != "["
 
     @property
     def read(self) -> bool:
@@ -117,6 +119,10 @@ class Page:
         return self.read and self.write and self.execute
 
     @property
+    def is_guard(self) -> bool:
+        return not (self.read or self.write or self.execute)
+
+    @property
     def permstr(self) -> str:
         flags = self.flags
         return "".join(
@@ -129,27 +135,19 @@ class Page:
         )
 
     def __str__(self) -> str:
-        return "{start:#{width}x} {end:#{width}x} {permstr} {size:8x} {offset:6x} {objfile}".format(
-            start=self.vaddr,
-            end=self.vaddr + self.memsz,
-            permstr=self.permstr,
-            size=self.memsz,
-            offset=self.offset,
-            objfile=self.objfile or "",
-            width=2 + 2 * pwndbg.gdblib.arch.ptrsize,
-        )
+        return f"{self.vaddr:#{2 + 2 * pwndbg.gdblib.arch.ptrsize}x} {self.vaddr + self.memsz:#{2 + 2 * pwndbg.gdblib.arch.ptrsize}x} {self.permstr} {self.memsz:8x} {self.offset:6x} {self.objfile or ''}"
 
     def __repr__(self) -> str:
-        return "%s(%r)" % (self.__class__.__name__, self.__str__())
+        return f"{self.__class__.__name__}({self.__str__()!r})"
 
     def __contains__(self, addr: int) -> bool:
         return self.start <= addr < self.end
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return self.vaddr == getattr(other, "vaddr", other)
 
-    def __lt__(self, other) -> bool:
-        return self.vaddr < getattr(other, "vaddr", other)
+    def __lt__(self, other: object) -> bool:
+        return self.vaddr < getattr(other, "vaddr", other)  # type: ignore[arg-type]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.vaddr, self.memsz, self.flags, self.offset, self.objfile))

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import print_function
+from __future__ import annotations
 
 import datetime
 import threading
@@ -35,10 +34,10 @@ def create_marshaller(use_format=None, just_to_str=False):
         if use_format:
             marshalled = use_format % value
         elif just_to_str:
-            marshalled = "<value><string>%s</string></value>" % escape(str(value))
+            marshalled = f"<value><string>{escape(str(value))}</string></value>"
 
         if DEBUG_MARSHALLING:
-            print("Marshalled: '%s'" % marshalled)
+            print(f"Marshalled: '{marshalled}'")
 
         appender(marshalled)
 
@@ -46,7 +45,7 @@ def create_marshaller(use_format=None, just_to_str=False):
 
 
 xmlclient.Marshaller.dispatch[type(1 << 63)] = create_marshaller("<value><i8>%d</i8></value>")
-xmlclient.Marshaller.dispatch[type(0)] = create_marshaller("<value><i8>%d</i8></value>")
+xmlclient.Marshaller.dispatch[int] = create_marshaller("<value><i8>%d</i8></value>")
 xmlclient.Marshaller.dispatch[idaapi.cfuncptr_t] = create_marshaller(just_to_str=True)
 
 host = "127.0.0.1"
@@ -75,9 +74,7 @@ def wrap(f):
             idaapi.execute_sync(work, flags)
 
         if error:
-            msg = "Failed on calling {}.{} with args: {}, kwargs: {}\nException: {}".format(
-                f.__module__, f.__name__, a, kw, str(error[0])
-            )
+            msg = f"Failed on calling {f.__module__}.{f.__name__} with args: {a}, kwargs: {kw}\nException: {str(error[0])}"
             print("[!!!] ERROR:", msg)
             raise error[0]
 
@@ -170,7 +167,7 @@ server.register_function(wrap(decompile_context), "decompile_context")  # suppor
 server.register_function(wrap(versions))
 server.register_introspection_functions()
 
-print("IDA Pro xmlrpc hosted on http://%s:%s" % (host, port))
+print(f"IDA Pro xmlrpc hosted on http://{host}:{port}")
 print("Call `shutdown()` to shutdown the IDA Pro xmlrpc server.")
 
 thread = threading.Thread(target=server.serve_forever)

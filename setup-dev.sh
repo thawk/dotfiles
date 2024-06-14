@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+set -e
 
 echo "# --------------------------------------"
 echo "# Install testing tools."
@@ -8,7 +9,7 @@ echo "# --------------------------------------"
 hook_script_path=".git/hooks/pre-push"
 hook_script=$(
     cat << 'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 
 diff_command="git diff --no-ext-diff --ignore-submodules"
 
@@ -28,12 +29,14 @@ exit $exit_code
 EOF
 )
 
-if [ -t 1 ]; then
+if [ -t 1 ] && [ ! -f $hook_script_path ]; then
     echo "Install a git hook to automatically lint files before pushing? (y/N)"
     read yn
     if [[ "$yn" == [Yy]* ]]; then
         echo "$hook_script" > "$hook_script_path"
-        echo "pre-push hook installed to $hook_script_path"
+        # make the hook executable
+        chmod ug+x "$hook_script_path"
+        echo "pre-push hook installed to $hook_script_path and made executable"
     fi
 fi
 
@@ -63,8 +66,8 @@ download_zig_binary() {
     # Install zig to current directory
     # We use zig to compile some test binaries as it is much easier than with gcc
 
-    ZIG_TAR_URL="https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.3685+dae7aeb33.tar.xz"
-    ZIG_TAR_SHA256="dfc8f5ecb651342f1fc2b2828362b62f74fadac9931bda785b80bf7ecfcfabb2"
+    ZIG_TAR_URL="https://ziglang.org/download/0.10.1/zig-linux-x86_64-0.10.1.tar.xz"
+    ZIG_TAR_SHA256="6699f0e7293081b42428f32c9d9c983854094bd15fee5489f12c4cf4518cc380"
     curl --output /tmp/zig.tar.xz "${ZIG_TAR_URL}"
     ACTUAL_SHA256=$(sha256sum /tmp/zig.tar.xz | cut -d' ' -f1)
     if [ "${ACTUAL_SHA256}" != "${ZIG_TAR_SHA256}" ]; then
@@ -91,14 +94,20 @@ install_apt() {
         curl \
         build-essential \
         gdb \
+        gdb-multiarch \
         parallel \
-        netcat-openbsd
+        netcat-openbsd \
+        qemu-system-x86 \
+        qemu-system-arm \
+        qemu-user \
+        gcc-aarch64-linux-gnu \
+        gcc-riscv64-linux-gnu
 
-    if [[ "$1" == "22.04" ]]; then
+    if [[ "$1" != "" && "$1" != "20.04" ]]; then
         sudo apt install shfmt
     fi
 
-    test -f /usr/bin/go || sudo apt-get install -y golang
+    command -v go &> /dev/null || sudo apt-get install -y golang
 
     download_zig_binary
 }
@@ -106,33 +115,66 @@ install_apt() {
 install_pacman() {
     set_zigpath "$(pwd)/.zig"
 
-    # add debug repo for glibc-debug
-    cat << EOF | sudo tee -a /etc/pacman.conf
-[core-debug]
-Include = /etc/pacman.d/mirrorlist
-
-[extra-debug]
-Include = /etc/pacman.d/mirrorlist
-
-[community-debug]
-Include = /etc/pacman.d/mirrorlist
-
-[multilib-debug]
-Include = /etc/pacman.d/mirrorlist
+    # add debug repo for glibc-debug if it doesn't already exist
+    if ! grep -q "\[core-debug\]" /etc/pacman.conf; then
+        cat << EOF | sudo tee -a /etc/pacman.conf
+        [core-debug]
+        Include = /etc/pacman.d/mirrorlist
 EOF
+    fi
+
+    if ! grep -q "\[extra-debug\]" /etc/pacman.conf; then
+        cat << EOF | sudo tee -a /etc/pacman.conf
+        [extra-debug]
+        Include = /etc/pacman.d/mirrorlist
+EOF
+    fi
+
+    if ! grep -q "\[multilib-debug\]" /etc/pacman.conf; then
+        cat << EOF | sudo tee -a /etc/pacman.conf
+        [multilib-debug]
+        Include = /etc/pacman.d/mirrorlist
+EOF
+    fi
 
     sudo pacman -Syu --noconfirm || true
-    sudo pacman -S --noconfirm \
+    sudo pacman -S --needed --noconfirm \
         nasm \
         gcc \
         glibc-debug \
         curl \
         base-devel \
         gdb \
-        parallel \
-        gnu-netcat
+        parallel
 
-    test -f /usr/bin/go || sudo pacman -S --noconfirm go
+    # check if netcat exists first, as it might it may be installed from some other netcat packages
+    if [ ! -f /usr/bin/nc ]; then
+        sudo pacman -S --needed --noconfirm gnu-netcat
+    fi
+
+    command -v go &> /dev/null || sudo pacman -S --noconfirm go
+
+    download_zig_binary
+}
+
+install_dnf() {
+    set_zigpath "$(pwd)/.zig"
+
+    sudo dnf upgrade || true
+    sudo dnf install -y \
+        nasm \
+        gcc \
+        curl \
+        gdb \
+        parallel \
+        qemu-system-arm \
+        qemu-user
+
+    command -v go &> /dev/null || sudo dnf install -y go
+
+    if [[ "$1" != "" ]]; then
+        sudo dnf install shfmt
+    fi
 
     download_zig_binary
 }
@@ -154,6 +196,13 @@ if linux; then
         "arch")
             install_pacman
             ;;
+        "fedora")
+            fedora_version=$(
+                . /etc/os-release
+                echo ${VERSION_ID} version
+            )
+            install_dnf $fedora_verion
+            ;;
         *) # we can add more install command for each distros.
             echo "\"$distro\" is not supported distro. Will search for 'apt' or 'pacman' package managers."
             if hash apt; then
@@ -167,5 +216,11 @@ if linux; then
             ;;
     esac
 
-    python3 -m pip install -r dev-requirements.txt
+    if [[ -z "${PWNDBG_VENV_PATH}" ]]; then
+        PWNDBG_VENV_PATH="./.venv"
+    fi
+    echo "Using virtualenv from path: ${PWNDBG_VENV_PATH}"
+
+    source "${PWNDBG_VENV_PATH}/bin/activate"
+    ~/.local/bin/poetry install --with dev
 fi

@@ -1,16 +1,22 @@
 name: Lint
-on: [push, pull_request]
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!mkdocs.yml'
+      - '!docs/**'
+      - '!*.md'
 
 jobs:
   lint:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-20.04, ubuntu-18.04]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Cache for pip
       uses: actions/cache@v3
       with:
@@ -19,10 +25,28 @@ jobs:
 
     - name: Install dependencies
       run: |
-        ./setup.sh --user
-        ./setup-dev.sh --user
+        ./setup.sh
+        ./setup-dev.sh
 
     - name: Run linters
       run: |
         git diff-index --quiet HEAD -- pwndbg tests
         ./lint.sh
+
+    - name: Run mypy
+      uses: tsuyoshicho/action-mypy@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Change reviewdog reporter if you need [github-pr-check,github-check,github-pr-review].
+        reporter: github-pr-check
+        # Change reporter level if you need.
+        # GitHub Status Check won't become failure with warning.
+        level: error
+        # Change the current directory to run mypy command.
+        # mypy command reads setup.cfg or other settings file in this path.
+        execute_command: poetry run mypy
+        install_types: false
+        target: pwndbg
+        filter_mode: nofilter
+        fail_on_error: true
+

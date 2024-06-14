@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from unittest.mock import MagicMock
 
@@ -53,16 +55,6 @@ def test_nozero_flags():
     max_size = 0x20
     offsets = {
         0x8: 0x2F,
-    }
-    buf = setup_mem(max_size, offsets)
-    assert 0x0 == next(find_fastbin_size(buf, max_size, 1))
-    assert 0x0 == next(find_fastbin_size(buf, max_size, 8))
-
-
-def test_normal():
-    max_size = 0x20
-    offsets = {
-        0x8: 0x20,
     }
     buf = setup_mem(max_size, offsets)
     assert 0x0 == next(find_fastbin_size(buf, max_size, 1))

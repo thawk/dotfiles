@@ -2,7 +2,10 @@
 Prints structures in a manner similar to Windbg's "dt" command.
 """
 
+from __future__ import annotations
+
 import re
+from typing import List
 
 import gdb
 
@@ -10,7 +13,7 @@ import pwndbg.gdblib.memory
 import pwndbg.gdblib.typeinfo
 
 
-def get_type(v):
+def get_type(v: gdb.Value) -> str:
     t = v.type
     while not t.name:
         if t.code == gdb.TYPE_CODE_PTR:
@@ -18,20 +21,19 @@ def get_type(v):
     return t.name
 
 
-def get_typename(t):
+def get_typename(t: gdb.Type) -> str:
     return str(t)
 
 
-def get_arrsize(f):
+def get_arrsize(f: gdb.Value) -> int:
     t = f.type
     if t.code != gdb.TYPE_CODE_ARRAY:
         return 0
     t2 = t.target()
-    s = t2.sizeof
     return int(t.sizeof / t2.sizeof)
 
 
-def get_field_by_name(obj, field):
+def get_field_by_name(obj: gdb.Value, field: str) -> gdb.Value:
     # Dereference once
     if obj.type.code == gdb.TYPE_CODE_PTR:
         obj = obj.dereference()
@@ -52,7 +54,7 @@ def get_field_by_name(obj, field):
     return obj
 
 
-def happy(typename):
+def happy(typename: str) -> str:
     prefix = ""
     if "unsigned" in typename:
         prefix = "u"
@@ -71,13 +73,13 @@ def happy(typename):
     )
 
 
-def dt(name="", addr=None, obj=None):
+def dt(name: str = "", addr: int | gdb.Value | None = None, obj: gdb.Value | None = None) -> str:
     """
     Dump out a structure type Windbg style.
     """
     # Return value is a list of strings.of
     # We concatenate at the end.
-    rv = []
+    rv: List[str] = []
 
     if obj and not name:
         t = obj.type
@@ -90,19 +92,22 @@ def dt(name="", addr=None, obj=None):
     else:
         t = pwndbg.gdblib.typeinfo.load(name)
 
+    if not t:
+        return ""
+
     # If it's not a struct (e.g. int or char*), bail
     if t.code not in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_TYPEDEF, gdb.TYPE_CODE_UNION):
-        raise Exception("Not a structure: %s" % t)
+        raise Exception(f"Not a structure: {t}")
 
     # If an address was specified, create a Value of the
     # specified type at that address.
     if addr is not None:
-        obj = pwndbg.gdblib.memory.poi(t, addr)
+        obj = pwndbg.gdblib.memory.get_typed_pointer_value(t, addr)
 
     # Header, optionally include the name
     header = name
     if obj:
-        header = "%s @ %s" % (header, hex(int(obj.address)))
+        header = f"{header} @ {hex(int(obj.address))}"
     rv.append(header)
 
     if t.strip_typedefs().code == gdb.TYPE_CODE_ARRAY:
@@ -126,7 +131,7 @@ def dt(name="", addr=None, obj=None):
                 ftype.code in (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_ARRAY)
                 and ftype.target() == pwndbg.gdblib.typeinfo.uchar
             ):
-                data = pwndbg.gdblib.memory.read(v.address, ftype.sizeof)
+                data = pwndbg.gdblib.memory.read(int(v.address), ftype.sizeof)
                 v = " ".join("%02x" % b for b in data)
 
             extra = v
@@ -134,7 +139,7 @@ def dt(name="", addr=None, obj=None):
         # Adjust trailing lines in 'extra' to line up
         # This is necessary when there are nested structures.
         # Ideally we'd expand recursively if the type is complex.
-        extra_lines = []
+        extra_lines: List[str] = []
         for i, line in enumerate(str(extra).splitlines()):
             if i == 0:
                 extra_lines.append(line)

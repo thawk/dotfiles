@@ -14,6 +14,11 @@ module, for example:
     >>> int(pwndbg.gdblib.config.example_value)
     7
 """
+
+from __future__ import annotations
+
+from typing import Any
+
 import gdb
 
 import pwndbg.decorators
@@ -33,6 +38,12 @@ class Parameter(gdb.Parameter):
         self.show_doc = "Show " + param.set_show_doc + "."
         self.__doc__ = param.help_docstring or None
 
+        self.init_super(param)
+        self.param = param
+        self.value = param.value
+
+    def init_super(self, param: pwndbg.lib.config.Parameter) -> None:
+        """Initializes the super class for GDB >= 9"""
         if param.param_class == gdb.PARAM_ENUM:
             super().__init__(
                 param.name,
@@ -40,10 +51,8 @@ class Parameter(gdb.Parameter):
                 param.param_class,
                 param.enum_sequence,
             )
-        else:
-            super().__init__(param.name, gdb.COMMAND_SUPPORT, param.param_class)
-        self.param = param
-        self.value = param.value
+            return
+        super().__init__(param.name, gdb.COMMAND_SUPPORT, param.param_class)
 
     @property
     def native_value(self):
@@ -56,8 +65,7 @@ class Parameter(gdb.Parameter):
         )
 
     def get_set_string(self) -> str:
-        """Handles the GDB `set <param>` command"""
-
+        """Handles the GDB `set <param>`"""
         # GDB will set `self.value` to the user's input
         if self.value is None and self.param.param_class in (gdb.PARAM_UINTEGER, gdb.PARAM_INTEGER):
             # Note: This is really weird, according to GDB docs, 0 should mean "unlimited" for gdb.PARAM_UINTEGER and gdb.PARAM_INTEGER, but somehow GDB sets the value to `None` actually :/
@@ -76,19 +84,19 @@ class Parameter(gdb.Parameter):
         if not pwndbg.decorators.first_prompt:
             return ""
 
-        return "Set %s to %r." % (self.param.set_show_doc, self.native_value)
+        return f"Set {self.param.set_show_doc} to {self.native_value!r}."
 
-    def get_show_string(self, svalue) -> str:
-        """Handles the GDB `show <param>` command"""
-        more_information_hint = " See `help set %s` for more information." % self.param.name
-        return "%s is %r.%s" % (
+    def get_show_string(self, svalue: str) -> str:
+        """Handles the GDB `show <param>`"""
+        more_information_hint = f" See `help set {self.param.name}` for more information."
+        return "{} is {!r}.{}".format(
             self.param.set_show_doc.capitalize(),
             svalue,
             more_information_hint if self.__doc__ else "",
         )
 
     @staticmethod
-    def _value_to_gdb_native(value, param_class=None):
+    def _value_to_gdb_native(value: Any, param_class: int | None = None) -> Any:
         """Translates Python value into native GDB syntax string."""
         if isinstance(value, bool):
             # Convert booleans to "on" or "off".

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pwndbg.auxv
 import pwndbg.chain
 import pwndbg.commands
@@ -8,6 +10,7 @@ from pwndbg.commands import CommandCategory
     "Print information from the Auxiliary ELF Vector.", category=CommandCategory.LINUX
 )
 @pwndbg.commands.OnlyWhenRunning
+@pwndbg.commands.OnlyWhenUserspace
 def auxv() -> None:
     for k, v in pwndbg.auxv.get().items():
         if v is not None:

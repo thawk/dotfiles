@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List
 
 import gdb
@@ -9,8 +11,8 @@ import pwndbg.color.context as C
 import pwndbg.color.disasm as D
 import pwndbg.color.theme
 import pwndbg.commands.comments
-import pwndbg.disasm
 import pwndbg.gdblib.config
+import pwndbg.gdblib.disasm
 import pwndbg.gdblib.regs
 import pwndbg.gdblib.strings
 import pwndbg.gdblib.symbol
@@ -54,13 +56,29 @@ nearpc_lines = pwndbg.gdblib.config.add_param(
     "nearpc-lines", 10, "number of additional lines to print for the nearpc command"
 )
 show_args = pwndbg.gdblib.config.add_param(
-    "nearpc-show-args", True, "show call arguments below instruction"
+    "nearpc-show-args", True, "whether to show call arguments below instruction"
+)
+show_opcode_bytes = pwndbg.gdblib.config.add_param(
+    "nearpc-num-opcode-bytes",
+    0,
+    "number of opcode bytes to print for each instruction",
+    param_class=gdb.PARAM_ZUINTEGER,
+)
+opcode_separator_bytes = pwndbg.gdblib.config.add_param(
+    "nearpc-opcode-separator-bytes",
+    1,
+    "number of spaces between opcode bytes",
+    param_class=gdb.PARAM_ZUINTEGER,
 )
 
 
-def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
+def nearpc(
+    pc: int = None, lines: int = None, emulate=False, repeat=False, use_cache=False, linear=False
+) -> List[str]:
     """
     Disassemble near a specified address.
+
+    The `linear` argument specifies if we should disassemble linearly in memory, or take jumps into account
     """
 
     # Repeating nearpc (pressing enter) makes it show next addresses
@@ -70,7 +88,7 @@ def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
         # that would require a larger refactor
         pc = nearpc.next_pc
 
-    result = []
+    result: List[str] = []
 
     if pc is not None:
         pc = gdb.Value(pc).cast(pwndbg.gdblib.typeinfo.pvoid)
@@ -109,7 +127,10 @@ def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
 
     #         for line in symtab.linetable():
     #             pc_to_linenos[line.pc].append(line.line)
-    instructions = pwndbg.disasm.near(pc, lines, emulate=emulate, show_prev_insns=not repeat)
+
+    instructions, index_of_pc = pwndbg.gdblib.disasm.near(
+        pc, lines, emulate=emulate, show_prev_insns=not repeat, use_cache=use_cache, linear=linear
+    )
 
     if pwndbg.gdblib.memory.peek(pc) and not instructions:
         result.append(message.error("Invalid instructions at %#x" % pc))
@@ -119,31 +140,33 @@ def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
     pwndbg.gdblib.vmmap.find(pc)
 
     # Gather all addresses and symbols for each instruction
+    # Ex: <main+43>
     symbols = [pwndbg.gdblib.symbol.get(i.address) for i in instructions]
-    addresses = ["%#x" % i.address for i in instructions]
+    addresses: List[str] = ["%#x" % i.address for i in instructions]
 
     nearpc.next_pc = instructions[-1].address + instructions[-1].size if instructions else 0
 
     # Format the symbol name for each instruction
-    symbols = ["<%s> " % sym if sym else "" for sym in symbols]
+    symbols = [f"<{sym}> " if sym else "" for sym in symbols]
 
     # Pad out all of the symbols and addresses
     if pwndbg.gdblib.config.left_pad_disasm and not repeat:
         symbols = ljust_padding(symbols)
         addresses = ljust_padding(addresses)
 
+    assembly_strings = D.instructions_and_padding(instructions)
+
     prev = None
 
-    first_pc = True
-
     # Print out each instruction
-    for address_str, symbol, instr in zip(addresses, symbols, instructions):
-        asm = D.instruction(instr)
+    for i, (address_str, symbol, instr, asm) in enumerate(
+        zip(addresses, symbols, instructions, assembly_strings)
+    ):
         prefix_sign = pwndbg.gdblib.config.nearpc_prefix
 
         # Show prefix only on the specified address and don't show it while in repeat-mode
         # or when showing current instruction for the second time
-        show_prefix = instr.address == pc and not repeat and first_pc
+        show_prefix = instr.address == pc and not repeat and i == index_of_pc
         prefix = " %s" % (prefix_sign if show_prefix else " " * len(prefix_sign))
         prefix = c.prefix(prefix)
 
@@ -153,21 +176,129 @@ def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
 
         # Colorize address and symbol if not highlighted
         # symbol is fetched from gdb and it can be e.g. '<main+8>'
-        if instr.address != pc or not pwndbg.gdblib.config.highlight_pc or repeat:
+        # In case there are duplicate instances of an instruction (tight loop),
+        # ones that the instruction pointer is not at stick out a little, to indicate the repetition
+        if not pwndbg.gdblib.config.highlight_pc or instr.address != pc or repeat:
             address_str = c.address(address_str)
             symbol = c.symbol(symbol)
-        elif pwndbg.gdblib.config.highlight_pc and first_pc:
-            prefix = C.highlight(prefix)
+        elif pwndbg.gdblib.config.highlight_pc and i == index_of_pc:
+            # If this instruction is the one the PC is at.
+            # In case of tight loops, with emulation we may display the same instruction multiple times.
+            # Only highlight current instance, not past or future times.
             address_str = C.highlight(address_str)
             symbol = C.highlight(symbol)
-            first_pc = False
 
-        line = " ".join((prefix, address_str, symbol, asm))
+        # If this instruction performs a memory access operation, we should tell
+        # the user anything we can figure out about the memory it's trying to
+        # access.
+        # mem_access = ""
+        if instr.address == pc and False:
+            accesses = []
+            for operand in instr.operands:
+                if operand.type != CS_OP_MEM:
+                    continue
+                address = operand.mem.disp
+
+                base = operand.mem.base
+                if base > 0:
+                    address += pwndbg.gdblib.regs[instr.reg_name(base)]
+
+                vmmap = pwndbg.gdblib.vmmap.get()
+                page = next((page for page in vmmap if address in page), None)
+                if page is None:
+                    # This is definetly invalid. Don't even bother checking
+                    # any other conditions.
+                    accesses.append(f"[X] {address:#x}")
+                    continue
+
+                if operand.access == CS_AC_READ and not page.read:
+                    # Tried to read from a page we can't read.
+                    accesses.append(f"[X] {address:#x}")
+                    continue
+                if operand.access == CS_AC_WRITE and not page.write:
+                    # Tried to write to a page we can't write.
+                    accesses.append(f"[X] {address:#x}")
+                    continue
+
+                # At this point, we know the operation is legal, but we don't
+                # know where it's going yet. It could be going to either memory
+                # managed by libc or memory managed by the program itself.
+
+                if not pwndbg.gdblib.heap.current.is_initialized():
+                    # The libc heap hasn't been initialized yet. There's not a
+                    # lot that we can say beyond this point.
+                    continue
+                allocator = pwndbg.gdblib.heap.current
+
+                heap = pwndbg.gdblib.heap.ptmalloc.Heap(address)
+                chunk = None
+                for ch in heap:
+                    # Find the chunk in this heap the corresponds to the address
+                    # we're trying to access.
+                    offset = address - ch.address
+                    if offset >= 0 and offset < ch.real_size:
+                        chunk = ch
+                        break
+                if chunk is None:
+                    # The memory for this chunk is not managed by libc. We can't
+                    # reason about it.
+                    accesses.append(f"[?] {address:#x}")
+                    continue
+
+                # Scavenge through all of the bins in the current allocator.
+                # Bins track free chunks, so, whether or not we can find the
+                # chunk we're trying to access in a bin will tells us whether
+                # this access is a UAF.
+                bins_list = [
+                    allocator.fastbins(chunk.arena.address),
+                    allocator.smallbins(chunk.arena.address),
+                    allocator.largebins(chunk.arena.address),
+                    allocator.unsortedbin(chunk.arena.address),
+                ]
+                if allocator.has_tcache():
+                    bins_list.append(allocator.tcachebins(None))
+
+                bins_list = [x for x in bins_list if x is not None]
+                for bins in bins_list:
+                    if bins.contains_chunk(chunk.real_size, chunk.address):
+                        # This chunk is free. This is a UAF.
+                        accesses.append(f"[UAF] {address:#x}")
+                        continue
+            # mem_access = " ".join(accesses)
+
+        opcodes = ""
+        if show_opcode_bytes > 0:
+            opcodes = (opcode_separator_bytes * " ").join(
+                f"{c:02x}" for c in instr.bytes[: int(show_opcode_bytes)]
+            )
+            # Must add +3 at minimum, due to truncated instructions adding "..."
+            align = show_opcode_bytes * 2 + 3
+            if opcode_separator_bytes > 0:
+                # add the length of the maximum number of separators to the alignment
+                align += (show_opcode_bytes - 1) * opcode_separator_bytes  # type: ignore[operator]
+            if len(instr.bytes) > show_opcode_bytes:
+                opcodes += pwndbg.color.gray("...")
+                # the length of gray("...") is 12, so we need to add extra 9 (12-3) alignment length for the invisible characters
+                align += 9  # len(pwndbg.color.gray(""))
+            opcodes = opcodes.ljust(align)
+            if pwndbg.gdblib.config.highlight_pc and i == index_of_pc:
+                opcodes = C.highlight(opcodes)
+
+        # Example line:
+        # ► 0x7ffff7f1aeb6 0f bd c0    <__strrchr_avx2+70>    bsr    eax, eax
+        # prefix        = ►
+        # address_str   = 0x555555556030
+        # opcodes       = 0f bd c0                  Opcodes are enabled with the 'nearpc-num-opcode-bytes' setting
+        # symbol        = <__strrchr_avx2+70>
+        # asm           = bsr    eax, eax           (jump target/annotation would go here too)
+
+        # mem_access was on this list, but not used due to the `and False` in the code that sets it above
+        line = " ".join(filter(None, (prefix, address_str, opcodes, symbol, asm)))
 
         # If there was a branch before this instruction which was not
         # contiguous, put in some ellipses.
         if prev and prev.address + prev.size != instr.address:
-            result.append(c.branch_marker("%s" % nearpc_branch_marker))
+            result.append(c.branch_marker(f"{nearpc_branch_marker}"))
 
         # Otherwise if it's a branch and it *is* contiguous, just put
         # and empty line.
@@ -195,7 +326,7 @@ def nearpc(pc=None, lines=None, emulate=False, repeat=False) -> List[str]:
         # determine the number of arguments.
         if show_args:
             result.extend(
-                ("%8s%s" % ("", arg) for arg in pwndbg.arguments.format_args(instruction=instr))
+                "%8s%s" % ("", arg) for arg in pwndbg.arguments.format_args(instruction=instr)
             )
 
         prev = instr

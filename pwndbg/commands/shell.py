@@ -2,13 +2,16 @@
 Wrapper for shell commands.
 """
 
+from __future__ import annotations
+
 import os
 
+from pwnlib.util.misc import which
+
 import pwndbg.commands
-import pwndbg.lib.which
 from pwndbg.commands import CommandCategory
 
-pwncmd_names = ["asm", "constgrep", "disasm", "pwn", "unhex"]
+pwncmd_names = ["constgrep", "disasm", "pwn", "unhex"]
 shellcmd_names = [
     "awk",
     "bash",
@@ -61,8 +64,8 @@ shellcmd_names = [
     "zsh",
 ]
 
-pwncmds = list(filter(pwndbg.lib.which.which, pwncmd_names))
-shellcmds = list(filter(pwndbg.lib.which.which, shellcmd_names))
+pwncmds = list(filter(which, pwncmd_names))
+shellcmds = list(filter(which, shellcmd_names))
 
 
 def register_shell_function(cmd, deprecated=False) -> None:
@@ -71,11 +74,10 @@ def register_shell_function(cmd, deprecated=False) -> None:
             os.execvp(cmd, (cmd,) + a)
         os.wait()
         print(
-            "This command is deprecated in Pwndbg. Please use the GDB's built-in syntax for running shell commands instead: !%s <args>"
-            % cmd
+            f"This command is deprecated in Pwndbg. Please use the GDB's built-in syntax for running shell commands instead: !{cmd} <args>"
         )
 
-    doc = "Invokes `{}` shell command".format(cmd)
+    doc = f"Invokes `{cmd}` shell command"
     if deprecated:
         doc += " (deprecated)"
 

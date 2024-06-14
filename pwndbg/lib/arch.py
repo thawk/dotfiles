@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import struct
 import sys
+from typing import Literal
 
-from typing_extensions import Literal
+FMT_LITTLE_ENDIAN = {1: "B", 2: "<H", 4: "<I", 8: "<Q"}
+FMT_BIG_ENDIAN = {1: "B", 2: ">H", 4: ">I", 8: ">Q"}
 
 
 class Arch:
@@ -20,13 +24,12 @@ class Arch:
         self.ptrmask = (1 << 8 * ptrsize) - 1
         self.endian = endian
 
-        self.fmt = {(4, "little"): "<I", (4, "big"): ">I", (8, "little"): "<Q", (8, "big"): ">Q"}[
-            (self.ptrsize, self.endian)
-        ]
+        self.fmts = FMT_LITTLE_ENDIAN if endian == "little" else FMT_BIG_ENDIAN
+        self.fmt = self.fmts[self.ptrsize]
 
         if self.name == "arm" and self.endian == "big":
             self.qemu = "armeb"
-        elif self.name == "mips" and self.name == "little":
+        elif self.name == "mips" and self.endian == "little":
             self.qemu = "mipsel"
         else:
             self.qemu = self.name
@@ -36,3 +39,9 @@ class Arch:
 
     def unpack(self, data: bytes) -> int:
         return struct.unpack(self.fmt, data)[0]
+
+    def pack_size(self, integer: int, size: int) -> bytes:
+        return struct.pack(self.fmts[size], integer & self.ptrmask)
+
+    def unpack_size(self, data: bytes, size: int) -> int:
+        return struct.unpack(self.fmts[size], data)[0]
