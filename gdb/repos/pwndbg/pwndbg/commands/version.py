@@ -2,11 +2,13 @@
 Displays gdb, python and pwndbg versions.
 """
 
+from __future__ import annotations
 
 import argparse
 import os
+import platform
+import re
 import sys
-from platform import platform
 from subprocess import check_call
 from subprocess import check_output
 from tempfile import NamedTemporaryFile
@@ -21,11 +23,8 @@ from pwndbg.color import message
 from pwndbg.commands import CommandCategory
 
 
-def _gdb_version():
-    try:
-        return gdb.VERSION  # GDB >= 8.1 (or earlier?)
-    except AttributeError:
-        return gdb.execute("show version", to_string=True).split("\n")[0]
+def _gdb_version() -> str:
+    return gdb.VERSION
 
 
 def _py_version():
@@ -51,21 +50,21 @@ def unicorn_version():
 
 
 def all_versions():
-    gdb_str = "Gdb:      %s" % _gdb_version()
-    py_str = "Python:   %s" % _py_version()
-    pwndbg_str = "Pwndbg:   %s" % pwndbg.__version__
+    gdb_str = f"Gdb:      {_gdb_version()}"
+    py_str = f"Python:   {_py_version()}"
+    pwndbg_str = f"Pwndbg:   {pwndbg.__version__}"
 
-    capstone_str = "Capstone: %s" % capstone_version()
-    unicorn_str = "Unicorn:  %s" % unicorn_version()
+    capstone_str = f"Capstone: {capstone_version()}"
+    unicorn_str = f"Unicorn:  {unicorn_version()}"
 
     all_versions = (gdb_str, py_str, pwndbg_str, capstone_str, unicorn_str)
 
     ida_versions = pwndbg.ida.get_ida_versions()
 
     if ida_versions is not None:
-        ida_version = "IDA PRO:  %s" % ida_versions["ida"]
-        ida_py_ver = "IDA Py:   %s" % ida_versions["python"]
-        ida_hr_ver = "Hexrays:  %s" % ida_versions["hexrays"]
+        ida_version = f"IDA PRO:  {ida_versions['ida']}"
+        ida_py_ver = f"IDA Py:   {ida_versions['python']}"
+        ida_hr_ver = f"Hexrays:  {ida_versions['hexrays']}"
         all_versions += (ida_version, ida_py_ver, ida_hr_ver)
     return all_versions
 
@@ -144,8 +143,52 @@ If it is somehow unavailable, use:
 
     gdb_config = gdb.execute("show configuration", to_string=True).split("\n")
     all_info = all_versions()
+    os_info = platform.system()
 
-    current_setup = "Platform: %s\n" % platform()
+    current_setup = f"Platform: {platform.platform()}\n"
+
+    if os_info.lower() == "linux" and os.path.isfile("/etc/os-release"):
+        with open("/etc/os-release") as os_release:
+            contents = os_release.read()
+            match = re.search('PRETTY_NAME="?([^",\n]+)', contents)
+            if match:
+                os_info = match.group(1)
+
+    current_setup += f"OS: {os_info}\n"
+
+    # 1. showing osabi
+    osabi_info = platform.uname().version
+    current_setup += f"OS ABI: {osabi_info}\n"
+
+    # 2. showing architecture
+    arch_info = platform.machine()
+    current_setup += f"Architecture: {arch_info}\n"
+
+    # 3. showing endian
+    endian_info = sys.byteorder
+    current_setup += f"Endian: {endian_info}\n"
+
+    # 4. Depending on current arch -- note that those are only available if given arch is supported by current GDB, like gdb-multiarch
+    if arch_info in ["armv7l", "aarch64"]:
+        arm_info = gdb.execute("show arm", to_string=True)
+        current_setup += f"ARM: {arm_info}\n"
+
+    elif arch_info in ["mips", "mips64"]:
+        mips_info = gdb.execute("show mips", to_string=True)
+        current_setup += f"MIPS: {mips_info}\n"
+
+    # 7. showing charset
+    charset_info = sys.getdefaultencoding()
+    current_setup += f"Charset: {charset_info}\n"
+
+    # 8. showing width
+    width_info = os.get_terminal_size().columns
+    current_setup += f"Width: {width_info}\n"
+
+    # 9. showing height
+    height_info = os.get_terminal_size().lines
+    current_setup += f"Height: {height_info}\n"
+
     current_setup += "\n".join(all_info)
     current_setup += "\n" + "\n".join(gdb_config)
 
@@ -156,7 +199,7 @@ If it is somehow unavailable, use:
     ]
     gdb_history_len = 0
     try:
-        with open(gdb_history_file, "r") as f:
+        with open(gdb_history_file) as f:
             gdb_history_len = len(f.readlines())
     except FileNotFoundError:
         pass

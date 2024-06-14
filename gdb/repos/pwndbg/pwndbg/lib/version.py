@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import subprocess
 
@@ -7,7 +9,9 @@ def build_id() -> str:
     Returns pwndbg commit id if git is available.
     """
     pwndbg_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    assert os.path.exists(os.path.join(pwndbg_dir, "gdbinit.py"))
+    # If we install pwndbg into site-packages, then `gdbinit.py` is missing.
+    if not os.path.exists(os.path.join(pwndbg_dir, "gdbinit.py")):
+        return ""
 
     try:
         git_path = os.path.join(pwndbg_dir, ".git")
@@ -23,9 +27,9 @@ def build_id() -> str:
         return ""
 
 
-__version__ = "1.1.1"
+__version__ = "2024.02.14"
 
 b_id = build_id()
 
 if b_id:
-    __version__ += " %s" % b_id
+    __version__ += f" {b_id}"

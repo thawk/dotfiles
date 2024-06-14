@@ -4,6 +4,8 @@ debugging a remote process over SSH or similar, where e.g.
 /proc/FOO/maps is needed from the remote system.
 """
 
+from __future__ import annotations
+
 import binascii
 import os
 import shutil
@@ -35,7 +37,14 @@ def remote_files_dir():
     return _remote_files_dir
 
 
-def get_file(path: str) -> str:
+def get_proc_exe_file() -> str:
+    """
+    Returns the local path to the debugged file name.
+    """
+    return get_file(pwndbg.gdblib.proc.exe, try_local_path=True)
+
+
+def get_file(path: str, try_local_path: bool = False) -> str:
     """
     Downloads the specified file from the system where the current process is
     being debugged.
@@ -43,12 +52,17 @@ def get_file(path: str) -> str:
     If the `path` is prefixed with "target:" the prefix is stripped
     (to support remote target paths properly).
 
+    If the `try_local_path` is set to `True` and the `path` exists locally and "target:" prefix is not present, it will return the local path instead of downloading the file.
+
     Returns:
         The local path to the file
     """
-    assert path.startswith("/") or path.startswith("target:"), "get_file called with incorrect path"
+    assert path.startswith(("/", "./", "../")) or path.startswith(
+        "target:"
+    ), "get_file called with incorrect path"
 
-    if path.startswith("target:"):
+    has_target_prefix = path.startswith("target:")
+    if has_target_prefix:
         path = path[7:]  # len('target:') == 7
 
     local_path = path
@@ -59,20 +73,31 @@ def get_file(path: str) -> str:
 
     elif pwndbg.gdblib.remote.is_remote():
         if not pwndbg.gdblib.qemu.is_qemu():
+            if try_local_path and not has_target_prefix and os.path.exists(local_path):
+                return local_path
             local_path = tempfile.mktemp(dir=remote_files_dir())
             error = None
             try:
-                error = gdb.execute('remote get "%s" "%s"' % (path, local_path), to_string=True)
+                error = gdb.execute(f'remote get "{path}" "{local_path}"', to_string=True)
             except gdb.error as e:
                 error = str(e)
 
             if error:
-                raise OSError("Could not download remote file %r:\n" "Error: %s" % (path, error))
+                # If the client is configured with set debug remote 1, we need to
+                # skip [remote] lines, and not interpret as missing file. Maybe
+                # better to search for error strings. A real error will say:
+                # "Remote I/O error: No such file or directory"
+                real_error = []
+                for line in error.splitlines():
+                    if not line.startswith("[remote]"):
+                        real_error.append(line)
+                if len(real_error):
+                    error = "\n".join(real_error)
+                    raise OSError("Could not download remote file %r:\nError: %s" % (path, error))
         else:
             print(
                 message.warn(
-                    "pwndbg.gdblib.file.get(%s) returns local path as we can't download file from QEMU"
-                    % path
+                    f"pwndbg.gdblib.file.get_file({path}) returns local path as we can't download file from QEMU"
                 )
             )
 
@@ -107,7 +132,9 @@ def readlink(path):
 
     if is_qemu:
         if not os.path.exists(path):
-            path = os.path.join(pwndbg.gdblib.qemu.root(), path)
+            # The or "" is needed since .root() may return None
+            # Then we just use the path (it can also be absolute too)
+            path = os.path.join(pwndbg.gdblib.qemu.root() or "", path)
 
     if is_qemu or not pwndbg.gdblib.remote.is_remote():
         try:

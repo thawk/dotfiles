@@ -3,8 +3,11 @@ Re-implements some psutil functionality to be able to get information from
 remote debugging sessions.
 """
 
+from __future__ import annotations
+
 import binascii
 import socket
+from typing import List
 
 import pwndbg.gdblib.arch
 import pwndbg.gdblib.file
@@ -26,33 +29,28 @@ TCP_STATUSES = {
 
 
 class inode:
-    inode = None
+    inode: int | None = None
 
 
 class Connection(inode):
-    rhost = None
-    lhost = None
+    rhost: str | None = None
+    lhost: str | None = None
 
-    rport = None
-    lport = None
+    rport: int | None = None
+    lport: int | None = None
 
-    inode = None
-    status = None
+    inode: int | None = None
+    status: str | None = None
 
-    family = None
+    family: str | None = None
 
     def __str__(self) -> str:
-        return "%s %s:%s => %s:%s (%s)" % (
-            self.family,
-            self.lhost,
-            self.lport,
-            self.rhost,
-            self.rport,
-            self.status,
+        return (
+            f"{self.family} {self.lhost}:{self.lport} => {self.rhost}:{self.rport} ({self.status})"
         )
 
     def __repr__(self) -> str:
-        return 'Connection("%s")' % self
+        return f'Connection("{self}")'
 
 
 class UnixSocket(inode):
@@ -62,10 +60,10 @@ class UnixSocket(inode):
         return "unix %r" % self.path
 
     def __repr__(self) -> str:
-        return "UnixSocket(%s)" % self
+        return f"UnixSocket({self})"
 
 
-def tcp(data: str):
+def tcp(data: str) -> List[Connection]:
     # For reference, see:
     # https://www.kernel.org/doc/Documentation/networking/proc_net_tcp.txt
     """
@@ -76,7 +74,7 @@ def tcp(data: str):
     if not data:
         return []
 
-    result = []
+    result: List[Connection] = []
     for line in data.splitlines()[1:]:
         fields = line.split()
         """
@@ -118,7 +116,7 @@ def tcp(data: str):
         inode = fields[9]
 
         # Actually extract the useful data
-        def split_hist_port(hostport):
+        def split_hist_port(hostport: str):
             host, port = hostport.split(":")
             host = binascii.unhexlify(host)
 
@@ -141,12 +139,17 @@ def tcp(data: str):
     return result
 
 
-def unix(data: str):
+def unix(data: str) -> List[UnixSocket]:
     if not data:
         return []
 
-    result = []
-    for line in data.splitlines()[1:]:
+    result: List[UnixSocket] = []
+    # Note: it is super important to split by "\n" instead of .splitlines() here
+    # because there may be a line like this:
+    # "0000000000000000: 00000002 00000000 00000000 0002 01 23302 @@@@\x9e\x05@@\x01=\r@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+    # and splitlines will also split by \r which we do not want here
+    # We also finish at -1 index since with .split() the empty last line is kept in the result
+    for line in data.split("\n")[1:-1]:
         """
         Num       RefCount Protocol Flags    Type St Inode Path
         0000000000000000: 00000002 00000000 00010000 0005 01  1536 /dev/socket/msm_irqbalance
@@ -188,21 +191,21 @@ NETLINK_TYPES = {
 
 
 class Netlink(inode):
-    eth = 0
-    pid = None
+    eth: int = 0
+    pid: int | None = None
 
     def __str__(self) -> str:
         return NETLINK_TYPES.get(self.eth, "(unknown netlink)")
 
     def __repr__(self) -> str:
-        return "Netlink(%s)" % self
+        return f"Netlink({self})"
 
 
-def netlink(data: str):
+def netlink(data: str) -> List[Netlink]:
     if not data:
         return []
 
-    result = []
+    result: List[Netlink] = []
     for line in data.splitlines()[1:]:
         # sk       Eth Pid    Groups   Rmem     Wmem     Dump     Locks     Drops     Inode            [10/8747]
         fields = line.split()

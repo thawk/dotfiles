@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 from typing import Dict
 
@@ -26,8 +28,8 @@ def comm(addr=None, comment=None) -> None:
                 print(message.error("Invalid Address %#x" % target))
 
             else:
-                f.write("file:%s=" % pwndbg.gdblib.proc.exe)
-                f.write("%#x:%s\n" % (target, comment))
+                f.write(f"file:{pwndbg.gdblib.proc.exe}=")
+                f.write(f"{target:#x}:{comment}\n")
                 if pwndbg.gdblib.proc.exe not in file_lists:
                     file_lists[pwndbg.gdblib.proc.exe] = {}
                 file_lists[pwndbg.gdblib.proc.exe][hex(target)] = comment
@@ -37,7 +39,7 @@ def comm(addr=None, comment=None) -> None:
 
 def init() -> None:
     try:
-        with open(".gdb_comments", "r") as f:
+        with open(".gdb_comments") as f:
             text = f.read()
             text = text.split("\n")
             for i in range(len(text) - 1):

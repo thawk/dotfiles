@@ -2,6 +2,8 @@
 Stepping until an event occurs
 """
 
+from __future__ import annotations
+
 import argparse
 
 import gdb
@@ -132,3 +134,22 @@ def stepsyscall() -> None:
 
     if pwndbg.gdblib.proc.alive:
         pwndbg.commands.context.context()
+
+
+parser = argparse.ArgumentParser(description="Breaks on the next matching instruction.")
+parser.add_argument("mnemonic", type=str, help="The mnemonic of the instruction")
+parser.add_argument(
+    "op_str",
+    type=str,
+    nargs="*",
+    help="The operands of the instruction",
+)
+
+
+@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.NEXT)
+@pwndbg.commands.OnlyWhenRunning
+def stepuntilasm(mnemonic, op_str) -> None:
+    if len(op_str) == 0:
+        op_str = None
+
+    pwndbg.gdblib.next.break_on_next_matching_instruction(mnemonic, op_str)

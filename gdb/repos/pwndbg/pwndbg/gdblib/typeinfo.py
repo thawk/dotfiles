@@ -3,19 +3,53 @@ Common types, and routines for manually loading types from file
 via GCC.
 """
 
+from __future__ import annotations
+
 import sys
+from typing import Dict
+from typing import Optional
 
 import gdb
 
 import pwndbg.lib.gcc
-import pwndbg.lib.memoize
 import pwndbg.lib.tempfile
 
 module = sys.modules[__name__]
+
+char: gdb.Type
+ulong: gdb.Type
+long: gdb.Type
+uchar: gdb.Type
+ushort: gdb.Type
+uint: gdb.Type
+void: gdb.Type
+
+uint8: gdb.Type
+uint16: gdb.Type
+uint32: gdb.Type
+uint64: gdb.Type
+unsigned: Dict[int, gdb.Type]
+
+int8: gdb.Type
+int16: gdb.Type
+int32: gdb.Type
+int64: gdb.Type
+signed: Dict[int, gdb.Type]
+
+pvoid: gdb.Type
+ppvoid: gdb.Type
+pchar: gdb.Type
+
 ptrsize: int
 
+ptrdiff: gdb.Type
+size_t: gdb.Type
+ssize_t: gdb.Type
 
-def lookup_types(*types):
+null: gdb.Value
+
+
+def lookup_types(*types: str) -> gdb.Type:
     for type_str in types:
         try:
             return gdb.lookup_type(type_str)
@@ -24,7 +58,7 @@ def lookup_types(*types):
     raise exc
 
 
-def update():
+def update() -> None:
     # Workaround for Rust stuff, see https://github.com/pwndbg/pwndbg/issues/855
     lang = gdb.execute("show language", to_string=True)
     if "rust" not in lang:
@@ -81,7 +115,7 @@ def update():
 
     # Rust workaround part 2
     if restore_lang:
-        gdb.execute("set language %s" % restore_lang)
+        gdb.execute(f"set language {restore_lang}")
 
 
 # TODO: Remove this global initialization, or move it somewhere else
@@ -89,7 +123,7 @@ def update():
 update()
 
 
-def load(name):
+def load(name: str) -> Optional[gdb.Type]:
     """Load a GDB symbol; note that new symbols can be added with `add-symbol-file` functionality"""
     try:
         return gdb.lookup_type(name)
@@ -97,13 +131,7 @@ def load(name):
         return None
 
 
-def read_gdbvalue(type_name, addr):
-    """Read the memory contents at addr and interpret them as a GDB value with the given type"""
-    gdb_type = pwndbg.gdblib.typeinfo.load(type_name)
-    return gdb.Value(addr).cast(gdb_type.pointer()).dereference()
-
-
-def get_type(size):
+def get_type(size: int) -> gdb.Type:
     return {
         1: pwndbg.gdblib.typeinfo.uint8,
         2: pwndbg.gdblib.typeinfo.uint16,

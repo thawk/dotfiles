@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import argparse
 import ast
 import os
 import sys
 from collections import defaultdict
-from io import open
+from typing import Any
 from typing import DefaultDict
 from typing import Dict
 from typing import List
+from typing import Tuple
 
 import gdb
 
@@ -18,9 +21,10 @@ import pwndbg.color.memory as M
 import pwndbg.color.syntax_highlight as H
 import pwndbg.commands
 import pwndbg.commands.telescope
-import pwndbg.disasm
 import pwndbg.gdblib.config
+import pwndbg.gdblib.disasm
 import pwndbg.gdblib.events
+import pwndbg.gdblib.heap_tracking
 import pwndbg.gdblib.nearpc
 import pwndbg.gdblib.regs
 import pwndbg.gdblib.symbol
@@ -79,12 +83,17 @@ config_output = pwndbg.gdblib.config.add_param(
 )
 config_context_sections = pwndbg.gdblib.config.add_param(
     "context-sections",
-    "regs disasm code ghidra stack backtrace expressions",
+    "regs disasm code ghidra stack backtrace expressions threads heap-tracker",
     "which context sections are displayed (controls order)",
+)
+config_max_threads_display = pwndbg.gdblib.config.add_param(
+    "context-max-threads",
+    4,
+    "maximum number of threads displayed by the context command",
 )
 
 # Storing output configuration per section
-outputs = {}  # type: Dict[str,str]
+outputs: Dict[str, str] = {}
 output_settings = {}
 
 
@@ -106,7 +115,7 @@ def validate_context_sections() -> None:
         config_context_sections.value = ""
         print(
             message.warn(
-                "Sections set to be empty. FYI valid values are: %s" % ", ".join(valid_values)
+                f"Sections set to be empty. FYI valid values are: {', '.join(valid_values)}"
             )
         )
         return
@@ -114,9 +123,7 @@ def validate_context_sections() -> None:
     for section in config_context_sections.split():
         if section not in valid_values:
             print(
-                message.warn(
-                    "Invalid section: %s, valid values: %s" % (section, ", ".join(valid_values))
-                )
+                message.warn(f"Invalid section: {section}, valid values: {', '.join(valid_values)}")
             )
             print(message.warn("(setting none of them like '' will make sections not appear)"))
             config_context_sections.revert_default()
@@ -194,7 +201,7 @@ class CallOutput:
             return False
 
 
-def output(section):
+def output(section: str):
     """Creates a context manager corresponding to configured context output"""
     target = outputs.get(section, str(config_output))
     if not target or target == "stdout":
@@ -230,20 +237,19 @@ parser.add_argument(
 
 
 @pwndbg.commands.ArgparsedCommand(parser, aliases=["ctx-out"], category=CommandCategory.CONTEXT)
-def contextoutput(section, path, clearing, banner="both", width=None):
+def contextoutput(section, path, clearing, banner="both", width: int = None):
     if not banner:  # synonym for splitmind backwards compatibility
         banner = "none"
     if banner not in ("both", "top", "bottom", "none"):
         raise argparse.ArgumentError(banner_arg, f"banner can not be '{banner}'")
-    if width is not None:
-        width = int(width)
+
     outputs[section] = path
-    output_settings[section] = dict(
-        clearing=clearing,
-        width=width,
-        banner_top=banner in ["both", "top"],
-        banner_bottom=banner in ["both", "bottom"],
-    )
+    output_settings[section] = {
+        "clearing": clearing,
+        "width": width,
+        "banner_top": banner in ["both", "top"],
+        "banner_bottom": banner in ["both", "bottom"],
+    }
 
 
 # Watches
@@ -327,7 +333,7 @@ def context_expressions(target=sys.stdout, with_banner=True, width=None):
 config_context_ghidra = pwndbg.gdblib.config.add_param(
     "context-ghidra",
     "never",
-    "when to try to decompile the current function with ghidra (slow and requires radare2/r2pipe) (valid values: always, never, if-no-source)",
+    "when to try to decompile the current function with ghidra (slow and requires radare2/r2pipe or rizin/rzpipe) (valid values: always, never, if-no-source)",
 )
 
 
@@ -389,7 +395,7 @@ def context(subcontext=None) -> None:
     sections += [(arg, context_sections.get(arg[0], None)) for arg in args]
 
     result = defaultdict(list)
-    result_settings: DefaultDict[str, Dict] = defaultdict(dict)
+    result_settings: DefaultDict[str, Dict[Any, Any]] = defaultdict(dict)
     for section, func in sections:
         if func:
             target = output(section)
@@ -510,12 +516,27 @@ def context_regs(target=sys.stdout, with_banner=True, width=None):
     if pwndbg.gdblib.config.show_compact_regs:
         regs = compact_regs(regs, target=target, width=width)
 
-    info = " / show-flags %s / show-compact-regs %s" % (
+    info = " / show-flags {} / show-compact-regs {}".format(
         "on" if pwndbg.gdblib.config.show_flags else "off",
         "on" if pwndbg.gdblib.config.show_compact_regs else "off",
     )
     banner = [pwndbg.ui.banner("registers", target=target, width=width, extra=info)]
     return banner + regs if with_banner else regs
+
+
+def context_heap_tracker(target=sys.stdout, with_banner=True, width=None):
+    if not pwndbg.gdblib.heap_tracking.is_enabled():
+        return []
+
+    banner = [pwndbg.ui.banner("heap tracker", target=target, width=width, extra="")]
+
+    if pwndbg.gdblib.heap_tracking.last_issue is not None:
+        info = [f"Detected the following potential issue: {pwndbg.gdblib.heap_tracking.last_issue}"]
+        pwndbg.gdblib.heap_tracking.last_issue = None
+    else:
+        info = ["Nothing to report."]
+
+    return banner + info if with_banner else info
 
 
 parser = argparse.ArgumentParser(description="Print out all registers and enhance the information.")
@@ -524,34 +545,34 @@ parser.add_argument("regs", nargs="*", type=str, default=None, help="Registers t
 
 @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.CONTEXT)
 @pwndbg.commands.OnlyWhenRunning
-def regs(regs=None) -> None:
+def regs(regs=[]) -> None:
     """Print out all registers and enhance the information."""
-    print("\n".join(get_regs(*regs)))
+    print("\n".join(get_regs(regs)))
 
 
 pwndbg.gdblib.config.add_param("show-flags", False, "whether to show flags registers")
 pwndbg.gdblib.config.add_param("show-retaddr-reg", False, "whether to show return address register")
 
 
-def get_regs(*regs):
+def get_regs(regs: List[str] = None):
     result = []
 
-    if not regs and pwndbg.gdblib.config.show_retaddr_reg:
-        regs = (
-            pwndbg.gdblib.regs.gpr
-            + (pwndbg.gdblib.regs.frame, pwndbg.gdblib.regs.current.stack)
-            + pwndbg.gdblib.regs.retaddr
-            + (pwndbg.gdblib.regs.current.pc,)
-        )
-    elif not regs:
-        regs = pwndbg.gdblib.regs.gpr + (
-            pwndbg.gdblib.regs.frame,
-            pwndbg.gdblib.regs.current.stack,
-            pwndbg.gdblib.regs.current.pc,
-        )
+    if regs is None:
+        regs = []
 
-    if pwndbg.gdblib.config.show_flags:
-        regs += tuple(pwndbg.gdblib.regs.flags)
+    if len(regs) == 0:
+        regs += pwndbg.gdblib.regs.gpr
+
+        regs.append(pwndbg.gdblib.regs.frame)
+        regs.append(pwndbg.gdblib.regs.stack)
+
+        if pwndbg.gdblib.config.show_retaddr_reg:
+            regs += pwndbg.gdblib.regs.retaddr
+
+        regs.append(pwndbg.gdblib.regs.current.pc)
+
+        if pwndbg.gdblib.config.show_flags:
+            regs += pwndbg.gdblib.regs.flags.keys()
 
     changed = pwndbg.gdblib.regs.changed
 
@@ -559,11 +580,10 @@ def get_regs(*regs):
         if reg is None:
             continue
 
-        if reg not in pwndbg.gdblib.regs:
+        value = pwndbg.gdblib.regs[reg]
+        if value is None:
             print(message.warn("Unknown register: %r" % reg))
             continue
-
-        value = pwndbg.gdblib.regs[reg]
 
         # Make the register stand out and give a color if changed
         regname = C.register(reg.ljust(4).upper())
@@ -574,25 +594,22 @@ def get_regs(*regs):
         change_marker = "%s" % C.config_register_changed_marker
         m = " " * len(change_marker) if reg not in changed else C.register_changed(change_marker)
 
+        bit_flags = None
         if reg in pwndbg.gdblib.regs.flags:
-            desc = C.format_flags(
-                value, pwndbg.gdblib.regs.flags[reg], pwndbg.gdblib.regs.last.get(reg, 0)
-            )
+            bit_flags = pwndbg.gdblib.regs.flags[reg]
+        elif reg in pwndbg.gdblib.regs.extra_flags:
+            bit_flags = pwndbg.gdblib.regs.extra_flags[reg]
+
+        if bit_flags:
+            desc = C.format_flags(value, bit_flags, pwndbg.gdblib.regs.last.get(reg, 0))
 
         else:
             desc = pwndbg.chain.format(value)
 
-        result.append("%s%s %s" % (m, regname, desc))
+        result.append(f"{m}{regname} {desc}")
     return result
 
 
-pwndbg.gdblib.config.add_param(
-    "emulate",
-    True,
-    """
-Unicorn emulation of code near the current instruction
-""",
-)
 code_lines = pwndbg.gdblib.config.add_param(
     "context-code-lines", 10, "number of additional lines to print in the code context"
 )
@@ -607,21 +624,26 @@ def context_disasm(target=sys.stdout, with_banner=True, width=None):
         else:
             raise
 
-    syntax = pwndbg.disasm.CapstoneSyntax[flavor]
+    syntax = pwndbg.gdblib.disasm.CapstoneSyntax[flavor]
 
     # Get the Capstone object to set disassembly syntax
-    cs = next(iter(pwndbg.disasm.get_disassembler_cached.cache.values()), None)
+    cs = next(iter(pwndbg.gdblib.disasm.get_disassembler_cached.cache.values()), None)
 
     # The `None` case happens when the cache was not filled yet (see e.g. #881)
     if cs is not None and cs.syntax != syntax:
-        pwndbg.lib.memoize.reset()
+        pwndbg.lib.cache.clear_caches()
 
-    arch = pwndbg.gdblib.arch.current
-    emulate = bool(pwndbg.gdblib.config.emulate)
+    result = pwndbg.gdblib.nearpc.nearpc(
+        lines=code_lines // 2,
+        emulate=bool(not pwndbg.gdblib.config.emulate == "off"),
+        use_cache=True,
+    )
 
-    info = " / %s / set emulate %s" % (arch, "on" if emulate else "off")
+    # Note: we must fetch emulate value again after disasm since
+    # we check if we can actually use emulation in `can_run_first_emulate`
+    # and this call may disable it
+    info = " / {} / set emulate {}".format(pwndbg.gdblib.arch.current, pwndbg.gdblib.config.emulate)
     banner = [pwndbg.ui.banner("disasm", target=target, width=width, extra=info)]
-    result = pwndbg.gdblib.nearpc.nearpc(lines=code_lines // 2, emulate=emulate)
 
     # If we didn't disassemble backward, try to make sure
     # that the amount of screen space taken is roughly constant.
@@ -641,8 +663,8 @@ pwndbg.gdblib.config.add_param(
 theme.add_param("code-prefix", "►", "prefix marker for 'context code' command")
 
 
-@pwndbg.lib.memoize.reset_on_start
-def get_highlight_source(filename):
+@pwndbg.lib.cache.cache_until("start")
+def get_highlight_source(filename: str) -> Tuple[str, ...]:
     # Notice that the code is cached
     with open(filename, encoding="utf-8", errors="ignore") as f:
         source = f.read()
@@ -672,7 +694,7 @@ def get_filename_and_formatted_source():
 
     try:
         source = get_highlight_source(filename)
-    except IOError:
+    except OSError:
         return "", []
 
     if not source:
@@ -721,7 +743,11 @@ def context_code(target=sys.stdout, with_banner=True, width=None):
         bannerline = (
             [pwndbg.ui.banner("Source (code)", target=target, width=width)] if with_banner else []
         )
-        return bannerline + ["In file: %s" % filename] + formatted_source
+        return (
+            bannerline
+            + ["In file: %s:%d" % (filename, gdb.selected_frame().find_sal().line)]
+            + formatted_source
+        )
 
     # Try getting source from IDA Pro Hex-Rays Decompiler
     if not pwndbg.ida.available():
@@ -761,7 +787,7 @@ backtrace_lines = pwndbg.gdblib.config.add_param(
     "context-backtrace-lines", 8, "number of lines to print in the backtrace context"
 )
 backtrace_frame_label = theme.add_param(
-    "backtrace-frame-label", "f ", "frame number label for backtrace"
+    "backtrace-frame-label", "", "frame number label for backtrace"
 )
 
 
@@ -796,9 +822,8 @@ def context_backtrace(with_banner=True, target=sys.stdout, width=None):
     i = 0
     bt_prefix = "%s" % pwndbg.gdblib.config.backtrace_prefix
     while True:
-
         prefix = bt_prefix if frame == this_frame else " " * len(bt_prefix)
-        prefix = " %s" % c.prefix(prefix)
+        prefix = f" {c.prefix(prefix)}"
         addrsz = c.address(pwndbg.ui.addrsz(frame.pc()))
         symbol = c.symbol(pwndbg.gdblib.symbol.get(int(frame.pc())))
         if symbol:
@@ -816,7 +841,7 @@ def context_backtrace(with_banner=True, target=sys.stdout, width=None):
 
 
 def context_args(with_banner=True, target=sys.stdout, width=None):
-    args = pwndbg.arguments.format_args(pwndbg.disasm.one())
+    args = pwndbg.arguments.format_args(pwndbg.gdblib.disasm.one())
 
     # early exit to skip section if no arg found
     if not args:
@@ -830,6 +855,101 @@ def context_args(with_banner=True, target=sys.stdout, width=None):
 
 last_signal: List[str] = []
 
+thread_status_messages = {
+    "running": pwndbg.color.light_green("running"),
+    "stopped": pwndbg.color.yellow("stopped"),
+    "exited": pwndbg.color.gray("exited "),
+}
+
+
+def get_thread_status(thread):
+    if thread.is_running():
+        return thread_status_messages["running"]
+    elif thread.is_stopped():
+        return thread_status_messages["stopped"]
+    elif thread.is_exited():
+        return thread_status_messages["exited"]
+    else:
+        return "unknown"
+
+
+def context_threads(with_banner=True, target=sys.stdout, width=None):
+    try:
+        original_thread = gdb.selected_thread()
+    except SystemError:
+        original_thread = None
+    try:
+        original_frame = gdb.selected_frame()
+    except gdb.error:
+        original_frame = None
+
+    all_threads = gdb.selected_inferior().threads()[::-1]
+
+    displayed_threads = []
+
+    if original_thread is not None and original_thread.is_valid():
+        displayed_threads.append(original_thread)
+
+    for thread in all_threads:
+        if len(displayed_threads) >= int(config_max_threads_display):
+            break
+
+        if thread.is_valid() and thread is not original_thread:
+            displayed_threads.append(thread)
+
+    num_threads_not_shown = len(all_threads) - len(displayed_threads)
+
+    if len(displayed_threads) < 2:
+        return []
+
+    out = [pwndbg.ui.banner(f"threads ({len(all_threads)} total)", target=target, width=width)]
+    max_name_length = 0
+
+    for thread in displayed_threads:
+        name = thread.name or ""
+        if len(name) > max_name_length:
+            max_name_length = len(name)
+
+    for thread in filter(lambda t: t.is_valid(), displayed_threads):
+        selected = " ►" if thread is original_thread else "  "
+        name = thread.name if thread.name is not None else ""
+        padding = max_name_length - len(name)
+        status = get_thread_status(thread)
+
+        line = (
+            f" {selected} {thread.global_num}\t"
+            f'"{pwndbg.color.cyan(name)}" '
+            f'{" " * padding}'
+            f"{status}: "
+        )
+
+        if thread.is_stopped():
+            thread.switch()
+            pc = gdb.selected_frame().pc()
+
+            pc_colored = M.get(pc)
+            symbol = pwndbg.gdblib.symbol.get(pc)
+
+            line += f"{pc_colored}"
+            if symbol:
+                line += f" <{pwndbg.color.bold(pwndbg.color.green(symbol))}> "
+
+        out.append(line)
+
+    if num_threads_not_shown:
+        out.append(
+            pwndbg.lib.tips.color_tip(
+                f"Not showing {num_threads_not_shown} thread(s). Use `set context-max-threads <number of threads>` to change this."
+            )
+        )
+
+    if original_thread is not None and original_thread.is_valid():
+        original_thread.switch()
+    if original_frame is not None and original_frame.is_valid():
+        original_frame.select()
+
+    return out
+
 
 def save_signal(signal) -> None:
     global last_signal
@@ -841,10 +961,9 @@ def save_signal(signal) -> None:
             result.append(message.exit("Exited: %r" % signal.exit_code))
 
     elif isinstance(signal, gdb.SignalEvent):
-        msg = "Program received signal %s" % signal.stop_signal
+        msg = f"Program received signal {signal.stop_signal}"
 
         if signal.stop_signal == "SIGSEGV":
-
             # When users use rr (https://rr-project.org or https://github.com/mozilla/rr)
             # we can't access $_siginfo, so lets just show current pc
             # see also issue 476
@@ -860,7 +979,7 @@ def save_signal(signal) -> None:
 
     elif isinstance(signal, gdb.BreakpointEvent):
         for bkpt in signal.breakpoints:
-            result.append(message.breakpoint("Breakpoint %s" % (bkpt.location)))
+            result.append(message.breakpoint(f"Breakpoint {(bkpt.location)}"))
 
 
 gdb.events.cont.connect(save_signal)
@@ -881,10 +1000,12 @@ context_sections = {
     "b": context_backtrace,
     "e": context_expressions,
     "g": context_ghidra,
+    "h": context_heap_tracker,
+    "t": context_threads,
 }
 
 
-@pwndbg.lib.memoize.forever
+@pwndbg.lib.cache.cache_until("forever")
 def _is_rr_present() -> bool:
     """
     Checks whether rr project is present (so someone launched e.g. `rr replay <some-recording>`)

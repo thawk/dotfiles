@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from elftools.elf.elffile import ELFFile
 
 import pwndbg.commands
@@ -10,7 +12,7 @@ from pwndbg.commands import CommandCategory
 )
 @pwndbg.commands.OnlyWithFile
 def elfsections() -> None:
-    local_path = pwndbg.gdblib.file.get_file(pwndbg.gdblib.proc.exe)
+    local_path = pwndbg.gdblib.file.get_proc_exe_file()
 
     with open(local_path, "rb") as f:
         elffile = ELFFile(f)
@@ -28,7 +30,7 @@ def elfsections() -> None:
         sections.sort()
 
         for start, end, name in sections:
-            print("%#x - %#x " % (start, end), name)
+            print(f"{start:#x} - {end:#x} ", name)
 
 
 @pwndbg.commands.ArgparsedCommand(
@@ -49,7 +51,7 @@ def plt() -> None:
 
 
 def get_section_bounds(section_name):
-    local_path = pwndbg.gdblib.file.get_file(pwndbg.gdblib.proc.exe)
+    local_path = pwndbg.gdblib.file.get_proc_exe_file()
 
     with open(local_path, "rb") as f:
         elffile = ELFFile(f)
@@ -68,13 +70,24 @@ def print_symbols_in_section(section_name, filter_text="") -> None:
     start, end = get_section_bounds(section_name)
 
     if start is None:
-        print(message.error("Could not find section"))
+        print(message.error(f"Could not find section {section_name}"))
         return
+
+    # If we started the binary and it has PIE, rebase it
+    if pwndbg.gdblib.proc.alive:
+        bin_base_addr = pwndbg.gdblib.proc.binary_base_addr
+
+        # Rebase the start and end addresses if needed
+        if start < bin_base_addr:
+            start += bin_base_addr
+            end += bin_base_addr
+
+    print(message.notice(f"Section {section_name} {start:#x}-{end:#x}:"))
 
     symbols = get_symbols_in_region(start, end, filter_text)
 
     if not symbols:
-        print(message.error("No symbols found in section %s" % section_name))
+        print(message.error(f"No symbols found in section {section_name}"))
 
     for symbol, addr in symbols:
         print(hex(int(addr)) + ": " + symbol)
@@ -85,7 +98,7 @@ def get_symbols_in_region(start, end, filter_text=""):
     ptr_size = pwndbg.gdblib.typeinfo.pvoid.sizeof
     addr = start
     while addr < end:
-        name = pwndbg.gdblib.symbol.get(addr)
+        name = pwndbg.gdblib.symbol.get(addr, gdb_only=True)
         if name != "" and "+" not in name and filter_text in name:
             symbols.append((name, addr))
         addr += ptr_size

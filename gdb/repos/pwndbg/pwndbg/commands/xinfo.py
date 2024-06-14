@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 
 import pwndbg.color.memory as M
@@ -18,15 +20,8 @@ parser.add_argument("address", nargs="?", default="$pc", help="Address to inspec
 
 
 def print_line(name, addr, first, second, op, width=20) -> None:
-
     print(
-        "{} {} = {} {} {:#x}".format(
-            name.rjust(width),
-            M.get(addr),
-            M.get(first) if not isinstance(first, str) else first.ljust(len(hex(addr).rstrip("L"))),
-            op,
-            second,
-        )
+        f"{name.rjust(width)} {M.get(addr)} = {M.get(first) if not isinstance(first, str) else first.ljust(len(hex(addr).rstrip('L')))} {op} {second:#x}"
     )
 
 
@@ -50,7 +45,7 @@ def xinfo_stack(page, addr) -> None:
     if canary_value is not None:
         all_canaries = list(
             pwndbg.search.search(
-                pwndbg.gdblib.arch.pack(canary_value), mappings=pwndbg.gdblib.stack.stacks.values()
+                pwndbg.gdblib.arch.pack(canary_value), mappings=pwndbg.gdblib.stack.get().values()
             )
         )
         follow_canaries = sorted(filter(lambda a: a > addr, all_canaries))
@@ -90,7 +85,7 @@ def xinfo_mmap_file(page, addr) -> None:
             print_line("File (Disk)", addr, file_name, file_offset, "+")
             break
     else:
-        print("{} {} = [not file backed]".format("File (Disk)".rjust(20), M.get(addr)))
+        print(f"{'File (Disk)'.rjust(20)} {M.get(addr)} = [not file backed]")
 
     containing_sections = pwndbg.gdblib.elf.get_containing_sections(file_name, first.vaddr, addr)
     if len(containing_sections) > 0:
@@ -116,10 +111,10 @@ def xinfo(address=None) -> None:
     page = pwndbg.gdblib.vmmap.find(addr)
 
     if page is None:
-        print("\n  Virtual address {:#x} is not mapped.".format(addr))
+        print(f"\n  Virtual address {addr:#x} is not mapped.")
         return
 
-    print("Extended information for virtual address {}:".format(M.get(addr)))
+    print(f"Extended information for virtual address {M.get(addr)}:")
 
     print("\n  Containing mapping:")
     print(M.get(address, text=str(page)))

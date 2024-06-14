@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import gdb
 
 import pwndbg.gdblib.events
 import pwndbg.gdblib.file
 import pwndbg.gdblib.qemu
-import pwndbg.lib.memoize
+import pwndbg.lib.cache
 from pwndbg.color import message
 
 
-@pwndbg.lib.memoize.reset_on_start
-@pwndbg.lib.memoize.reset_on_exit
+@pwndbg.lib.cache.cache_until("start", "exit")
 def is_android() -> bool:
     if pwndbg.gdblib.qemu.is_qemu():
         return False

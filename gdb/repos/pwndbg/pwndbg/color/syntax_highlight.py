@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os.path
 import re
 from typing import Any
@@ -6,12 +8,13 @@ from typing import Dict
 import pygments
 import pygments.formatters
 import pygments.lexers
+import pygments.util
+from pwnlib.lexer import PwntoolsLexer
 
 import pwndbg.gdblib.config
 from pwndbg.color import disable_colors
 from pwndbg.color import message
 from pwndbg.color import theme
-from pwndbg.color.lexer import PwntoolsLexer
 
 pwndbg.gdblib.config.add_param("syntax-highlight", True, "Source code / assembly syntax highlight")
 style = theme.add_param(
@@ -34,17 +37,15 @@ def check_style() -> None:
         # Reset the highlighted source cache
         from pwndbg.commands.context import get_highlight_source
 
-        get_highlight_source._reset()
+        get_highlight_source.cache.clear()
     except pygments.util.ClassNotFound:
         print(
-            message.warn(
-                "The pygment formatter style '%s' is not found, restore to default" % style
-            )
+            message.warn(f"The pygment formatter style '{style}' is not found, restore to default")
         )
         style.revert_default()
 
 
-def syntax_highlight(code, filename=".asm"):
+def syntax_highlight(code: str, filename: str = ".asm") -> str:
     # No syntax highlight if pygment is not installed
     if disable_colors:
         return code

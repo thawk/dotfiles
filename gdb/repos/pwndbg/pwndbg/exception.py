@@ -1,19 +1,40 @@
+from __future__ import annotations
+
 import functools
 import sys
 import traceback
 
 import gdb
 
-import pwndbg.lib.memoize
+import pwndbg.lib.cache
 import pwndbg.lib.stdio
 from pwndbg.color import message
 from pwndbg.gdblib import config
 
-with pwndbg.lib.stdio.stdio:
-    try:
-        import ipdb as pdb
-    except ImportError:
-        import pdb  # type: ignore
+try:
+    import ipdb as pdb
+except ImportError:
+    import pdb
+
+_rich_console = None
+
+
+def print_exception(exception_msg) -> None:
+    global _rich_console
+
+    if _rich_console is None:
+        try:
+            from rich.console import Console
+
+            _rich_console = Console()
+        except ImportError:
+            _rich_console = ...
+
+    if not isinstance(_rich_console, type(Ellipsis)):
+        _rich_console.print_exception()
+    else:
+        print(exception_msg)
+
 
 verbose = config.add_param(
     "exception-verbose",
@@ -25,11 +46,29 @@ debug = config.add_param(
 )
 
 
-@pwndbg.lib.memoize.forever
+def inform_unmet_dependencies(errors) -> None:
+    """
+    Informs user about unmet dependencies
+    """
+    import pkg_resources
+
+    msg = message.error("You appear to have unmet Pwndbg dependencies.\n")
+    for e in errors:
+        if isinstance(e, pkg_resources.DistributionNotFound):
+            msg += message.notice(f"- required {e.args[0]}, but not installed\n")
+        else:
+            msg += message.notice(f"- required {e.args[1]}, installed: {e.args[0]}\n")
+    msg += message.notice("Consider running: ")
+    msg += message.hint("`setup.sh` ")
+    msg += message.notice("from Pwndbg project directory.\n")
+    print(msg)
+
+
+@pwndbg.lib.cache.cache_until("forever")
 def inform_report_issue(exception_msg) -> None:
     """
     Informs user that he can report an issue.
-    The use of `memoize` makes it reporting only once for a given exception message.
+    The use of caching makes it reporting only once for a given exception message.
     """
     print(
         message.notice(
@@ -71,13 +110,13 @@ def handle(name="Error"):
     # Display the error
     if debug or verbose:
         exception_msg = traceback.format_exc()
-        print(exception_msg)
+        print_exception(exception_msg)
         inform_report_issue(exception_msg)
 
     else:
         exc_type, exc_value, exc_traceback = sys.exc_info()
 
-        print(message.error("Exception occurred: {}: {} ({})".format(name, exc_value, exc_type)))
+        print(message.error(f"Exception occurred: {name}: {exc_value} ({exc_type})"))
 
         inform_verbose_and_debug()
 

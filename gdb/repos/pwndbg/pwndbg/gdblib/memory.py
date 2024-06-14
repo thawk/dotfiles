@@ -2,6 +2,12 @@
 Reading, writing, and describing memory.
 """
 
+from __future__ import annotations
+
+import re
+from typing import Dict
+from typing import Set
+from typing import Union
 
 import gdb
 
@@ -9,13 +15,19 @@ import pwndbg.gdblib.arch
 import pwndbg.gdblib.events
 import pwndbg.gdblib.qemu
 import pwndbg.gdblib.typeinfo
+import pwndbg.gdblib.vmmap
+import pwndbg.lib.cache
+import pwndbg.lib.memory
 from pwndbg.lib.memory import PAGE_MASK
 from pwndbg.lib.memory import PAGE_SIZE
+
+GdbDict = Dict[str, Union["GdbDict", int]]
+
 
 MMAP_MIN_ADDR = 0x8000
 
 
-def read(addr, count, partial=False):
+def read(addr: int, count: int, partial: bool = False) -> bytearray:
     """read(addr, count, partial=False) -> bytearray
 
     Read memory from the program being debugged.
@@ -38,10 +50,15 @@ def read(addr, count, partial=False):
         if not partial:
             raise
 
-        if not hasattr(e, "message"):
-            e.message = str(e)
+        message = str(e)
 
-        stop_addr = int(e.message.split()[-1], 0)
+        stop_addr = addr
+        match = re.search(r"Memory at address (\w+) unavailable\.", message)
+        if match:
+            stop_addr = int(match.group(1), 0)
+        else:
+            stop_addr = int(message.split()[-1], 0)
+
         if stop_addr != addr:
             return read(addr, stop_addr - addr)
 
@@ -63,7 +80,7 @@ def read(addr, count, partial=False):
     return bytearray(result)
 
 
-def readtype(gdb_type, addr):
+def readtype(gdb_type: gdb.Type, addr: int) -> int:
     """readtype(gdb_type, addr) -> int
 
     Reads an integer-type (e.g. ``uint64``) and returns a Python
@@ -76,10 +93,10 @@ def readtype(gdb_type, addr):
     Returns:
         :class:`int`
     """
-    return int(gdb.Value(addr).cast(gdb_type.pointer()).dereference())
+    return int(get_typed_pointer_value(gdb_type, addr))
 
 
-def write(addr, data) -> None:
+def write(addr: int, data: str | bytes | bytearray) -> None:
     """write(addr, data)
 
     Writes data into the memory of the process being debugged.
@@ -95,7 +112,7 @@ def write(addr, data) -> None:
     gdb.selected_inferior().write_memory(addr, data)
 
 
-def peek(address):
+def peek(address: int) -> str | None:
     """peek(address) -> str
 
     Read one byte from the specified address.
@@ -108,13 +125,29 @@ def peek(address):
         address cannot be read.
     """
     try:
-        return read(address, 1)
+        return chr(read(address, 1)[0])
     except Exception:
         pass
     return None
 
 
-def poke(address) -> bool:
+@pwndbg.lib.cache.cache_until("stop")
+def is_readable_address(address: int) -> bool:
+    """is_readable_address(address) -> bool
+
+    Check if the address can be read by GDB.
+
+    Arguments:
+        address(int): Address to read
+
+    Returns:
+        :class:`bool`: Whether the address is readable.
+    """
+    # We use vmmap to check before `peek()` because accessing memory for embedded targets might be slow and expensive.
+    return pwndbg.gdblib.vmmap.find(address) is not None and peek(address) is not None
+
+
+def poke(address: int) -> bool:
     """poke(address)
 
     Checks whether an address is writable.
@@ -135,7 +168,7 @@ def poke(address) -> bool:
     return True
 
 
-def string(addr, max=4096):
+def string(addr: int, max: int = 4096) -> bytearray:
     """Reads a null-terminated string from memory.
 
     Arguments:
@@ -146,7 +179,7 @@ def string(addr, max=4096):
         An empty bytearray, or a NULL-terminated bytearray.
     """
     if peek(addr):
-        data = bytearray(read(addr, max, partial=True))
+        data = read(addr, max, partial=True)
 
         try:
             return data[: data.index(b"\x00")]
@@ -164,7 +197,7 @@ def byte(addr: int) -> int:
     return readtype(pwndbg.gdblib.typeinfo.uchar, addr)
 
 
-def uchar(addr):
+def uchar(addr: int) -> int:
     """uchar(addr) -> int
 
     Read one ``unsigned char`` at the specified address.
@@ -172,7 +205,7 @@ def uchar(addr):
     return readtype(pwndbg.gdblib.typeinfo.uchar, addr)
 
 
-def ushort(addr):
+def ushort(addr: int) -> int:
     """ushort(addr) -> int
 
     Read one ``unisgned short`` at the specified address.
@@ -180,7 +213,7 @@ def ushort(addr):
     return readtype(pwndbg.gdblib.typeinfo.ushort, addr)
 
 
-def uint(addr):
+def uint(addr: int) -> int:
     """uint(addr) -> int
 
     Read one ``unsigned int`` at the specified address.
@@ -196,7 +229,7 @@ def pvoid(addr: int) -> int:
     return readtype(pwndbg.gdblib.typeinfo.pvoid, addr)
 
 
-def u8(addr):
+def u8(addr: int) -> int:
     """u8(addr) -> int
 
     Read one ``uint8_t`` from the specified address.
@@ -204,7 +237,7 @@ def u8(addr):
     return readtype(pwndbg.gdblib.typeinfo.uint8, addr)
 
 
-def u16(addr):
+def u16(addr: int) -> int:
     """u16(addr) -> int
 
     Read one ``uint16_t`` from the specified address.
@@ -212,7 +245,7 @@ def u16(addr):
     return readtype(pwndbg.gdblib.typeinfo.uint16, addr)
 
 
-def u32(addr):
+def u32(addr: int) -> int:
     """u32(addr) -> int
 
     Read one ``uint32_t`` from the specified address.
@@ -228,7 +261,7 @@ def u64(addr: int) -> int:
     return readtype(pwndbg.gdblib.typeinfo.uint64, addr)
 
 
-def u(addr, size=None):
+def u(addr: int, size: int | None = None) -> int:
     """u(addr, size=None) -> int
 
     Read one ``unsigned`` integer from the specified address,
@@ -240,7 +273,7 @@ def u(addr, size=None):
     return {8: u8, 16: u16, 32: u32, 64: u64}[size](addr)
 
 
-def s8(addr):
+def s8(addr: int) -> int:
     """s8(addr) -> int
 
     Read one ``int8_t`` from the specified address
@@ -248,7 +281,7 @@ def s8(addr):
     return readtype(pwndbg.gdblib.typeinfo.int8, addr)
 
 
-def s16(addr):
+def s16(addr: int) -> int:
     """s16(addr) -> int
 
     Read one ``int16_t`` from the specified address.
@@ -256,7 +289,7 @@ def s16(addr):
     return readtype(pwndbg.gdblib.typeinfo.int16, addr)
 
 
-def s32(addr):
+def s32(addr: int) -> int:
     """s32(addr) -> int
 
     Read one ``int32_t`` from the specified address.
@@ -264,7 +297,7 @@ def s32(addr):
     return readtype(pwndbg.gdblib.typeinfo.int32, addr)
 
 
-def s64(addr):
+def s64(addr: int) -> int:
     """s64(addr) -> int
 
     Read one ``int64_t`` from the specified address.
@@ -272,16 +305,32 @@ def s64(addr):
     return readtype(pwndbg.gdblib.typeinfo.int64, addr)
 
 
-# TODO: `readtype` is just `int(poi(type, addr))`
-def poi(type, addr):
-    """poi(addr) -> gdb.Value
-
-    Read one ``gdb.Type`` object at the specified address.
-    """
-    return gdb.Value(addr).cast(type.pointer()).dereference()
+def cast_pointer(type: gdb.Type, addr: int | gdb.Value) -> gdb.Value:
+    """Create a gdb.Value at given address and cast it to the pointer of specified type"""
+    if isinstance(addr, int):
+        addr = gdb.Value(addr)
+    return addr.cast(type.pointer())
 
 
-@pwndbg.lib.memoize.reset_on_stop
+def get_typed_pointer(type: str | gdb.Type, addr: int | gdb.Value) -> gdb.Value:
+    """Look up a type by name if necessary and return a gdb.Value of addr cast to that type"""
+    if isinstance(type, str):
+        gdb_type = pwndbg.gdblib.typeinfo.load(type)
+        if gdb_type is None:
+            raise ValueError(f"Type '{type}' not found")
+    elif isinstance(type, gdb.Type):
+        gdb_type = type
+    else:
+        raise ValueError(f"Invalid type: {type}")
+    return cast_pointer(gdb_type, addr)
+
+
+def get_typed_pointer_value(type_name: str | gdb.Type, addr: int | gdb.Value) -> gdb.Value:
+    """Read the pointer value of addr cast to type specified by type_name"""
+    return get_typed_pointer(type_name, addr).dereference()
+
+
+@pwndbg.lib.cache.cache_until("stop")
 def find_upper_boundary(addr: int, max_pages: int = 1024) -> int:
     """find_upper_boundary(addr, max_pages=1024) -> int
 
@@ -291,8 +340,8 @@ def find_upper_boundary(addr: int, max_pages: int = 1024) -> int:
     """
     addr = pwndbg.lib.memory.page_align(int(addr))
     try:
-        for i in range(max_pages):
-            pwndbg.gdblib.memory.read(addr, 1)
+        for _ in range(max_pages):
+            read(addr, 1)
             # import sys
             # sys.stdout.write(hex(addr) + '\n')
             addr += PAGE_SIZE
@@ -307,8 +356,8 @@ def find_upper_boundary(addr: int, max_pages: int = 1024) -> int:
     return addr
 
 
-@pwndbg.lib.memoize.reset_on_stop
-def find_lower_boundary(addr, max_pages=1024):
+@pwndbg.lib.cache.cache_until("stop")
+def find_lower_boundary(addr: int, max_pages: int = 1024) -> int:
     """find_lower_boundary(addr, max_pages=1024) -> int
 
     Brute-force search the lower boundary of a memory mapping,
@@ -317,8 +366,8 @@ def find_lower_boundary(addr, max_pages=1024):
     """
     addr = pwndbg.lib.memory.page_align(int(addr))
     try:
-        for i in range(max_pages):
-            pwndbg.gdblib.memory.read(addr, 1)
+        for _ in range(max_pages):
+            read(addr, 1)
             addr -= PAGE_SIZE
 
             # Sanity check (see comment in find_upper_boundary)
@@ -334,3 +383,68 @@ def update_min_addr() -> None:
     global MMAP_MIN_ADDR
     if pwndbg.gdblib.qemu.is_qemu_kernel():
         MMAP_MIN_ADDR = 0
+
+
+def fetch_struct_as_dictionary(
+    struct_name: str,
+    struct_address: int,
+    include_only_fields: Set[str] | None = None,
+    exclude_fields: Set[str] | None = None,
+) -> GdbDict:
+    struct_type = gdb.lookup_type("struct " + struct_name)
+    fetched_struct = get_typed_pointer_value(struct_type, struct_address)
+
+    return pack_struct_into_dictionary(fetched_struct, include_only_fields, exclude_fields)
+
+
+def pack_struct_into_dictionary(
+    fetched_struct: gdb.Value,
+    include_only_fields: Set[str] | None = None,
+    exclude_fields: Set[str] | None = None,
+) -> GdbDict:
+    struct_as_dictionary = {}
+
+    if exclude_fields is None:
+        exclude_fields = set()
+
+    if include_only_fields is not None:
+        for field_name in include_only_fields:
+            key = field_name
+            value = convert_gdb_value_to_python_value(fetched_struct[field_name])
+            struct_as_dictionary[key] = value
+    else:
+        for field in fetched_struct.type.fields():
+            if field.name is None:
+                # Flatten anonymous structs/unions
+                anon_type = convert_gdb_value_to_python_value(fetched_struct[field])
+                assert isinstance(anon_type, dict)
+                struct_as_dictionary.update(anon_type)
+            elif field.name not in exclude_fields:
+                key = field.name
+                value = convert_gdb_value_to_python_value(fetched_struct[field])
+                struct_as_dictionary[key] = value
+
+    return struct_as_dictionary
+
+
+def convert_gdb_value_to_python_value(gdb_value: gdb.Value) -> int | GdbDict:
+    gdb_type = gdb_value.type.strip_typedefs()
+
+    if gdb_type.code == gdb.TYPE_CODE_PTR:
+        return int(gdb_value)
+    elif gdb_type.code == gdb.TYPE_CODE_INT:
+        return int(gdb_value)
+    elif gdb_type.code == gdb.TYPE_CODE_STRUCT:
+        return pack_struct_into_dictionary(gdb_value)
+
+    raise NotImplementedError
+
+
+def resolve_renamed_struct_field(struct_name: str, possible_field_names: Set[str]) -> str:
+    struct_type = gdb.lookup_type("struct " + struct_name)
+
+    for field_name in possible_field_names:
+        if gdb.types.has_field(struct_type, field_name):
+            return field_name
+
+    raise ValueError(f"Field name did not match any of {possible_field_names}.")

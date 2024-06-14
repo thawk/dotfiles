@@ -2,6 +2,8 @@
 Find a chain of leaks given some starting address.
 """
 
+from __future__ import annotations
+
 import argparse
 import queue
 from typing import Dict
@@ -50,7 +52,7 @@ def get_rec_addr_string(addr, visited_map):
 # Useful for debugging. Prints a map of child -> (parent, parent_start)
 def dbg_print_map(maps) -> None:
     for child, parent_info in maps.items():
-        print("0x%x + (0x%x, 0x%x)" % (child, parent_info[0], parent_info[1]))
+        print(f"0x{child:x} + (0x{parent_info[0]:x}, 0x{parent_info[1]:x})")
 
 
 parser = argparse.ArgumentParser(
@@ -78,23 +80,31 @@ parser.add_argument(
 parser.add_argument(
     "-o",
     "--max_offset",
+    type=int,
     default=0x48,
     nargs="?",
     help="Max offset to add to addresses when looking for leak",
 )
 parser.add_argument(
-    "-d", "--max_depth", default=0x4, nargs="?", help="Maximum depth to follow pointers to"
+    "-d",
+    "--max_depth",
+    type=int,
+    default=0x4,
+    nargs="?",
+    help="Maximum depth to follow pointers to",
 )
 parser.add_argument(
     "-s",
     "--step",
     nargs="?",
+    type=int,
     default=0x1,
     help="Step to add between pointers so they are considered. For example, if this is 4 it would only consider pointers at an offset divisible by 4 from the starting pointer",
 )
 parser.add_argument(
     "--negative_offset",
     nargs="?",
+    type=int,
     default=0x0,
     help="Max negative offset to search before an address when looking for a leak",
 )
@@ -103,7 +113,12 @@ parser.add_argument(
 @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
 @pwndbg.commands.OnlyWhenRunning
 def leakfind(
-    address=None, page_name=None, max_offset=0x40, max_depth=0x4, step=0x1, negative_offset=0x0
+    address=None,
+    page_name=None,
+    max_offset: int = 0x40,
+    max_depth: int = 0x4,
+    step: int = 0x1,
+    negative_offset: int = 0x0,
 ):
     if address is None:
         raise argparse.ArgumentTypeError("No starting address provided.")
@@ -115,16 +130,13 @@ def leakfind(
     if not pwndbg.gdblib.memory.peek(address):
         raise argparse.ArgumentTypeError("Unable to read from starting address.")
 
-    max_depth = int(max_depth)
     # Just warn the user that a large depth might be slow.
     # Probably worth checking offset^depth < threshold. Do this when more benchmarking is established.
     if max_depth > 8:
         print(message.warn("leakfind may take a while to run on larger depths."))
 
-    stride = int(step)
+    stride = step
     address = int(address)
-    max_offset = int(max_offset)
-    negative_offset = int(negative_offset)
 
     # The below map stores a map of child address->(parent_address,parent_start_address)
     # In the above tuple, parent_address is the exact address with a pointer to the child address.
@@ -132,7 +144,7 @@ def leakfind(
     # We need to store both so that we can nicely create our leak chain.
     visited_map = {}
     visited_set = {int(address)}
-    address_queue: queue.Queue[int] = queue.Queue()
+    address_queue: "queue.Queue[int]" = queue.Queue()
     address_queue.put(int(address))
     depth = 0
     time_to_depth_increase = 0

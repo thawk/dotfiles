@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 import gdb
@@ -9,6 +11,7 @@ import tests
 USE_FDS_BINARY = tests.binaries.get("use-fds.out")
 TABSTOP_BINARY = tests.binaries.get("tabstop.out")
 SYSCALLS_BINARY = tests.binaries.get("syscalls-x64.out")
+MANGLING_BINARY = tests.binaries.get("symbol_1600_and_752.out")
 
 
 def test_context_disasm_show_fd_filepath(start_binary):
@@ -39,14 +42,14 @@ def test_context_disasm_show_fd_filepath(start_binary):
     # filename
     line_fd = line_fd.strip()
     assert re.match(
-        r"fd:\s+0x1 \((/dev/pts/\d+|/tmp/par.+\.par(?: \(deleted\))?|pipe:\[\d+\])\)", line_fd
+        r"fd:\s+1 \((/dev/pts/\d+|/tmp/par.+\.par(?: \(deleted\))?|pipe:\[\d+\])\)", line_fd
     )
 
     line_buf = line_buf.strip()
-    assert re.match(r"buf:\s+0x[0-9a-f]+ ◂— 0x0", line_buf)
+    assert re.match(r"buf:\s+0x[0-9a-f]+ ◂— 0", line_buf)
 
     line_nbytes = line_nbytes.strip()
-    assert re.match(r"nbytes:\s+0x0", line_nbytes)
+    assert re.match(r"nbytes:\s+0", line_nbytes)
 
     # Stop on open(...)
     gdb.execute("nextcall")
@@ -63,11 +66,11 @@ def test_context_disasm_show_fd_filepath(start_binary):
 
     line_fd = line_fd.strip()
     assert re.match(
-        r"fd:\s+0x3 \([a-z/]*pwndbg/tests/gdb-tests/tests/binaries/use-fds.out\)", line_fd
+        r"fd:\s+3 \([a-z/]*pwndbg/tests/gdb-tests/tests/binaries/use-fds.out\)", line_fd
     )
 
     line_buf = line_buf.strip()
-    assert re.match(r"buf:\s+0x[0-9a-f]+ ◂— 0x0", line_buf)
+    assert re.match(r"buf:\s+0x[0-9a-f]+ ◂— 0", line_buf)
 
     line_nbytes = line_nbytes.strip()
     assert re.match(r"nbytes:\s+0x10", line_nbytes)
@@ -78,7 +81,7 @@ def test_empty_context_sections(start_binary, sections):
     start_binary(USE_FDS_BINARY)
 
     # Sanity check
-    default_ctx_sects = "regs disasm code ghidra stack backtrace expressions"
+    default_ctx_sects = "regs disasm code ghidra stack backtrace expressions threads heap-tracker"
     assert pwndbg.gdblib.config.context_sections.value == default_ctx_sects
     assert gdb.execute("context", to_string=True) != ""
 
@@ -149,15 +152,15 @@ def test_context_disasm_syscalls_args_display(start_binary):
     assert dis == (
         "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA\n"
         "──────────────────────[ DISASM / x86-64 / set emulate on ]──────────────────────\n"
-        "   0x400080 <_start>       mov    eax, 0\n"
-        "   0x400085 <_start+5>     mov    edi, 0x1337\n"
-        "   0x40008a <_start+10>    mov    esi, 0xdeadbeef\n"
-        "   0x40008f <_start+15>    mov    ecx, 0x10\n"
+        "   0x400080 <_start>       mov    eax, 0                 EAX => 0\n"
+        "   0x400085 <_start+5>     mov    edi, 0x1337            EDI => 0x1337\n"
+        "   0x40008a <_start+10>    mov    esi, 0xdeadbeef        ESI => 0xdeadbeef\n"
+        "   0x40008f <_start+15>    mov    ecx, 0x10              ECX => 0x10\n"
         " ► 0x400094 <_start+20>    syscall  <SYS_read>\n"
         "        fd:        0x1337\n"
         "        buf:       0xdeadbeef\n"
-        "        nbytes:    0x0\n"
-        "   0x400096 <_start+22>    mov    eax, 0xa\n"
+        "        nbytes:    0\n"
+        "   0x400096 <_start+22>    mov    eax, 0xa               EAX => 0xa\n"
         "   0x40009b <_start+27>    int    0x80\n"
         "   0x40009d                add    byte ptr [rax], al\n"
         "   0x40009f                add    byte ptr [rax], al\n"
@@ -171,11 +174,11 @@ def test_context_disasm_syscalls_args_display(start_binary):
     assert dis == (
         "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA\n"
         "──────────────────────[ DISASM / x86-64 / set emulate on ]──────────────────────\n"
-        "   0x400085 <_start+5>     mov    edi, 0x1337\n"
-        "   0x40008a <_start+10>    mov    esi, 0xdeadbeef\n"
-        "   0x40008f <_start+15>    mov    ecx, 0x10\n"
+        "   0x400085 <_start+5>     mov    edi, 0x1337            EDI => 0x1337\n"
+        "   0x40008a <_start+10>    mov    esi, 0xdeadbeef        ESI => 0xdeadbeef\n"
+        "   0x40008f <_start+15>    mov    ecx, 0x10              ECX => 0x10\n"
         "   0x400094 <_start+20>    syscall \n"
-        "   0x400096 <_start+22>    mov    eax, 0xa\n"
+        "   0x400096 <_start+22>    mov    eax, 0xa               EAX => 0xa\n"
         " ► 0x40009b <_start+27>    int    0x80 <SYS_unlink>\n"
         "        name:      0x1337\n"
         "   0x40009d                add    byte ptr [rax], al\n"
@@ -185,3 +188,108 @@ def test_context_disasm_syscalls_args_display(start_binary):
         "   0x4000a5                add    byte ptr [rax], al\n"
         "────────────────────────────────────────────────────────────────────────────────\n"
     )
+
+
+def test_context_backtrace_show_proper_symbol_names(start_binary):
+    start_binary(MANGLING_BINARY)
+    gdb.execute("break A::foo")
+    gdb.execute("continue")
+
+    backtrace = gdb.execute("context backtrace", to_string=True).split("\n")
+
+    assert backtrace[0] == "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA"
+    assert (
+        backtrace[1]
+        == "─────────────────────────────────[ BACKTRACE ]──────────────────────────────────"
+    )
+
+    assert re.match(r".*0   0x[0-9a-f]+ A::foo\(int, int\)", backtrace[2])
+
+    # Match A::call_foo()+38 or similar: the offset may change so we match \d+ at the end
+    assert re.match(r".*1   0x[0-9a-f]+ A::call_foo\(\)\+\d+", backtrace[3])
+
+    # Match main+87 or similar offset
+    assert re.match(r".*2   0x[0-9a-f]+ main\+\d+", backtrace[4])
+
+    # Match __libc_start_main+243 or similar offset
+    # Note: on Ubuntu 22.04 there will be __libc_start_call_main and then __libc_start_main
+    # but on older distros there will be only __libc_start_main
+    # Let's not bother too much about it and make it the last call assertion here
+    assert re.match(
+        r".*3   0x[0-9a-f]+ (__libc_start_main|__libc_start_call_main)\+\d+", backtrace[5]
+    )
+
+    assert (
+        backtrace[-2]
+        == "────────────────────────────────────────────────────────────────────────────────"
+    )
+    assert backtrace[-1] == ""
+
+
+def test_context_disasm_works_properly_with_disasm_flavor_switch(start_binary):
+    start_binary(SYSCALLS_BINARY)
+
+    def assert_intel(out):
+        assert "mov    eax, 0" in out[2]
+        assert "mov    edi, 0x1337" in out[3]
+        assert "mov    esi, 0xdeadbeef" in out[4]
+        assert "mov    ecx, 0x10" in out[5]
+        assert "syscall" in out[6]
+
+    def assert_att(out):
+        assert "mov    movl   $0, %eax" not in out[2]
+        assert "mov    movl   $0x1337, %edi" not in out[3]
+        assert "mov    movl   $0xdeadbeef, %esi" not in out[4]
+        assert "mov    movl   $0x10, %ecx" not in out[5]
+        assert "syscall" in out[6]
+
+    out = gdb.execute("context disasm", to_string=True).split("\n")
+    assert out[0] == "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA"
+    assert (
+        out[1] == "──────────────────────[ DISASM / x86-64 / set emulate on ]──────────────────────"
+    )
+    assert_intel(out)
+
+    gdb.execute("set disassembly-flavor att")
+    assert out[0] == "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA"
+    assert (
+        out[1] == "──────────────────────[ DISASM / x86-64 / set emulate on ]──────────────────────"
+    )
+    assert_att(out)
+
+
+@pytest.mark.parametrize("patch_or_api", (True, False))
+def test_context_disasm_proper_render_on_mem_change_issue_1818(start_binary, patch_or_api):
+    start_binary(SYSCALLS_BINARY)
+
+    old = gdb.execute("context disasm", to_string=True).split("\n")
+
+    # Just a sanity check
+    assert old[0] == "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA"
+    assert "mov    eax, 0" in old[2]
+    assert "mov    edi, 0x1337" in old[3]
+    assert "mov    esi, 0xdeadbeef" in old[4]
+    assert "mov    ecx, 0x10" in old[5]
+    assert "syscall" in old[6]
+
+    # 5 bytes because 'mov eax, 0' is 5 bytes long
+    if patch_or_api:
+        gdb.execute("patch $rip nop;nop;nop;nop;nop", to_string=True)
+    else:
+        # Do the same, but through write API
+        pwndbg.gdblib.memory.write(pwndbg.gdblib.regs.rip, b"\x90" * 5)
+
+    # Actual test: we expect the read memory to be different now ;)
+    # (and not e.g. returned incorrectly from a not cleared cache)
+    new = gdb.execute("context disasm", to_string=True).split("\n")
+
+    assert new[0] == "LEGEND: STACK | HEAP | CODE | DATA | RWX | RODATA"
+    assert "nop" in new[2]
+    assert "nop" in new[3]
+    assert "nop" in new[4]
+    assert "nop" in new[5]
+    assert "nop" in new[6]
+    assert "mov    edi, 0x1337" in new[7]
+    assert "mov    esi, 0xdeadbeef" in new[8]
+    assert "mov    ecx, 0x10" in new[9]
+    assert "syscall" in new[10]

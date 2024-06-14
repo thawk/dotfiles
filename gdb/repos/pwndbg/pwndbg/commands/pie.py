@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import os
 
@@ -20,7 +22,7 @@ def get_exe_name():
 
     NOTE: This might be wrong for remote targets.
     """
-    path = pwndbg.auxv.get().get("AT_EXECFN")
+    path = pwndbg.auxv.get().AT_EXECFN
 
     # When GDB is launched on a file that is a symlink to the target,
     # the AUXV's AT_EXECFN stores the absolute path of to the symlink.
@@ -91,7 +93,7 @@ def piebase(offset=None, module=None) -> None:
     addr = translate_addr(offset, module)
 
     if addr is not None:
-        print("Calculated VA from %s = 0x%x" % (module, addr))
+        print(f"Calculated VA from {module} = 0x{addr:x}")
     else:
         print(message.error("Could not calculate VA on current target."))
 

@@ -57,6 +57,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# mkdocs
+site/
+
 # PyBuilder
 target/
 
@@ -83,3 +86,13 @@ tests/qemu-tests/images
 .vscode/
 
 .zig/
+gdb.txt
+
+# venv
+.venv/
+
+# Nix build stuff
+result-*
+
+# Vim
+*.swp

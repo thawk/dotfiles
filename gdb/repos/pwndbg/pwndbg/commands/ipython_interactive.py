@@ -1,6 +1,9 @@
 """
 Command to start an interactive IPython prompt.
 """
+
+from __future__ import annotations
+
 import sys
 from contextlib import contextmanager
 

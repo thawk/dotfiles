@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pwndbg.gdblib.file
 import pwndbg.lib.net
 
@@ -15,7 +17,10 @@ def tcp():
 
 
 def unix():
-    data = pwndbg.gdblib.file.get("/proc/net/unix").decode()
+    # We use errors=ignore because of https://github.com/pwndbg/pwndbg/issues/1544
+    # TODO/FIXME: this may not be the best solution because we may end up with
+    # invalid UDS data. Can this be a problem?
+    data = pwndbg.gdblib.file.get("/proc/net/unix").decode(errors="ignore")
     return pwndbg.lib.net.unix(data)
 
 

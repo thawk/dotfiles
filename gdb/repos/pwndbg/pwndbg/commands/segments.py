@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gdb
 
 import pwndbg.commands
@@ -17,6 +19,7 @@ class segment(gdb.Function):
         return result + arg
 
 
+# TODO/FIXME: This should be defined only for x86 and x86_64
 segment("fsbase")
 segment("gsbase")
 
@@ -25,6 +28,7 @@ segment("gsbase")
     "Prints out the FS base address. See also $fsbase.", category=CommandCategory.REGISTER
 )
 @pwndbg.commands.OnlyWhenRunning
+@pwndbg.commands.OnlyWithArch(["i386", "x86-64"])
 def fsbase() -> None:
     """
     Prints out the FS base address. See also $fsbase.
@@ -36,6 +40,7 @@ def fsbase() -> None:
     "Prints out the GS base address. See also $gsbase.", category=CommandCategory.REGISTER
 )
 @pwndbg.commands.OnlyWhenRunning
+@pwndbg.commands.OnlyWithArch(["i386", "x86-64"])
 def gsbase() -> None:
     """
     Prints out the GS base address. See also $gsbase.

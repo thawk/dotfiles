@@ -1,10 +1,18 @@
+"""
+Commands for dealing with Linux kernel slab allocator. Currently, only SLUB is supported.
+
+Some of the code here was inspired from https://github.com/NeatMonster/slabdbg
+Some of the code here was inspired from https://github.com/osandov/drgn
+"""
+
+from __future__ import annotations
+
 import argparse
 import sys
-from typing import Iterator
-from typing import List
-from typing import Union
+from types import TracebackType
+from typing import Optional
+from typing import Type
 
-import gdb
 from tabulate import tabulate
 
 import pwndbg.color as C
@@ -12,12 +20,13 @@ import pwndbg.color.message as M
 import pwndbg.commands
 import pwndbg.gdblib.kernel.slab
 from pwndbg.commands import CommandCategory
-from pwndbg.gdblib.kernel import kconfig
-from pwndbg.gdblib.kernel import per_cpu
-from pwndbg.gdblib.kernel.slab import oo_objects
-from pwndbg.gdblib.kernel.slab import oo_order
+from pwndbg.gdblib.kernel.slab import CpuCache
+from pwndbg.gdblib.kernel.slab import NodeCache
+from pwndbg.gdblib.kernel.slab import Slab
+from pwndbg.gdblib.kernel.slab import find_containing_slab_cache
+from pwndbg.gdblib.symbol import parse_and_eval
 
-parser = argparse.ArgumentParser(description="Prints information about the SLUB allocator")
+parser = argparse.ArgumentParser(description="Prints information about the slab allocator")
 subparsers = parser.add_subparsers(dest="command")
 
 # The command will still work on 3.6 and earlier, but the help won't be shown
@@ -26,7 +35,7 @@ if (sys.version_info.major, sys.version_info.minor) >= (3, 7):
     subparsers.required = True
 
 
-parser_list = subparsers.add_parser("list", prog="slab")
+parser_list = subparsers.add_parser("list", prog="slab list")
 parser_list.add_argument(
     "filter_",
     metavar="filter",
@@ -36,63 +45,27 @@ parser_list.add_argument(
 )
 
 # TODO: --cpu, --node, --partial, --active
-parser_info = subparsers.add_parser("info", prog="slab")
+parser_info = subparsers.add_parser("info", prog="slab info")
 parser_info.add_argument("names", metavar="name", type=str, nargs="+", help="")
 parser_info.add_argument("-v", "--verbose", action="store_true", help="")
 
-
-def swab(x):
-    return int(
-        ((x & 0x00000000000000FF) << 56)
-        | ((x & 0x000000000000FF00) << 40)
-        | ((x & 0x0000000000FF0000) << 24)
-        | ((x & 0x00000000FF000000) << 8)
-        | ((x & 0x000000FF00000000) >> 8)
-        | ((x & 0x0000FF0000000000) >> 24)
-        | ((x & 0x00FF000000000000) >> 40)
-        | ((x & 0xFF00000000000000) >> 56)
-    )
+parser_contains = subparsers.add_parser("contains", prog="slab contains")
+parser_contains.add_argument("addresses", metavar="addr", type=str, nargs="+", help="")
 
 
 @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.KERNEL)
 @pwndbg.commands.OnlyWhenQemuKernel
 @pwndbg.commands.OnlyWithKernelDebugSyms
 @pwndbg.commands.OnlyWhenPagingEnabled
-def slab(command, filter_=None, names=None, verbose=False) -> None:
+def slab(command, filter_=None, names=None, verbose=False, addresses=None) -> None:
     if command == "list":
         slab_list(filter_)
     elif command == "info":
         for name in names:
             slab_info(name, verbose)
-
-
-_flags = {
-    "SLAB_DEBUG_FREE": 0x00000100,
-    "SLAB_RED_ZONE": 0x00000400,
-    "SLAB_POISON": 0x00000800,
-    "SLAB_HWCACHE_ALIGN": 0x00002000,
-    "SLAB_CACHE_DMA": 0x00004000,
-    "SLAB_STORE_USER": 0x00010000,
-    "SLAB_RECLAIM_ACCOUNT": 0x00020000,
-    "SLAB_PANIC": 0x00040000,
-    "SLAB_DESTROY_BY_RCU": 0x00080000,
-    "SLAB_MEM_SPREAD": 0x00100000,
-    "SLAB_TRACE": 0x00200000,
-    "SLAB_DEBUG_OBJECTS": 0x00400000,
-    "SLAB_NOLEAKTRACE": 0x00800000,
-    "SLAB_NOTRACK": 0x01000000,
-    "SLAB_FAILSLAB": 0x02000000,
-}
-
-
-def get_flags_list(flags: int):
-    flags_list = []
-
-    for flag_name, mask in _flags.items():
-        if flags & mask:
-            flags_list.append(flag_name)
-
-    return flags_list
+    elif command == "contains":
+        for addr in addresses:
+            slab_contains(addr)
 
 
 class IndentContextManager:
@@ -102,21 +75,17 @@ class IndentContextManager:
     def __enter__(self) -> None:
         self.indent += 1
 
-    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         self.indent -= 1
         assert self.indent >= 0
 
     def print(self, *a, **kw) -> None:
         print("    " * self.indent, *a, **kw)
-
-
-def walk_freelist(freelist, offset, random):
-    while freelist:
-        address = int(freelist)
-        yield address
-        freelist = pwndbg.gdblib.memory.pvoid(address + offset)
-        if random:
-            freelist ^= random ^ swab(address + offset)
 
 
 def _yx(val: int) -> str:
@@ -127,127 +96,125 @@ def _rx(val: int) -> str:
     return C.red(hex(val))
 
 
-def print_slab(
-    slab: gdb.Value, freelist: Union[Iterator[int], List[int]], indent, verbose, is_partial
-) -> None:
-    page_address = int(slab.address)
-    virt_address = pwndbg.gdblib.kernel.page_to_virt(page_address)
-    indent.print(f"- {C.green('Slab')} @ {_yx(virt_address)} [{_rx(page_address)}]:")
+def print_slab(slab: Slab, indent, verbose: bool) -> None:
+    indent.print(f"- {C.green('Slab')} @ {_yx(slab.virt_address)} [{_rx(slab.slab_address)}]:")
+
     with indent:
-        if is_partial:
-            inuse = slab["inuse"]
-        else:
-            # `freelist` is a generator, we need to evaluate it now and save the
-            # result in case we want to print it later
-            freelist = list(freelist)
-
-            # `inuse` will always equal `objects` for the active slab, so we
-            # need to subtract the length of the freelist
-            inuse = int(slab["inuse"]) - len(freelist)
-
-        indent.print(f"{C.blue('In-Use')}: {inuse}/{slab['objects']}")
-
-        indent.print(f"{C.blue('Frozen')}:", slab["frozen"])
-        indent.print(f"{C.blue('Freelist')}:", _yx(int(slab["freelist"])))
+        indent.print(f"{C.blue('In-Use')}: {slab.inuse}/{slab.object_count}")
+        indent.print(f"{C.blue('Frozen')}: {slab.frozen}")
+        indent.print(f"{C.blue('Freelist')}: {_yx(int(slab.freelist))}")
 
         if verbose:
             with indent:
-                # TODO: Should I print just free objects or all objects?
-                for entry in freelist:
-                    indent.print("-", _yx(int(entry)))
+                free_objects = slab.free_objects
+                for addr in slab.objects:
+                    if addr not in free_objects:
+                        indent.print(f"- {addr:#x} (in-use)")
+                        continue
+                    for freelist in slab.freelists:
+                        next_free = freelist.find_next(addr)
+                        if next_free:
+                            indent.print(f"- {_yx(addr)} (next: {next_free:#x})")
+                            break
+                    else:
+                        indent.print(f"- {_yx(addr)} (no next)")
 
 
-def print_cpu_cache(cpu_cache, offset, random, cpu_partial, indent, verbose) -> None:
-    address = int(cpu_cache)
-    indent.print(f"{C.green('Per-CPU Data')} @ {_yx(address)}:")
+def print_cpu_cache(cpu_cache: CpuCache, verbose: bool, indent) -> None:
+    indent.print(f"{C.green('kmem_cache_cpu')} @ {_yx(cpu_cache.address)} [CPU {cpu_cache.cpu}]:")
     with indent:
-        freelist = cpu_cache["freelist"]
-        indent.print(f"{C.blue('Freelist')}:", _yx(int(freelist)))
+        indent.print(f"{C.blue('Freelist')}:", _yx(int(cpu_cache.freelist)))
 
-        # TODO: Is the `if page:` a null pointer check or something else?
-        page = cpu_cache["page"]
-        if page:
+        active_slab = cpu_cache.active_slab
+        if active_slab:
             indent.print(f"{C.green('Active Slab')}:")
             with indent:
-                freelist = walk_freelist(freelist, offset, random)
-                print_slab(
-                    page.dereference(),
-                    # Use the CPU cache freelist for the active slab
-                    freelist,
-                    indent,
-                    verbose,
-                    is_partial=False,
-                )
+                print_slab(active_slab, indent, verbose)
         else:
             indent.print("Active Slab: (none)")
 
-        slab = cpu_cache["partial"]
-        if slab:
-            indent.print(
-                f"{C.green('Partial Slabs')} [{slab['pages']}] [PO: {slab['pobjects']}/{cpu_partial}]:"
-            )
-            while slab:
-                page = slab.dereference()
-                freelist = walk_freelist(page["freelist"], offset, random)
-                print_slab(page, freelist, indent, verbose, is_partial=True)
-                slab = page["next"]
-        else:
+        partial_slabs = cpu_cache.partial_slabs
+        if not partial_slabs:
             indent.print("Partial Slabs: (none)")
+            return
+        slabs = partial_slabs[0].slabs
+        pobjects = partial_slabs[0].pobjects
+        cpu_partial = partial_slabs[0].slab_cache.cpu_partial
+        indent.print(f"{C.green('Partial Slabs')} [{slabs}] [PO: ~{pobjects}/{cpu_partial}]:")
+        for partial_slab in partial_slabs:
+            print_slab(partial_slab, indent, verbose)
+
+
+def print_node_cache(node_cache: NodeCache, verbose: bool, indent) -> None:
+    indent.print(
+        f"{C.green('kmem_cache_node')} @ {_yx(node_cache.address)} [NUMA node {node_cache.node}]:"
+    )
+    with indent:
+        partial_slabs = node_cache.partial_slabs
+        if not partial_slabs:
+            indent.print("Partial Slabs: (none)")
+            return
+
+        indent.print(f"{C.green('Partial Slabs')}:")
+        for slab in partial_slabs:
+            print_slab(slab, indent, verbose)
 
 
 def slab_info(name: str, verbose: bool) -> None:
-    cache = pwndbg.gdblib.kernel.slab.get_cache(name)
+    slab_cache = pwndbg.gdblib.kernel.slab.get_cache(name)
 
-    if cache is None:
+    if slab_cache is None:
         print(M.error(f"Cache {name} not found"))
         return
 
     indent = IndentContextManager()
 
-    indent.print(f"{C.green('Slab Cache')} @ {_yx(int(cache))}")
+    indent.print(f"{C.green('Slab Cache')} @ {_yx(slab_cache.address)}")
     with indent:
-        indent.print(f"{C.blue('Name')}:", cache["name"].string())
-        flags_list = get_flags_list(int(cache["flags"]))
+        indent.print(f"{C.blue('Name')}: {slab_cache.name}")
+        flags_list = slab_cache.flags
         if flags_list:
             indent.print(f"{C.blue('Flags')}: {' | '.join(flags_list)}")
         else:
             indent.print(f"{C.blue('Flags')}: (none)")
 
-        offset = int(cache["offset"])
-        indent.print(f"{C.blue('Offset')}:", offset)
-        indent.print(f"{C.blue('Size')}:", int(cache["size"]))
-        indent.print(f"{C.blue('Align')}:", int(cache["align"]))
-        indent.print(f"{C.blue('Object Size')}:", int(cache["object_size"]))
+        indent.print(f"{C.blue('Offset')}: {slab_cache.offset}")
+        indent.print(f"{C.blue('Size')}: {slab_cache.size}")
+        indent.print(f"{C.blue('Align')}: {slab_cache.align}")
+        indent.print(f"{C.blue('Object Size')}: {slab_cache.object_size}")
 
-        # TODO: Handle multiple CPUs
-        cpu_cache = per_cpu(cache["cpu_slab"])
+        for cpu_cache in slab_cache.cpu_caches:
+            print_cpu_cache(cpu_cache, verbose, indent)
 
-        random = 0
-        if "SLAB_FREELIST_HARDENED" in kconfig():
-            random = int(cache["random"])
-
-        print_cpu_cache(cpu_cache, offset, random, int(cache["cpu_partial"]), indent, verbose)
-
-        # TODO: print_node_cache
+        for node_cache in slab_cache.node_caches:
+            print_node_cache(node_cache, verbose, indent)
 
 
 def slab_list(filter_) -> None:
-    results = []
-    for cache in pwndbg.gdblib.kernel.slab.caches():
-        name = cache["name"].string()
-        if filter_ and filter_ not in name:
-            continue
-        order = oo_order(int(cache["oo"]["x"]))
-        objects = oo_objects(int(cache["oo"]["x"]))
-        results.append(
-            [
-                name,
-                objects,
-                int(cache["size"]),
-                int(cache["object_size"]),
-                int(cache["inuse"]),
-                order,
-            ]
-        )
+    results = [
+        [
+            slab_cache.name,
+            slab_cache.oo_objects,
+            slab_cache.size,
+            slab_cache.object_size,
+            slab_cache.inuse,
+            slab_cache.oo_order,
+        ]
+        for slab_cache in pwndbg.gdblib.kernel.slab.caches()
+        if not filter_ or filter_ in slab_cache.name
+    ]
 
     print(tabulate(results, headers=["Name", "# Objects", "Size", "Obj Size", "# inuse", "order"]))
+
+
+def slab_contains(address: str) -> None:
+    """prints the slab_cache associated with the provided address"""
+
+    parsed_addr = parse_and_eval(address)
+    if not parsed_addr:
+        print(M.error(f"Could not parse '{address}'"))
+        return
+
+    addr = int(parsed_addr)
+    slab_cache = find_containing_slab_cache(addr)
+    print(f"{addr:#x} @", M.hint(f"{slab_cache.name}"))

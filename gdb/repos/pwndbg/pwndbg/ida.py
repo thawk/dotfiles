@@ -3,6 +3,9 @@ Talks to an XMLRPC server running inside of an active IDA Pro instance,
 in order to query it about the database.  Allows symbol resolution and
 interactive debugging.
 """
+
+from __future__ import annotations
+
 import errno
 import functools
 import socket
@@ -11,11 +14,14 @@ import time
 import traceback
 import xmlrpc.client
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
-from typing import Optional
+from typing import TypeVar
 
 import gdb
+from typing_extensions import Concatenate
+from typing_extensions import ParamSpec
 
 import pwndbg.decorators
 import pwndbg.gdblib.arch
@@ -24,7 +30,7 @@ import pwndbg.gdblib.elf
 import pwndbg.gdblib.events
 import pwndbg.gdblib.memory
 import pwndbg.gdblib.regs
-import pwndbg.lib.memoize
+import pwndbg.lib.cache
 from pwndbg.color import message
 
 ida_rpc_host = pwndbg.gdblib.config.add_param(
@@ -40,15 +46,17 @@ ida_timeout = pwndbg.gdblib.config.add_param(
 
 xmlrpc.client.Marshaller.dispatch[int] = lambda _, v, w: w("<value><i8>%d</i8></value>" % v)
 
-xmlrpc.client.Marshaller.dispatch[type(0)] = lambda _, v, w: w("<value><i8>%d</i8></value>" % v)
 
-_ida = None
+_ida: xmlrpc.client.ServerProxy | None = None
 
 # to avoid printing the same exception multiple times, we store the last exception here
 _ida_last_exception = None
 
 # to avoid checking the connection multiple times with no delay, we store the last time we checked it
 _ida_last_connection_check = 0
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 @pwndbg.decorators.only_after_first_prompt()
@@ -63,7 +71,7 @@ def init_ida_rpc_client() -> None:
     if _ida is None and (now - _ida_last_connection_check) < int(ida_timeout) + 5:
         return
 
-    addr = "http://{host}:{port}".format(host=ida_rpc_host, port=ida_rpc_port)
+    addr = f"http://{ida_rpc_host}:{ida_rpc_port}"
 
     _ida = xmlrpc.client.ServerProxy(addr)
     socket.setdefaulttimeout(int(ida_timeout))
@@ -71,7 +79,7 @@ def init_ida_rpc_client() -> None:
     exception = None  # (type, value, traceback)
     try:
         _ida.here()
-        print(message.success("Pwndbg successfully connected to Ida Pro xmlrpc: %s" % addr))
+        print(message.success(f"Pwndbg successfully connected to Ida Pro xmlrpc: {addr}"))
     except TimeoutError:
         exception = sys.exc_info()
         _ida = None
@@ -98,9 +106,7 @@ def init_ida_rpc_client() -> None:
                 exc_type, exc_value, _ = exception
                 print(
                     message.error(
-                        "Failed to connect to IDA Pro ({}: {})".format(
-                            exc_type.__qualname__, exc_value
-                        )
+                        f"Failed to connect to IDA Pro ({exc_type.__qualname__}: {exc_value})"
                     )
                 )
                 if exc_type is socket.timeout:
@@ -125,46 +131,46 @@ def init_ida_rpc_client() -> None:
     _ida_last_connection_check = now
 
 
-class withIDA:
-    def __init__(self, fn) -> None:
-        self.fn = fn
-        functools.update_wrapper(self, fn)
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Optional[Any]:
+def withIDA(func: Callable[P, T]) -> Callable[P, T | None]:
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T | None:
         if _ida is None:
             init_ida_rpc_client()
         if _ida is not None:
-            return self.fn(*args, **kwargs)
+            return func(*args, **kwargs)
         return None
-
-
-def withHexrays(f):
-    @withIDA
-    @functools.wraps(f)
-    def wrapper(*a, **kw):
-        if _ida.init_hexrays_plugin():
-            return f(*a, **kw)
 
     return wrapper
 
 
-def takes_address(function):
+def withHexrays(func: Callable[P, T]) -> Callable[P, T | None]:
+    @withIDA
+    @functools.wraps(func)
+    def wrapper(*a: P.args, **kw: P.kwargs) -> T | None:
+        if _ida is not None and _ida.init_hexrays_plugin():
+            return func(*a, **kw)
+        return None
+
+    return wrapper
+
+
+def takes_address(function: Callable[Concatenate[int, P], T]) -> Callable[Concatenate[int, P], T]:
     @functools.wraps(function)
-    def wrapper(address, *args, **kwargs):
+    def wrapper(address: int, *args: P.args, **kwargs: P.kwargs) -> T:
         return function(l2r(address), *args, **kwargs)
 
     return wrapper
 
 
-def returns_address(function):
+def returns_address(function: Callable[P, int]) -> Callable[P, int]:
     @functools.wraps(function)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> int:
         return r2l(function(*args, **kwargs))
 
     return wrapper
 
 
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def available() -> bool:
     if not ida_enabled:
         return False
@@ -176,7 +182,7 @@ def can_connect() -> bool:
     return True
 
 
-def l2r(addr):
+def l2r(addr: int) -> int:
     exe = pwndbg.gdblib.elf.exe()
     if not exe:
         raise Exception("Can't find EXE base")
@@ -184,7 +190,7 @@ def l2r(addr):
     return result
 
 
-def r2l(addr):
+def r2l(addr: int) -> int:
     exe = pwndbg.gdblib.elf.exe()
     if not exe:
         raise Exception("Can't find EXE base")
@@ -199,7 +205,7 @@ def remote(function) -> None:
     global variables."""
 
 
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def base():
     segaddr: int = _ida.get_next_seg(0)
     base: int = _ida.get_fileregion_offset(segaddr)
@@ -209,54 +215,54 @@ def base():
 
 @withIDA
 @takes_address
-def Comment(addr):
+def Comment(addr: int):
     return _ida.get_cmt(addr, 0) or _ida.get_cmt(addr)
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
-def Name(addr):
+@pwndbg.lib.cache.cache_until("objfile")
+def Name(addr: int):
     return _ida.get_name(addr, 0x1)  # GN_VISIBLE
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
-def GetFuncOffset(addr):
+@pwndbg.lib.cache.cache_until("objfile")
+def GetFuncOffset(addr: int):
     rv = _ida.get_func_off_str(addr)
     return rv
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
-def GetType(addr):
+@pwndbg.lib.cache.cache_until("objfile")
+def GetType(addr: int):
     rv = _ida.get_type(addr)
     return rv
 
 
 @withIDA
 @returns_address
-def here():
-    return _ida.here()
+def here() -> int:
+    return _ida.here()  # type: ignore[return-value]
 
 
 @withIDA
 @takes_address
-def Jump(addr):
+def Jump(addr: int):
     # uses C++ api instead of idc one to avoid activating the IDA window
     return _ida.jumpto(addr, -1, 0)
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
-def Anterior(addr):
+@pwndbg.lib.cache.cache_until("objfile")
+def Anterior(addr: int):
     hexrays_prefix = b"\x01\x04; "
     lines = []
     for i in range(10):
-        r: Optional[bytes] = _ida.get_extra_cmt(addr, 0x3E8 + i)  # E_PREV
+        r: bytes | None = _ida.get_extra_cmt(addr, 0x3E8 + i)  # E_PREV
         if not r:
             break
         if r.startswith(hexrays_prefix):
@@ -278,8 +284,8 @@ def GetBptQty():
 
 @withIDA
 @returns_address
-def GetBptEA(i):
-    return _ida.get_bpt_ea(i)
+def GetBptEA(i: int) -> int:
+    return _ida.get_bpt_ea(i)  # type: ignore[return-value]
 
 
 _breakpoints: List[gdb.Breakpoint] = []
@@ -290,7 +296,7 @@ _breakpoints: List[gdb.Breakpoint] = []
 @withIDA
 def UpdateBreakpoints() -> None:
     # XXX: Remove breakpoints from IDA when the user removes them.
-    current = set(eval(b.location.lstrip("*")) for b in _breakpoints)
+    current = {eval(b.location.lstrip("*")) for b in _breakpoints}
     want = set(GetBreakpoints())
 
     for addr in current - want:
@@ -336,15 +342,15 @@ def Auto_UnColor_PC() -> None:
 
 @withIDA
 @returns_address
-@pwndbg.lib.memoize.reset_on_objfile
-def LocByName(name):
-    return _ida.get_name_ea_simple(str(name))
+@pwndbg.lib.cache.cache_until("objfile")
+def LocByName(name) -> int:
+    return _ida.get_name_ea_simple(str(name))  # type: ignore[return-value]
 
 
 @withIDA
 @takes_address
 @returns_address
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def PrevHead(addr):
     return _ida.prev_head(addr)
 
@@ -352,34 +358,34 @@ def PrevHead(addr):
 @withIDA
 @takes_address
 @returns_address
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def NextHead(addr):
     return _ida.next_head(addr)
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def GetFunctionName(addr):
     return _ida.get_func_name(addr)
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def GetFlags(addr):
     return _ida.get_full_flags(addr)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def isASCII(flags):
     return _ida.is_strlit(flags)
 
 
 @withIDA
 @takes_address
-@pwndbg.lib.memoize.reset_on_objfile
+@pwndbg.lib.cache.cache_until("objfile")
 def ArgCount(address) -> None:
     pass
 
@@ -395,87 +401,87 @@ def GetIdbPath():
 
 
 @takes_address
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def has_cached_cfunc(addr):
     return _ida.has_cached_cfunc(addr)
 
 
 @withHexrays
 @takes_address
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def decompile(addr):
     return _ida.decompile(addr)
 
 
 @withHexrays
 @takes_address
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def decompile_context(pc, context_lines):
     return _ida.decompile_context(pc, context_lines)
 
 
 @withIDA
-@pwndbg.lib.memoize.forever
-def get_ida_versions():
-    return _ida.versions()
+@pwndbg.lib.cache.cache_until("forever")
+def get_ida_versions() -> Dict[str, str]:
+    return _ida.versions()  # type: ignore[return-value]
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetStrucQty():
     return _ida.get_struc_qty()
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetStrucId(idx):
     return _ida.get_struc_by_idx(idx)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetStrucName(sid):
     return _ida.get_struc_name(sid)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetStrucSize(sid):
     return _ida.get_struc_size(sid)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetMemberQty(sid):
     return _ida.get_member_qty(sid)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetMemberSize(sid, offset):
     return _ida.get_member_size(sid, offset)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetMemberId(sid, offset):
     return _ida.get_member_id(sid, offset)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetMemberName(sid, offset):
     return _ida.get_member_name(sid, offset)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetMemberFlag(sid, offset):
     return _ida.get_member_flag(sid, offset)
 
 
 @withIDA
-@pwndbg.lib.memoize.reset_on_stop
+@pwndbg.lib.cache.cache_until("stop")
 def GetStrucNextOff(sid, offset):
     return _ida.get_next_offset(sid, offset)
 
@@ -485,7 +491,7 @@ class IDC:
 
     def __init__(self) -> None:
         if available():
-            data: Dict = _ida.eval(self.query)
+            data: Dict[Any, Any] = _ida.eval(self.query)
             self.__dict__.update(data)
 
 
@@ -493,11 +499,9 @@ idc = IDC()
 
 
 def print_member(sid, offset) -> None:
-    mid = GetMemberId(sid, offset)
     mname = GetMemberName(sid, offset) or "(no name)"
     msize = GetMemberSize(sid, offset) or 0
-    mflag = GetMemberFlag(sid, offset) or 0
-    print("    +%#x - %s [%#x bytes]" % (offset, mname, msize))
+    print(f"    +{offset:#x} - {mname} [{msize:#x} bytes]")
 
 
 def print_structs() -> None:
@@ -507,7 +511,7 @@ def print_structs() -> None:
         name = GetStrucName(sid)
         size = GetStrucSize(sid)
 
-        print("%s - %#x bytes" % (name, size))
+        print(f"{name} - {size:#x} bytes")
 
         offset = 0
         while offset < size:

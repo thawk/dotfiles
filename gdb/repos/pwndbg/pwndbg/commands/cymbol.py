@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
 Add, load, show, edit, or delete symbols for custom structures.
 
@@ -15,6 +12,8 @@ favorite text editor. Otherwise cymbol exapnds $EDITOR and $VISUAL environment v
 to find the path to the default text editor.
 """
 
+from __future__ import annotations
+
 import argparse
 import functools
 import os
@@ -22,8 +21,11 @@ import subprocess
 import sys
 import tempfile
 from typing import Dict
+from typing import TypeVar
 
 import gdb
+from typing_extensions import ParamSpec
+from typing_extensions import Protocol
 
 import pwndbg
 import pwndbg.commands
@@ -31,6 +33,9 @@ import pwndbg.gdblib.arch
 import pwndbg.lib.gcc
 import pwndbg.lib.tempfile
 from pwndbg.color import message
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 gcc_compiler_path = pwndbg.gdblib.config.add_param(
     "gcc-compiler-path",
@@ -53,26 +58,34 @@ loaded_symbols: Dict[str, str] = {}
 pwndbg_cachedir = pwndbg.lib.tempfile.cachedir("custom-symbols")
 
 
-def unload_loaded_symbol(custom_structure_name) -> None:
+def unload_loaded_symbol(custom_structure_name: str) -> None:
     custom_structure_symbols_file = loaded_symbols.get(custom_structure_name)
     if custom_structure_symbols_file is not None:
         gdb.execute(f"remove-symbol-file {custom_structure_symbols_file}")
         loaded_symbols.pop(custom_structure_name)
 
 
-def OnlyWhenStructFileExists(func):
+class _OnlyWhenStructFileExists(Protocol):
+    def __call__(self, custom_structure_name: str, custom_structure_path: str = "") -> T | None: ...
+
+
+def OnlyWhenStructFileExists(func: _OnlyWhenStructFileExists) -> _OnlyWhenStructFileExists:
     @functools.wraps(func)
-    def wrapper(custom_structure_name):
-        pwndbg_custom_structure_path = os.path.join(pwndbg_cachedir, custom_structure_name) + ".c"
+    def wrapper(custom_structure_name: str, custom_structure_path: str = "") -> T | None:
+        pwndbg_custom_structure_path = (
+            custom_structure_path or os.path.join(pwndbg_cachedir, custom_structure_name) + ".c"
+        )
         if not os.path.exists(pwndbg_custom_structure_path):
             print(message.error("No custom structure was found with the given name!"))
-            return
+            return None
         return func(custom_structure_name, pwndbg_custom_structure_path)
 
     return wrapper
 
 
-def generate_debug_symbols(custom_structure_path, pwndbg_debug_symbols_output_file=None):
+def generate_debug_symbols(
+    custom_structure_path: str, pwndbg_debug_symbols_output_file: str | None = None
+) -> str | None:
     if not pwndbg_debug_symbols_output_file:
         _, pwndbg_debug_symbols_output_file = tempfile.mkstemp(prefix="custom-", suffix=".dbg")
 
@@ -89,12 +102,12 @@ def generate_debug_symbols(custom_structure_path, pwndbg_debug_symbols_output_fi
     # TODO: implement remote debugging support.
     gcc_flags = pwndbg.lib.gcc.which(pwndbg.gdblib.arch)
     if gcc_compiler_path != "":
-        gcc_flags[0] = gcc_compiler_path
+        gcc_flags[0] = gcc_compiler_path  # type: ignore[call-overload]
 
     gcc_cmd = gcc_flags + gcc_extra_flags
 
     try:
-        subprocess.run(gcc_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(gcc_cmd, capture_output=True, check=True)
     except subprocess.CalledProcessError as exception:
         print(message.error(exception))
         print(
@@ -111,7 +124,7 @@ def generate_debug_symbols(custom_structure_path, pwndbg_debug_symbols_output_fi
     return pwndbg_debug_symbols_output_file
 
 
-def add_custom_structure(custom_structure_name) -> None:
+def add_custom_structure(custom_structure_name: str) -> None:
     pwndbg_custom_structure_path = os.path.join(pwndbg_cachedir, custom_structure_name) + ".c"
 
     if os.path.exists(pwndbg_custom_structure_path):
@@ -140,8 +153,7 @@ def add_custom_structure(custom_structure_name) -> None:
 
 
 @OnlyWhenStructFileExists
-def edit_custom_structure(custom_structure_name, custom_structure_path) -> None:
-
+def edit_custom_structure(custom_structure_name: str, custom_structure_path: str = "") -> None:
     # Lookup an editor to use for editing the custom structure.
     editor_preference = os.getenv("EDITOR")
     if not editor_preference:
@@ -157,7 +169,7 @@ def edit_custom_structure(custom_structure_name, custom_structure_path) -> None:
             [editor_preference, custom_structure_path],
             check=True,
         )
-    except Exception as exception:
+    except Exception:
         print(message.error("An error occured during opening the source file."))
         print(message.error(f"Path to the custom structure: {custom_structure_path}"))
         print(message.error("Please try to manually edit the structure."))
@@ -174,30 +186,27 @@ def edit_custom_structure(custom_structure_name, custom_structure_path) -> None:
 
 
 @OnlyWhenStructFileExists
-def remove_custom_structure(custom_structure_name, custom_structure_path) -> None:
+def remove_custom_structure(custom_structure_name: str, custom_structure_path: str = "") -> None:
     unload_loaded_symbol(custom_structure_name)
     os.remove(custom_structure_path)
     print(message.success("Symbols are removed!"))
 
 
 @OnlyWhenStructFileExists
-def load_custom_structure(custom_structure_name, custom_structure_path) -> None:
+def load_custom_structure(custom_structure_name: str, custom_structure_path: str = "") -> None:
     unload_loaded_symbol(custom_structure_name)
     pwndbg_debug_symbols_output_file = generate_debug_symbols(custom_structure_path)
     if not pwndbg_debug_symbols_output_file:
         return  # generate_debug_symbols prints on failures
-    # Old GDB versions (e.g. 8.2) requires addr argument in add-symbol-file
-    # we set that address to which to load the symbols to 0 since it doesn't matter here
-    # (because we are only loading types information)
-    gdb.execute(f"add-symbol-file {pwndbg_debug_symbols_output_file} 0", to_string=True)
+    gdb.execute(f"add-symbol-file {pwndbg_debug_symbols_output_file}", to_string=True)
     loaded_symbols[custom_structure_name] = pwndbg_debug_symbols_output_file
     print(message.success("Symbols are loaded!"))
 
 
 @OnlyWhenStructFileExists
-def show_custom_structure(custom_structure_name, custom_structure_path) -> None:
-    # Call wrapper .func() to avoid memoization.
-    highlighted_source = pwndbg.pwndbg.commands.context.get_highlight_source.func(
+def show_custom_structure(custom_structure_name: str, custom_structure_path: str = "") -> None:
+    # Call non-caching version of the function (thus .__wrapped__)
+    highlighted_source = pwndbg.pwndbg.commands.context.get_highlight_source.__wrapped__(
         custom_structure_path
     )
     print("\n".join(highlighted_source))
@@ -249,9 +258,7 @@ parser.add_argument(
 
 
 @pwndbg.commands.ArgparsedCommand(parser)
-@pwndbg.commands.OnlyWithArch(["x86_64"])
-@pwndbg.commands.OnlyWhenRunning
-def cymbol(add, remove, edit, load, show) -> None:
+def cymbol(add: str, remove: str, edit: str, load: str, show: str) -> None:
     if add:
         add_custom_structure(add)
     elif remove:
