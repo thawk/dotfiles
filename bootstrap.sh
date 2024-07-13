@@ -504,16 +504,11 @@ generate_script_file() {
 }
 
 update_subtrees() {
-    git subtree pull --squash --prefix dynamic-colors/dynamic-colors https://github.com/thawk/dynamic-colors.git master
-    git subtree pull --squash --prefix fasd/src https://github.com/clvv/fasd.git master
-    git subtree pull --squash --prefix fpp/PathPicker https://github.com/facebook/PathPicker.git master
-    git subtree pull --squash --prefix gdb/repos/Boost-Pretty-Printer https://github.com/ruediger/Boost-Pretty-Printer master
-    git subtree pull --squash --prefix gdb/repos/Gdbinit https://github.com/thawk/Gdbinit master
-    git subtree pull --squash --prefix gdb/repos/gdb-automatic-deadlock-detector https://github.com/xmementoit/gdb-automatic-deadlock-detector master
-    git subtree pull --squash --prefix gdb/repos/gdb-colour-filter https://github.com/thawk/gdb-colour-filter master
-    git subtree pull --squash --prefix gdb/repos/pwndbg https://github.com/pwndbg/pwndbg dev
-    git subtree pull --squash --prefix myrepos/src https://github.com/thawk/myrepos.git master
-    git subtree pull --squash --prefix percol/src https://github.com/mooz/percol.git master
+    cat "${DOTFILES_ROOT}/subtrees.txt" |
+        grep -v '^#' |
+        while read prefix url branch; do
+            git subtree pull --squash --prefix "${prefix}" "${url}" "${branch}"
+        done
 }
 
 EchoUsage()

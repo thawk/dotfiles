@@ -1,0 +1,10 @@
+dynamic-colors/dynamic-colors https://github.com/thawk/dynamic-colors.git master
+fasd/src https://github.com/clvv/fasd.git master
+fpp/PathPicker https://github.com/facebook/PathPicker.git master
+gdb/repos/Boost-Pretty-Printer https://github.com/ruediger/Boost-Pretty-Printer master
+gdb/repos/Gdbinit https://github.com/thawk/Gdbinit master
+gdb/repos/gdb-automatic-deadlock-detector https://github.com/xmementoit/gdb-automatic-deadlock-detector master
+gdb/repos/gdb-colour-filter https://github.com/thawk/gdb-colour-filter master
+gdb/repos/pwndbg https://github.com/pwndbg/pwndbg dev
+myrepos/src https://github.com/thawk/myrepos.git master
+percol/src https://github.com/mooz/percol.git master
