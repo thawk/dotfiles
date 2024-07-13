@@ -26,8 +26,8 @@ from typing import TypeVar
 
 import gdb
 
+import pwndbg
 import pwndbg.chain
-import pwndbg.gdblib.config
 import pwndbg.gdblib.events
 import pwndbg.gdblib.heap
 import pwndbg.gdblib.heap.heap
@@ -466,6 +466,9 @@ class Heap:
         "first_chunk",
     )
 
+    start: int
+    end: int
+
     def __init__(self, addr: int, arena: Arena | None = None) -> None:
         """Build a Heap object given an address on that heap.
         Heap regions are treated differently depending on their arena:
@@ -755,7 +758,7 @@ class Arena:
         fd_offset = pwndbg.gdblib.arch.ptrsize * 2
         safe_lnk = pwndbg.glibc.check_safe_linking()
         result = Bins(BinType.FAST)
-        for i in range(7):
+        for i in range(NFASTBINS):
             size += pwndbg.gdblib.arch.ptrsize * 2
             chain = pwndbg.chain.get(
                 int(self.fastbinsY[i]),
@@ -1208,7 +1211,7 @@ class GlibcMemoryAllocator(pwndbg.gdblib.heap.heap.MemoryAllocator, Generic[TheT
         else:
             return (size >> 3) - 2
 
-    def fastbins(self, arena_addr: int | None = None):
+    def fastbins(self, arena_addr: int | None = None) -> Bins | None:
         """Returns: chain or None"""
         if arena_addr:
             arena = Arena(arena_addr)
@@ -1216,26 +1219,9 @@ class GlibcMemoryAllocator(pwndbg.gdblib.heap.heap.MemoryAllocator, Generic[TheT
             arena = self.thread_arena
 
         if arena is None:
-            return
+            return None
 
-        fastbinsY = arena.fastbinsY
-        fd_offset = self.chunk_key_offset("fd")
-        num_fastbins = 7
-        size = pwndbg.gdblib.arch.ptrsize * 2
-        safe_lnk = pwndbg.glibc.check_safe_linking()
-
-        result = Bins(BinType.FAST)
-        for i in range(num_fastbins):
-            size += pwndbg.gdblib.arch.ptrsize * 2
-            chain = pwndbg.chain.get(
-                int(fastbinsY[i]),
-                offset=fd_offset,
-                limit=pwndbg.gdblib.heap.heap_chain_limit,
-                safe_linking=safe_lnk,
-            )
-
-            result.bins[size] = Bin(chain)
-        return result
+        return arena.fastbins()
 
     def tcachebins(self, tcache_addr: int | None = None) -> Bins | None:
         """Returns: tuple(chain, count) or None"""
@@ -1662,7 +1648,7 @@ class HeuristicHeap(
 
     @property
     def main_arena(self) -> Arena | None:
-        main_arena_via_config = int(str(pwndbg.gdblib.config.main_arena), 0)
+        main_arena_via_config = int(str(pwndbg.config.main_arena), 0)
         main_arena_via_symbol = pwndbg.gdblib.symbol.static_linkage_symbol_address(
             "main_arena"
         ) or pwndbg.gdblib.symbol.address("main_arena")
@@ -1883,7 +1869,7 @@ class HeuristicHeap(
         if thread_arena_via_symbol:
             thread_arena_value = pwndbg.gdblib.memory.pvoid(thread_arena_via_symbol)
             return Arena(thread_arena_value) if thread_arena_value else None
-        thread_arena_via_config = int(str(pwndbg.gdblib.config.thread_arena), 0)
+        thread_arena_via_config = int(str(pwndbg.config.thread_arena), 0)
         if thread_arena_via_config:
             return Arena(thread_arena_via_config)
 
@@ -1944,7 +1930,7 @@ class HeuristicHeap(
             print(message.warn("This version of GLIBC was not compiled with tcache support."))
             return None
         tps = self.tcache_perthread_struct
-        thread_cache_via_config = int(str(pwndbg.gdblib.config.tcache), 0)
+        thread_cache_via_config = int(str(pwndbg.config.tcache), 0)
         thread_cache_via_symbol = pwndbg.gdblib.symbol.static_linkage_symbol_address(
             "tcache"
         ) or pwndbg.gdblib.symbol.address("tcache")
@@ -2017,7 +2003,7 @@ class HeuristicHeap(
 
     @property
     def mp(self) -> "pwndbg.gdblib.heap.structs.CStruct2GDB":
-        mp_via_config = int(str(pwndbg.gdblib.config.mp), 0)
+        mp_via_config = int(str(pwndbg.config.mp), 0)
         mp_via_symbol = pwndbg.gdblib.symbol.static_linkage_symbol_address(
             "mp_"
         ) or pwndbg.gdblib.symbol.address("mp_")
@@ -2048,7 +2034,7 @@ class HeuristicHeap(
 
     @property
     def global_max_fast(self) -> int:
-        global_max_fast_via_config = int(str(pwndbg.gdblib.config.global_max_fast), 0)
+        global_max_fast_via_config = int(str(pwndbg.config.global_max_fast), 0)
         global_max_fast_via_symbol = pwndbg.gdblib.symbol.static_linkage_symbol_address(
             "global_max_fast"
         ) or pwndbg.gdblib.symbol.address("global_max_fast")

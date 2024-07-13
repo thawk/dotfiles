@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 
 import pwndbg.color.message as MessageColor
 import pwndbg.commands
@@ -53,9 +54,7 @@ def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) ->
         # None if not overridden
         override_setting = True if force_emulate else (False if no_emulate else None)
         use_emulation = (
-            bool(pwndbg.gdblib.config.emulate == "on")
-            if override_setting is None
-            else override_setting
+            bool(pwndbg.config.emulate == "on") if override_setting is None else override_setting
         )
 
         instructions, index_of_pc = pwndbg.gdblib.disasm.near(
@@ -65,3 +64,20 @@ def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) ->
         if instructions:
             insn = instructions[0]
             print(repr(insn))
+
+
+parser = argparse.ArgumentParser(description="Set the log level.")
+parser.add_argument(
+    "level",
+    type=str,
+    nargs="?",
+    choices=["debug", "info", "warning", "error", "critical"],
+    default="warning",
+    help="The log level to set.",
+)
+
+
+@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.DEV)
+def log_level(level: str) -> None:
+    logging.getLogger().setLevel(getattr(logging, level.upper()))
+    print(f"Log level set to {level}")
