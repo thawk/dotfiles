@@ -138,7 +138,7 @@ for d in "${BIN_DIR}/../colorschemes" "${BIN_DIR}/../share/dynamic-colors/colors
     break
   fi
 done
-if [[ -z "${COLORSCHEMES}" ]] ; then
+if [[ -z ${COLORSCHEMES:-} ]]; then
   echo "Unable to find directory with color schemes. Aborting!"
   exit 1
 fi
@@ -160,15 +160,15 @@ init () {
   set_colors
 }
 
-unset_colors () {
-  for color in ${colors[@]}; do
-    unset ${!color:-}
+unset_colors() {
+  for color in "${colors[@]}"; do
+    test -n "${!color:-}" && unset "${!color}"
   done
 }
 
-set_colors () {
-  for color in ${colors[@]}; do
-    [[ ${!color:-} ]] && change_color "$color" "${!color:-}"
+set_colors() {
+  for color in "${colors[@]}"; do
+    [[ ${!color:-} ]] && change_color "$color" "${!color}"
   done
 }
 
