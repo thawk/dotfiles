@@ -12,10 +12,10 @@ from __future__ import annotations
 import string
 from typing import Tuple
 
+import pwndbg
 import pwndbg.color.enhance as E
 import pwndbg.color.memory
 import pwndbg.gdblib.arch
-import pwndbg.gdblib.config
 import pwndbg.gdblib.disasm
 import pwndbg.gdblib.memory
 import pwndbg.gdblib.strings
@@ -23,12 +23,6 @@ import pwndbg.gdblib.typeinfo
 import pwndbg.lib.cache
 from pwndbg import color
 from pwndbg.color.syntax_highlight import syntax_highlight
-
-bad_instrs = [".byte", ".long", "rex.R", "rex.XB", ".inst", "(bad)"]
-
-
-def good_instr(i) -> bool:
-    return not any(bad in i for bad in bad_instrs)
 
 
 def format_small_int(value: int) -> str:
@@ -120,7 +114,7 @@ def enhance(
         pwndbg_instr = pwndbg.gdblib.disasm.one(value, enhance=False)
         if pwndbg_instr:
             instr = f"{pwndbg_instr.mnemonic} {pwndbg_instr.op_str}"
-            if pwndbg.gdblib.config.syntax_highlight:
+            if pwndbg.config.syntax_highlight:
                 instr = syntax_highlight(instr)
 
     szval = pwndbg.gdblib.strings.get(value, maxlen=enhance_string_len) or None
