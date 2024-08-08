@@ -10,18 +10,32 @@
 # Dlink
 #   Made to work in reverse order
 
+function get_revision() {
+    local propname=entry
+    local attrname=revision
+
+    svn info --xml "$1" |
+        tr '\n' ' ' |
+        sed -e 's/ \+/ /g' -e 's/> </></g' -e 's@\s*\(<[^/>]\+>\)\s*@\n\1@g' |
+        sed -n -E -e "/^.*<${propname}\s.*>/{s/^.*<${propname}\b[^>]*\s${attrname}=\"([^\"]*)\".*\$/\1/;p;q;}"
+}
+
 function history_of_file() {
-    url=$1 # current url of file
-    svn log -q $url | grep -E -e "^r[[:digit:]]+" -o | cut -c2- | sort -nr | {
+    local url=$1 # current url of file
+    local revision
+
+    revision=$(get_revision "$url")
+
+    svn log -q "$url" | grep -E -e "^r[[:digit:]]+" -o | cut -c2- | sort -nr | {
         while read r
     do
             echo
-            svn log -g -r$r $url@HEAD
-            svn diff -c$r $url@HEAD
+            svn log -g -r"$r" "$url@$revision"
+            svn diff -c"$r" "$url@$revision"
             echo
     done
     }
 }
 
-history_of_file $1
+history_of_file "$1"
 
