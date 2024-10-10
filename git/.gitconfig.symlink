@@ -4,7 +4,7 @@
 [core]
     eol = lf
     autocrlf = false
-    filemode = false
+    #filemode = false
     quotepath = false
 
 [alias]
