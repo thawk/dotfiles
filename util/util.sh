@@ -43,6 +43,11 @@ cdd() {
             cd "${src_root}/${proj_name}" || return
             return
         fi
+    
+        if [[ -d "${HOME}/${proj_name}" ]]; then
+            cd "${HOME}/${proj_name}" || return
+            return
+        fi
     fi
     
     # 没有找到与tmux session名称对应的项目，找当前目录往上的VCS目录作为项目的根目录
