@@ -8,53 +8,24 @@ from __future__ import annotations
 from typing import List
 from typing import Tuple
 
-import gdb
 from capstone import CS_GRP_INT
 
+import pwndbg.aglib.arch
+import pwndbg.aglib.disasm
+import pwndbg.aglib.disasm.arch
+import pwndbg.aglib.file
+import pwndbg.aglib.memory
+import pwndbg.aglib.proc
+import pwndbg.aglib.regs
+import pwndbg.aglib.symbol
+import pwndbg.aglib.typeinfo
 import pwndbg.chain
-import pwndbg.constants
-import pwndbg.gdblib.arch
-import pwndbg.gdblib.disasm
-import pwndbg.gdblib.disasm.arch
-import pwndbg.gdblib.file
-import pwndbg.gdblib.memory
-import pwndbg.gdblib.proc
-import pwndbg.gdblib.regs
-import pwndbg.gdblib.symbol
-import pwndbg.gdblib.typeinfo
-import pwndbg.ida
+import pwndbg.integration
 import pwndbg.lib.abi
 import pwndbg.lib.funcparser
 import pwndbg.lib.functions
-from pwndbg.gdblib.disasm.instruction import PwndbgInstruction
-from pwndbg.gdblib.nearpc import c as N
-
-ida_replacements = {
-    "__int64": "signed long long int",
-    "__int32": "signed int",
-    "__int16": "signed short",
-    "__int8": "signed char",
-    "__uint64": "unsigned long long int",
-    "__uint32": "unsigned int",
-    "__uint16": "unsigned short",
-    "__uint8": "unsigned char",
-    "_BOOL_1": "unsigned char",
-    "_BOOL_2": "unsigned short",
-    "_BOOL_4": "unsigned int",
-    "_BYTE": "unsigned char",
-    "_WORD": "unsigned short",
-    "_DWORD": "unsigned int",
-    "_QWORD": "unsigned long long",
-    "__pure": "",
-    "__hidden": "",
-    "__return_ptr": "",
-    "__struct_ptr": "",
-    "__array_ptr": "",
-    "__fastcall": "",
-    "__cdecl": "",
-    "__thiscall": "",
-    "__userpurge": "",
-}
+from pwndbg.aglib.disasm.instruction import PwndbgInstruction
+from pwndbg.aglib.nearpc import c as N
 
 
 def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argument, int]]:
@@ -69,7 +40,7 @@ def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argum
     if instruction is None:
         return []
 
-    if instruction.address != pwndbg.gdblib.regs.pc:
+    if instruction.address != pwndbg.aglib.regs.pc:
         return []
 
     if instruction.call_like:
@@ -83,7 +54,7 @@ def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argum
         if not target:
             return []
 
-        name = pwndbg.gdblib.symbol.get(target)
+        name = pwndbg.aglib.symbol.resolve_addr(target)
         if not name:
             return []
     elif CS_GRP_INT in instruction.groups:
@@ -100,7 +71,7 @@ def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argum
     result = []
     name = name or ""
 
-    sym = gdb.lookup_symbol(name)
+    sym = pwndbg.aglib.symbol.lookup_frame_symbol(name)
     name = name.replace("isoc99_", "")  # __isoc99_sscanf
     name = name.replace("@plt", "")  # getpwiod@plt
 
@@ -113,29 +84,20 @@ def get(instruction: PwndbgInstruction) -> List[Tuple[pwndbg.lib.functions.Argum
 
     func = pwndbg.lib.functions.functions.get(name, None)
 
-    # Try to extract the data from GDB.
-    # Note that this is currently broken, pending acceptance of
-    # my patch: https://sourceware.org/ml/gdb-patches/2015-06/msg00268.html
-    if sym and sym[0]:
+    if sym:
         try:
-            n_args_default = len(sym[0].type.fields())
-        except TypeError:
-            pass
+            target_type = sym.type.target()
+        except Exception:
+            target_type = sym.type
+
+        if target_type and target_type.code == pwndbg.dbg_mod.TypeCode.FUNC:
+            func_args = target_type.func_arguments()
+            if func_args is not None:
+                n_args_default = len(func_args)
 
     # Try to grab the data out of IDA
     if not func and target:
-        typename = pwndbg.ida.GetType(target)
-
-        if typename:
-            typename += ";"
-
-            # GetType() does not include the name.
-            typename = typename.replace("(", " function_name(", 1)
-
-            for k, v in ida_replacements.items():
-                typename = typename.replace(k, v)
-
-            func = pwndbg.lib.funcparser.ExtractFuncDeclFromSource(typename + ";")
+        func = pwndbg.integration.provider.get_func_type(target)
 
     if func:
         args = func.args
@@ -170,13 +132,13 @@ def argument(n: int, abi: pwndbg.lib.abi.ABI | None = None) -> int:
     regs = abi.register_arguments
 
     if n < len(regs):
-        return getattr(pwndbg.gdblib.regs, regs[n])
+        return getattr(pwndbg.aglib.regs, regs[n])
 
     n -= len(regs)
 
-    sp = pwndbg.gdblib.regs.sp + (n * pwndbg.gdblib.arch.ptrsize)
+    sp = pwndbg.aglib.regs.sp + (n * pwndbg.aglib.arch.ptrsize)
 
-    return int(pwndbg.gdblib.memory.get_typed_pointer_value(pwndbg.gdblib.typeinfo.ppvoid, sp))
+    return int(pwndbg.aglib.memory.get_typed_pointer_value(pwndbg.aglib.typeinfo.ppvoid, sp))
 
 
 def arguments(abi: pwndbg.lib.abi.ABI | None = None):
@@ -200,9 +162,9 @@ def format_args(instruction: PwndbgInstruction) -> List[str]:
         # Enhance args display
         if arg.name == "fd" and isinstance(value, int):
             # Cannot find PID of the QEMU program: perhaps it is in a different pid namespace or we have no permission to read the QEMU process' /proc/$pid/fd/$fd file.
-            pid = pwndbg.gdblib.proc.pid
+            pid = pwndbg.aglib.proc.pid
             if pid is not None:
-                path = pwndbg.gdblib.file.readlink("/proc/%d/fd/%d" % (pid, value))
+                path = pwndbg.aglib.file.readlink("/proc/%d/fd/%d" % (pid, value))
                 if path:
                     pretty += f" ({path})"
 

@@ -3,10 +3,9 @@ from __future__ import annotations
 import argparse
 import logging
 
+import pwndbg.aglib.disasm
 import pwndbg.color.message as MessageColor
 import pwndbg.commands
-import pwndbg.gdblib.disasm
-import pwndbg.gdblib.nearpc
 from pwndbg.commands import CommandCategory
 
 parser = argparse.ArgumentParser(description="Dump internal PwndbgInstruction attributes.")
@@ -44,7 +43,7 @@ parser.add_argument(
 def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) -> None:
     if address is not None:
         address = int(address)
-        cached_instruction = pwndbg.gdblib.disasm.computed_instruction_cache.get(address, None)
+        cached_instruction = pwndbg.aglib.disasm.computed_instruction_cache.get(address, None)
         if cached_instruction:
             print(repr(cached_instruction))
         else:
@@ -57,8 +56,8 @@ def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) ->
             bool(pwndbg.config.emulate == "on") if override_setting is None else override_setting
         )
 
-        instructions, index_of_pc = pwndbg.gdblib.disasm.near(
-            pwndbg.gdblib.regs.pc, 1, emulate=use_emulation, show_prev_insns=False, use_cache=False
+        instructions, index_of_pc = pwndbg.aglib.disasm.near(
+            pwndbg.aglib.regs.pc, 1, emulate=use_emulation, show_prev_insns=False, use_cache=False
         )
 
         if instructions:

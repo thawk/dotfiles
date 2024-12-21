@@ -1,6 +1,15 @@
 {
   description = "pwndbg";
 
+  nixConfig = {
+    extra-substituters = [
+      "https://pwndbg.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "pwndbg.cachix.org-1:HhtIpP7j73SnuzLgobqqa8LVTng5Qi36sQtNt79cD3k="
+    ];
+  };
+
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.poetry2nix = {
     url = "github:nix-community/poetry2nix";
@@ -32,6 +41,12 @@
       );
       pkgUtil = forAllSystems (system: import ./nix/bundle/pkg.nix { pkgs = pkgsBySystem.${system}; });
 
+      portableDrvLldb =
+        system:
+        import ./nix/portable.nix {
+          pkgs = pkgsBySystem.${system};
+          pwndbg = self.packages.${system}.pwndbg-lldb;
+        };
       portableDrv =
         system:
         import ./nix/portable.nix {
@@ -51,6 +66,7 @@
         );
       tarballDrv = system: {
         tarball = pkgUtil.${system}.buildPackageTarball { drv = portableDrv system; };
+        tarball-lldb = pkgUtil.${system}.buildPackageTarball { drv = portableDrvLldb system; };
       };
     in
     {
@@ -71,6 +87,14 @@
             inputs.pwndbg = self;
             isDev = true;
           };
+          pwndbg-lldb = import ./nix/pwndbg.nix {
+            pkgs = pkgsBySystem.${system};
+            python3 = pkgsBySystem.${system}.python3;
+            gdb = pkgsBySystem.${system}.gdb;
+            inputs.pwndbg = self;
+            isDev = true;
+            isLLDB = true;
+          };
         }
         // (portableDrvs system)
         // (tarballDrv system)
@@ -82,7 +106,9 @@
           pkgs = pkgsBySystem.${system};
           python3 = pkgsBySystem.${system}.python3;
           inputs.pwndbg = self;
+          isLLDB = true;
         }
       );
+      formatter = forAllSystems (system: pkgsBySystem.${system}.nixfmt-rfc-style);
     };
 }

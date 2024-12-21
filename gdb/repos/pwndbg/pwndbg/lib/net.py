@@ -9,8 +9,7 @@ import binascii
 import socket
 from typing import List
 
-import pwndbg.gdblib.arch
-import pwndbg.gdblib.file
+import pwndbg.aglib.arch
 
 # http://students.mimuw.edu.pl/lxr/source/include/net/tcp_states.h
 TCP_STATUSES = {
@@ -120,7 +119,7 @@ def tcp(data: str) -> List[Connection]:
             host, port = hostport.split(":")
             host = binascii.unhexlify(host)
 
-            if pwndbg.gdblib.arch.endian == "little":
+            if pwndbg.aglib.arch.endian == "little":
                 host = host[::-1]
 
             host = socket.inet_ntop(socket.AF_INET, host)

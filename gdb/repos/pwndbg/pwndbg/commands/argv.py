@@ -4,11 +4,23 @@ import argparse
 
 import gdb
 
+import pwndbg.aglib.arch
+import pwndbg.aglib.typeinfo
 import pwndbg.commands
-import pwndbg.gdblib.arch
+import pwndbg.commands.telescope
 import pwndbg.gdblib.argv
-import pwndbg.gdblib.typeinfo
 from pwndbg.commands import CommandCategory
+
+
+def dbg_value_to_gdb(d: pwndbg.dbg_mod.Value) -> gdb.Value:
+    from pwndbg.dbg.gdb import GDBValue
+
+    assert isinstance(d, GDBValue)
+    return d.inner
+
+
+def gdb_none_value() -> gdb.Value:
+    return dbg_value_to_gdb(pwndbg.dbg.selected_inferior().create_value(0))
 
 
 @pwndbg.commands.ArgparsedCommand(
@@ -33,7 +45,7 @@ def argv(i=None) -> None:
 
     if i is not None:
         n = 1
-        start += (pwndbg.gdblib.arch.ptrsize) * i
+        start += (pwndbg.aglib.arch.ptrsize) * i
 
     pwndbg.commands.telescope.telescope(start, n)
 
@@ -64,60 +76,52 @@ def envp(name=None):
 
 
 class argv_function(gdb.Function):
-    """
-    Evaluate argv on the supplied value.
-    """
+    """Evaluate argv on the supplied value."""
 
     def __init__(self) -> None:
         super().__init__("argv")
 
-    def invoke(self, number=0):
-        number = int(number)
+    def invoke(self, number_value: gdb.Value = gdb.Value(0), *args: gdb.Value) -> gdb.Value:
+        number = int(number_value)
 
         if number > pwndbg.gdblib.argv.argc:
-            return 0
+            return gdb_none_value()
 
-        ppchar = pwndbg.gdblib.typeinfo.pchar.pointer()
-        value = gdb.Value(pwndbg.gdblib.argv.argv)
-        argv = value.cast(ppchar)
-        return (argv + number).dereference()
+        ppchar = pwndbg.aglib.typeinfo.pchar.pointer()
+        argv = pwndbg.dbg.selected_inferior().create_value(pwndbg.gdblib.argv.argv, ppchar)
+        return dbg_value_to_gdb((argv + number).dereference())
 
 
 argv_function()
 
 
 class envp_function(gdb.Function):
-    """
-    Evaluate envp on the supplied value.
-    """
+    """Evaluate envp on the supplied value."""
 
     def __init__(self) -> None:
         super().__init__("envp")
 
-    def invoke(self, number=0):
-        number = int(number)
+    def invoke(self, number_value: gdb.Value = gdb.Value(0), *args: gdb.Value) -> gdb.Value:
+        number = int(number_value)
 
         if number > pwndbg.gdblib.argv.envc:
-            return pwndbg.gdblib.typeinfo.void
+            return gdb_none_value()
 
-        ppchar = pwndbg.gdblib.typeinfo.pchar.pointer()
-        value = gdb.Value(pwndbg.gdblib.argv.envp)
-        envp = value.cast(ppchar)
-        return (envp + number).dereference()
+        ppchar = pwndbg.aglib.typeinfo.pchar.pointer()
+        envp = pwndbg.dbg.selected_inferior().create_value(pwndbg.gdblib.argv.envp, ppchar)
+        return dbg_value_to_gdb((envp + number).dereference())
 
 
 envp_function()
 
 
 class argc_function(gdb.Function):
-    """
-    Evaluates to argc.
-    """
+    """Evaluates to argc."""
 
     def __init__(self) -> None:
         super().__init__("argc")
 
-    def invoke(self, number=0):
+    def invoke(self, *args: gdb.Value) -> int:
         return pwndbg.gdblib.argv.argc
 
 
@@ -125,26 +129,26 @@ argc_function()
 
 
 class environ_function(gdb.Function):
-    """
-    Evaluate getenv() on the supplied value.
-    """
+    """Evaluate getenv() on the supplied value."""
 
     def __init__(self) -> None:
         super().__init__("environ")
 
-    def invoke(self, name):
-        name = name.string() + "="
-        ppchar = pwndbg.gdblib.typeinfo.pchar.pointer()
-        value = gdb.Value(pwndbg.gdblib.argv.envp)
-        envp = value.cast(ppchar)
+    def invoke(self, name_value: gdb.Value = gdb.Value(""), *args: gdb.Value) -> gdb.Value:
+        name = name_value.string()
+        if not name:
+            raise gdb.GdbError("No environment variable name provided")
+        name += "="
+        ppchar = pwndbg.aglib.typeinfo.pchar.pointer()
+        envp = pwndbg.dbg.selected_inferior().create_value(pwndbg.gdblib.argv.envp, ppchar)
 
         for i in range(pwndbg.gdblib.argv.envc):
             ptr = (envp + i).dereference()
             sz = ptr.string()
             if sz.startswith(name):
-                return ptr
+                return dbg_value_to_gdb(ptr)
 
-        return pwndbg.gdblib.typeinfo.void
+        return gdb_none_value()
 
 
 environ_function()

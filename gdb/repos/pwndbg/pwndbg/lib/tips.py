@@ -9,9 +9,9 @@ from pwndbg.color import message
 TIPS: List[str] = [
     # GDB hints
     "GDB's `apropos <topic>` command displays all registered commands that are related to the given <topic>",
-    "GDB's `follow-fork-mode` parameter can be used to set whether to trace parent or child after fork() calls",
+    "GDB's `follow-fork-mode` parameter can be used to set whether to trace parent or child after fork() calls. Pwndbg sets it to child by default",
     'Use GDB\'s `dprintf` command to print all calls to given function. E.g. `dprintf malloc, "malloc(%p)\\n", (void*)$rdi` will print all malloc calls',
-    "Use GDB's `pi` command to run an interactive Python console where you can use Pwndbg APIs like `pwndbg.gdblib.memory.read(addr, len)`, `pwndbg.gdblib.memory.write(addr, data)`, `pwndbg.gdb.vmmap.get()` and so on!",
+    "Use GDB's `pi` command to run an interactive Python console where you can use Pwndbg APIs like `pwndbg.aglib.memory.read(addr, len)`, `pwndbg.aglib.memory.write(addr, data)`, `pwndbg.aglib.vmmap.get()` and so on!",
     "GDB's `set directories <path>` parameter can be used to debug e.g. glibc sources like the malloc/free functions!",
     "If you have debugging symbols the `info args` command shows current frame's function arguments (use `up` and `down` to switch between frames)",
     'Calling functions like `call (void)puts("hello world")` will run all other target threads for the time the function runs. Use `set scheduler-locking on` to lock the execution to current thread when calling functions',
@@ -46,6 +46,8 @@ TIPS: List[str] = [
     "Use `track-got enable|info|query` to track GOT accesses - useful for hijacking control flow via writable GOT/PLT",
     "Need to `mmap` or `mprotect` memory in the debugee? Use commands with the same name to inject and run such syscalls",
     "Use `hi` to see if a an address belongs to a glibc heap chunk",
+    "Use `contextprev` and `contextnext` to display a previous context output again without scrolling",
+    "Try splitting the context output into multiple TUI windows using `layout pwndbg` (`tui disable` or `ctrl-x + a` to go back to CLI mode)",
 ]
 
 

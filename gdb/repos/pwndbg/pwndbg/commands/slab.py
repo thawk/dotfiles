@@ -15,16 +15,15 @@ from typing import Type
 
 from tabulate import tabulate
 
+import pwndbg.aglib.kernel.slab
 import pwndbg.color as C
 import pwndbg.color.message as M
 import pwndbg.commands
-import pwndbg.gdblib.kernel.slab
+from pwndbg.aglib.kernel.slab import CpuCache
+from pwndbg.aglib.kernel.slab import NodeCache
+from pwndbg.aglib.kernel.slab import Slab
+from pwndbg.aglib.kernel.slab import find_containing_slab_cache
 from pwndbg.commands import CommandCategory
-from pwndbg.gdblib.kernel.slab import CpuCache
-from pwndbg.gdblib.kernel.slab import NodeCache
-from pwndbg.gdblib.kernel.slab import Slab
-from pwndbg.gdblib.kernel.slab import find_containing_slab_cache
-from pwndbg.gdblib.symbol import parse_and_eval
 
 parser = argparse.ArgumentParser(description="Prints information about the slab allocator")
 subparsers = parser.add_subparsers(dest="command")
@@ -161,7 +160,7 @@ def print_node_cache(node_cache: NodeCache, verbose: bool, indent) -> None:
 
 
 def slab_info(name: str, verbose: bool) -> None:
-    slab_cache = pwndbg.gdblib.kernel.slab.get_cache(name)
+    slab_cache = pwndbg.aglib.kernel.slab.get_cache(name)
 
     if slab_cache is None:
         print(M.error(f"Cache {name} not found"))
@@ -200,7 +199,7 @@ def slab_list(filter_) -> None:
             slab_cache.inuse,
             slab_cache.oo_order,
         ]
-        for slab_cache in pwndbg.gdblib.kernel.slab.caches()
+        for slab_cache in pwndbg.aglib.kernel.slab.caches()
         if not filter_ or filter_ in slab_cache.name
     ]
 
@@ -210,9 +209,11 @@ def slab_list(filter_) -> None:
 def slab_contains(address: str) -> None:
     """prints the slab_cache associated with the provided address"""
 
-    parsed_addr = parse_and_eval(address)
-    if not parsed_addr:
+    try:
+        parsed_addr = pwndbg.dbg.selected_frame().evaluate_expression(address)
+    except pwndbg.dbg_mod.Error as e:
         print(M.error(f"Could not parse '{address}'"))
+        print(M.error(f"Message: {e}"))
         return
 
     addr = int(parsed_addr)

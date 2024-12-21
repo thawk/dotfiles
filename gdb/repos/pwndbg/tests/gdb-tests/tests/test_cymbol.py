@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import os
 
-import pwndbg.commands.cymbol
-import pwndbg.gdblib.dt
+import pwndbg.aglib.dt
+import pwndbg.dbg
+
+if pwndbg.dbg.is_gdblib_available():
+    import pwndbg.commands.cymbol
+
 import tests
 
 REFERENCE_BINARY = tests.binaries.get("reference-binary.out")
@@ -21,7 +25,7 @@ def create_symbol_file(symbol, source):
 
 def check_symbol_existance(symbol_type):
     try:
-        pwndbg.gdblib.dt.dt(symbol_type)
+        pwndbg.aglib.dt.dt(symbol_type)
     except Exception as exception:
         # In case it is an AttributeError symbol_type doesn't exists.
         assert isinstance(exception, AttributeError)
@@ -58,7 +62,7 @@ def test_cymbol(start_binary):
         "    +0x0004 b                    : char [16]\n"
         "    +0x0018 c                    : char *\n"
         "    +0x0020 d                    : void *"
-    ) == pwndbg.gdblib.dt.dt("example_t").strip()
+    ) == pwndbg.aglib.dt.dt("example_t").strip()
 
     # Test whether unload_loaded_symbol() works properly.
     pwndbg.commands.cymbol.unload_loaded_symbol("example")

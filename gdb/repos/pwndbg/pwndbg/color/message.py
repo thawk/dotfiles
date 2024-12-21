@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 import pwndbg.lib.config
 from pwndbg import config
 from pwndbg.color import generateColorFunction
@@ -41,6 +43,9 @@ config_signal_color = theme.add_color_param(
 
 config_prompt_color: pwndbg.lib.config.Parameter = theme.add_color_param(
     "prompt-color", "bold,red", "prompt color"
+)
+config_prompt_alive_color: pwndbg.lib.config.Parameter = theme.add_color_param(
+    "prompt-alive-color", "bold,green", "prompt alive color"
 )
 
 
@@ -98,3 +103,16 @@ def signal(msg: object) -> str:
 
 def prompt(msg: object) -> str:
     return generateColorFunction(config.prompt_color)(msg)
+
+
+def alive_prompt(msg: object) -> str:
+    return generateColorFunction(config.prompt_alive_color)(msg)
+
+
+def readline_escape(func_message: Callable[[str], str], text: str) -> str:
+    # For readline-based applications, non-printable escape codes must be
+    # wrapped with special markers (\001 and \002). These markers inform
+    # readline to ignore the escape sequences when calculating the prompt's width.
+    # Without these markers, the prompt may break when navigating command history
+    # with the UP arrow key or for long commands.
+    return "\x01" + func_message("\x02" + text + "\x01") + "\x02"

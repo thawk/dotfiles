@@ -19,7 +19,7 @@ EXTRA_FLAGS_ASM =
 
 GO              =	   go
 SOURCES_GO      =	   $(wildcard *.go)
-COMPILED_GO     =	   $(SOURCES_GO:.go=)
+COMPILED_GO     =	   $(SOURCES_GO:.go=.x86) $(SOURCES_GO:.go=.x64)
 
 ifeq ($(TARGET), x86)
 CFLAGS		  +=	  -m32
@@ -54,14 +54,14 @@ all: $(LINKED) $(LINKED_ASM) $(COMPILED_GO) $(CUSTOM_TARGETS)
 	@echo "[+] Linking '$@'"
 	@$(LD) -Ttext 0x400080 --section-start .note.gnu.property=0x8000000 -o $@ $?
 
-%.x86 : %.x86.go
+%.x86 : %.go
 	@echo "[+] Building '$@'"
-	@GOARCH=386 $(GO) build $?
+	@GOARCH=386 $(GO) build -gcflags "-N -l" -o $@ $?
 	@# Not stripped on purpose
 
-%.x64 : %.x64.go
+%.x64 : %.go
 	@echo "[+] Building '$@'"
-	@GOARCH=amd64 $(GO) build $?
+	@GOARCH=amd64 $(GO) build -gcflags "-N -l" -o $@ $?
 	@# Not stripped on purpose
 
 heap_bugs.out: heap_bugs.c
@@ -92,6 +92,19 @@ heap_vis.out: heap_vis.c
 heap_malloc_chunk.out: heap_malloc_chunk.c
 	@echo "[+] Building heap_malloc_chunk.out"
 	${CC} -g -O0 -Wno-nonnull -Wno-unused-result -o heap_malloc_chunk.out heap_malloc_chunk.c -pthread -lpthread
+
+heap_jemalloc_extent_info.out: heap_jemalloc_extent_info.c
+	@echo "[+] Building heap_jemalloc_extent_info.out"
+	${CC} -g -O0 -Wno-nonnull -Wno-unused-result \
+	-o heap_jemalloc_extent_info.out heap_jemalloc_extent_info.c \
+	-Wl,-Bstatic -ljemalloc -Wl,-Bdynamic -lpthread -lm -lstdc++ -pthread -ldl
+
+heap_jemalloc_heap.out: heap_jemalloc_heap.c
+	@echo "[+] Building heap_jemalloc_heap.out"
+	${CC} -g -O0 -Wno-nonnull -Wno-unused-result \
+	-o heap_jemalloc_heap.out heap_jemalloc_heap.c \
+	-Wl,-Bstatic -ljemalloc -Wl,-Bdynamic -lpthread -lm -lstdc++ -pthread -ldl
+
 
 multiple_threads.out: multiple_threads.c
 	@echo "[+] Building multiple_threads.out"

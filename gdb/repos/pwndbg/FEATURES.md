@@ -21,6 +21,8 @@ The output of the context may be redirected to a file (including other tty) by u
 
 ![](caps/context.png)
 
+A history of previous context output is kept which can be accessed using the `contextprev` and `contextnext` commands.
+
 ### Splitting / Layouting Context
 
 The context sections can be distributed among different tty by using the `contextoutput` command.
@@ -68,6 +70,21 @@ import splitmind
 ).build(nobanner=True)
 end
 ```
+
+#### GDB TUI
+The context sections are available as native [GDB TUI](https://sourceware.org/gdb/current/onlinedocs/gdb.html/TUI.html) windows named `pwndbg_[sectionname]`.
+
+There are some predefined layouts coming with pwndbg which you can select using `layout pwndbg` or `layout pwndbg_code`.
+
+To create [your own layout](https://sourceware.org/gdb/current/onlinedocs/gdb.html/TUI-Commands.html) and selecting it use normal `tui new-layout` syntax like:
+```
+tui new-layout pwndbg_custom {-horizontal { { -horizontal { pwndbg_code 1 pwndbg_disasm 1 } 2 { {-horizontal pwndbg_legend 8 pwndbg_control 2 } 1 pwndbg_regs 6 pwndbg_stack 6 } 3 } 7 cmd 3 } 3 { pwndbg_backtrace 2 pwndbg_threads 1 pwndbg_expressions 2 } 1 } 1 status 1
+layout pwndbg_custom
+```
+
+![](caps/context_tui.png)
+
+Use `focus cmd` to focus the command window and have the arrow keys scroll through the command history again. `tui disable` to disable TUI mode and go back to CLI mode when running commands with longer output. `ctrl-x + a` toggles between TUI and CLI mode quickly. Hold shift to ignore the TUI mouse integration and use the mouse normally to select text or copy data.
 
 ### Watch Expressions
 
@@ -159,21 +176,23 @@ Pwndbg enables introspection of the glibc allocator, ptmalloc2, via a handful of
 ![](caps/heap_fake_fast.png)
 ![](caps/heap_try_free.png)
 
-## IDA Pro Integration
+## IDA Pro/Binary Ninja Integration
 
-Pwndbg flips traditional IDA Pro integration on its head.  Rather than sticking code inside of IDA that you need to interact with, by installing a small [XMLRPC server](ida_script.py) inside of IDA, Pwndbg has full access to everything IDA knows.
+Pwndbg is capable of integrating with IDA Pro or Binary Ninja by installing an XMLRPC server in the decompiler as a plugin, and then querying it for information.
 
-This allows extraction of comments, decompiled lines of source, breakpoints, and synchronized debugging (single-steps update the cursor in IDA).
+This allows extraction of comments, decompiled lines of source, breakpoints, symbols, and synchronized debugging (single-steps update the cursor in the decompiler).
 
 ![](caps/ida_comments.png)
 ![](caps/ida_function.png)
 ![](caps/ida_integration.png)
 
-Since the complete IDA API is exposed, new tools can be built on this functionality to further enhance Pwndbg's usefulness.
+See the [Binary Ninja integration guide](docs/binja_integration.md) for setup information.
 
-You can also connect to Ida Pro XMLRPC server hosted on different machine. In order to achieve it, you need to change:
-* Ida Pro XMLRPC server host (in [ida_script](ida_script.py); as by default it binds to localhost)
-* The config parameters responsible for connection (see `config` command)
+## Go Debugging
+
+Pwndbg has support for dumping complex Go values like maps and slices, including automatically parsing out type layouts in certain cases.
+
+See the [Go debugging guide](docs/go_debugging.md) for more information.
 
 ## Configuration, customization
 

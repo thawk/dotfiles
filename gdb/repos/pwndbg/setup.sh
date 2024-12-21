@@ -61,6 +61,15 @@ install_emerge() {
     sudo emerge --oneshot --deep --newuse --changed-use --changed-deps dev-lang/python dev-debug/gdb
 }
 
+install_oma() {
+    sudo oma refresh || true
+    sudo oma install -y gdb gdbserver python-3 glib make glibc-dbg curl
+
+    if uname -m | grep -q x86_64; then
+        sudo oma install -y glibc+32-dbg || true
+    fi
+}
+
 install_pacman() {
     read -p "Do you want to do a full system update? (y/n) [n] " answer
     # user want to perform a full system upgrade
@@ -68,9 +77,12 @@ install_pacman() {
     if [[ "$answer" == "y" ]]; then
         sudo pacman -Syu || true
     fi
-    sudo pacman -S --noconfirm --needed git gdb python python-capstone python-unicorn python-pycparser python-psutil python-ptrace python-pyelftools python-six python-pygments which debuginfod curl
-    if ! grep -qs "^set debuginfod enabled on" ~/.gdbinit; then
-        echo "set debuginfod enabled on" >> ~/.gdbinit
+    sudo pacman -S --noconfirm --needed git gdb python which debuginfod curl
+    if [ -z "$UPDATE_MODE" ]; then
+        if ! grep -qs "^set debuginfod enabled on" ~/.gdbinit; then
+            echo "set debuginfod enabled on" >> ~/.gdbinit
+            echo "[*] Added 'set debuginfod enabled on' to ~/.gdbinit"
+        fi
     fi
 }
 
@@ -106,17 +118,6 @@ done
 
 PYTHON=''
 
-# Check for the presence of the initializer line in the user's ~/.gdbinit file
-if [ -z "$UPDATE_MODE" ] && grep -qs '^[^#]*source.*pwndbg/gdbinit.py' ~/.gdbinit; then
-    # Ask the user if they want to proceed and override the initializer line
-    read -p "A Pwndbg initializer line was found in your ~/.gdbinit file. Do you want to proceed and override it? (y/n) " answer
-
-    # If the user does not want to proceed, exit the script
-    if [[ "$answer" != "y" ]]; then
-        exit 0
-    fi
-fi
-
 if linux; then
     distro=$(grep "^ID=" /etc/os-release | cut -d'=' -f2 | sed -e 's/"//g')
 
@@ -143,14 +144,12 @@ if linux; then
             ;;
         "gentoo")
             install_emerge
-            if ! hash sudo 2> /dev/null && whoami | grep root; then
-                sudo() {
-                    ${*}
-                }
-            fi
             ;;
         "freebsd")
             install_freebsd
+            ;;
+        "aosc")
+            install_oma
             ;;
         *) # we can add more install command for each distros.
             echo "\"$distro\" is not supported distro. Will search for 'apt', 'dnf' or 'pacman' package managers."
@@ -162,7 +161,7 @@ if linux; then
                 install_pacman
             else
                 echo "\"$distro\" is not supported and your distro don't have a package manager that we support currently."
-                exit
+                exit 2
             fi
             ;;
     esac
@@ -170,7 +169,7 @@ fi
 
 if ! hash gdb; then
     echo "Could not find gdb in $PATH"
-    exit
+    exit 3
 fi
 
 # Find the Python version used by GDB.
@@ -179,6 +178,15 @@ PYTHON+=$(gdb -batch -q --nx -ex 'pi import sys; print(sys.executable)')
 
 if ! osx; then
     PYTHON+="${PYVER}"
+fi
+
+# Check python version supported: <3.10, 3.99>
+is_supported=$(echo "$PYVER" | grep -E '3\.(10|11|12|13|14|15|16|17|18|19|[2-9][0-9])' || true)
+if [[ -z "$is_supported" ]]; then
+    echo "Your system has unsupported python version. Please use older pwndbg release:"
+    echo "'git checkout 2024.08.29' - python3.8, python3.9"
+    echo "'git checkout 2023.07.17' - python3.6, python3.7"
+    exit 4
 fi
 
 # Install Poetry
@@ -201,17 +209,12 @@ source ${PWNDBG_VENV_PATH}/bin/activate
 poetry install
 
 if [ -z "$UPDATE_MODE" ]; then
-    # Comment old configs out
     if grep -qs '^[^#]*source.*pwndbg/gdbinit.py' ~/.gdbinit; then
-        if ! osx; then
-            sed -i '/^[^#]*source.*pwndbg\/gdbinit.py/ s/^/# /' ~/.gdbinit
-        else
-            # In BSD sed we need to pass ' ' to indicate that no backup file should be created
-            sed -i ' ' '/^[^#]*source.*pwndbg\/gdbinit.py/ s/^/# /' ~/.gdbinit
-        fi
+        echo 'Pwndbg is already sourced in ~/.gdbinit .'
+    else
+        # Load Pwndbg into GDB on every launch.
+        echo "source $PWD/gdbinit.py" >> ~/.gdbinit
+        echo "[*] Added 'source $PWD/gdbinit.py' to ~/.gdbinit so that Pwndbg will be loaded on every launch of GDB."
     fi
-
-    # Load Pwndbg into GDB on every launch.
-    echo "source $PWD/gdbinit.py" >> ~/.gdbinit
-    echo "[*] Added 'source $PWD/gdbinit.py' to ~/.gdbinit so that Pwndbg will be loaded on every launch of GDB."
+    echo "Please set the PWNDBG_NO_AUTOUPDATE environment variable to any value to disable the automatic updating of dependencies when Pwndbg is loaded."
 fi

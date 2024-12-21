@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import argparse
+from typing import Optional
 
-import gdb
-
+import pwndbg.aglib.memory
+import pwndbg.aglib.symbol
 import pwndbg.chain
 import pwndbg.commands
-import pwndbg.gdblib.memory
+import pwndbg.dbg
 from pwndbg.color import message
 
 parser = argparse.ArgumentParser(
@@ -167,19 +168,49 @@ parser.add_argument(
     type=str,
     help="The name of the field to be displayed, if only one is desired",
 )
+parser.add_argument(
+    "-o",
+    "--offset",
+    dest="offset",
+    type=int,
+    default=0,
+    help="The offset of the first list element to display. Defaults to zero.",
+)
+parser.add_argument(
+    "-c",
+    "--count",
+    dest="count",
+    type=int,
+    default=None,
+    help="The number of elements to display. Defaults to the value of dereference-limit.",
+)
 
 
 @pwndbg.commands.ArgparsedCommand(parser, command_name="plist")
-def plist(path, next, sentinel, inner_name, field_name) -> None:
+def plist(
+    path: str,
+    next: str,
+    sentinel: int,
+    inner_name: Optional[str],
+    field_name: Optional[str],
+    offset: int,
+    count: Optional[int] = None,
+) -> None:
     # Have GDB parse the path for us and check if it's valid.
     try:
-        first = gdb.parse_and_eval(path)
-    except gdb.error as e:
+        first = pwndbg.dbg.selected_frame().evaluate_expression(path)
+    except pwndbg.dbg_mod.Error as e:
         print(message.error(f"{e}"))
         return
 
     if first.is_optimized_out:
         print(message.error(f"{path} has been optimized out"))
+        return
+
+    if count is None:
+        count = pwndbg.config.dereference_limit
+    if count <= 0:
+        print("count <= 0: not displaying any elements")
         return
 
     # We suport being passed either a pointer to the first structure or the
@@ -188,16 +219,16 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
     # for the error mesages.
     sep = "."
     deref = ""
-    if first.type.code == gdb.TYPE_CODE_PTR:
+    if first.type.code == pwndbg.dbg_mod.TypeCode.POINTER:
         sep = "->"
         deref = "*"
         try:
             first = first.dereference()
-        except gdb.error as e:
+        except pwndbg.dbg_mod.Error as e:
             print(message.error(f"Pointer at {path} could not be dereferenced: {e}"))
             return
 
-    if first.type.code == gdb.TYPE_CODE_PTR:
+    if first.type.code == pwndbg.dbg_mod.TypeCode.POINTER:
         print(message.error(f"{path} is not a value or a single pointer to one"))
         return
 
@@ -216,7 +247,7 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
         try:
             inner = first[inner_name]
             inner_sep = "->"
-        except gdb.error as e:
+        except pwndbg.dbg_mod.Error as e:
             print(message.error(f"Cannot find component {inner_name} in {path}: {e}"))
             return
         if inner.is_optimized_out:
@@ -234,14 +265,14 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
             next_ptr = inner[next]
             next_ptr_loc = inner
             next_ptr_name = f"{inner_name}.{next}"
-    except gdb.error as e:
+    except pwndbg.dbg_mod.Error as e:
         print(message.error(f"Cannot find component {next_ptr_name} in {path}: {e}"))
         return
 
     if next_ptr.is_optimized_out:
         print(message.error(f"{path}{sep}{next_ptr_name} has been optimized out"))
         return
-    if next_ptr.type.code != gdb.TYPE_CODE_PTR:
+    if next_ptr.type.code != pwndbg.dbg_mod.TypeCode.POINTER:
         print(message.error(f"{path}{sep}{next_ptr_name} is not a pointer"))
         return
 
@@ -251,7 +282,7 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
     if field_name is not None:
         try:
             field = first[field_name]
-        except gdb.error as e:
+        except pwndbg.dbg_mod.Error as e:
             print(message.error(f"Cannot find component {field_name} in {path}: {e}"))
             return
         field_type = field.type
@@ -348,13 +379,23 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
     # for all of the elements after it.
     offset0 = inner_offset + next_offset
     offset1 = offset0 - pointee_offset
-    addresses = pwndbg.chain.get(int(first.address), limit=1, offset=offset0)
-    if len(addresses) > 1:
-        addresses.extend(pwndbg.chain.get(addresses[1], offset=offset1, include_start=False))
+
+    total = offset + count
+
+    if total >= 2:
+        addresses = pwndbg.chain.get(int(first.address), limit=1, offset=offset0)
+        if len(addresses) > 1 and total >= 3:
+            addresses.extend(
+                pwndbg.chain.get(addresses[1], offset=offset1, include_start=False, limit=total - 2)
+            )
+    else:
+        addresses = [int(first.address)]
 
     # Finally, dump the information in the addresses we've just gathered.
     for i, address in enumerate(addresses):
-        if address == sentinel:
+        if i < offset:
+            continue
+        if address in (0, sentinel):
             break
         try:
             # Always make sure we have the address of the outer structure.
@@ -368,14 +409,14 @@ def plist(path, next, sentinel, inner_name, field_name) -> None:
                 target_type = field_type
                 target_address = address + field_offset
 
-            value = pwndbg.gdblib.memory.get_typed_pointer_value(target_type, target_address)
+            value = pwndbg.aglib.memory.get_typed_pointer_value(target_type, target_address)
 
-            symbol = pwndbg.gdblib.symbol.get(target_address)
+            symbol = pwndbg.aglib.symbol.resolve_addr(target_address)
             symbol = f"<{symbol}>" if symbol else ""
 
-            print(f"{target_address:#x} {symbol}: {value}")
-        except gdb.error as e:
-            print(message.error(f"Cannot dereference 0x{address:#x} for list link #{i + 1}: {e}"))
+            print(f"{target_address:#x} {symbol}: {value.value_to_human_readable()}")
+        except pwndbg.dbg_mod.Error as e:
+            print(message.error(f"Cannot dereference {address:#x} for list link #{i + 1}: {e}"))
             print(message.error("Is the linked list corrupted or is the sentinel value wrong?"))
             return
 

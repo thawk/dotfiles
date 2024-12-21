@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import argparse
 
-import pwndbg.gdblib.nearpc
+import pwndbg.aglib.nearpc
 from pwndbg.commands import CommandCategory
 
 parser = argparse.ArgumentParser(description="Disassemble near a specified address.")
-parser.add_argument("pc", type=int, nargs="?", default=None, help="Address to disassemble near.")
+parser.add_argument(
+    "pc",
+    type=int,
+    nargs="?",
+    default=None,
+    help="Address to disassemble near. If this is the only argument and the value provided is small enough, it is interpreted as lines instead.",
+)
 parser.add_argument(
     "lines",
     type=int,
@@ -30,7 +36,7 @@ def nearpc(pc=None, lines=None, emulate=False, use_cache=False, linear=True) -> 
     """
     print(
         "\n".join(
-            pwndbg.gdblib.nearpc.nearpc(
+            pwndbg.aglib.nearpc.nearpc(
                 pc, lines, emulate, nearpc.repeat, use_cache=use_cache, linear=linear
             )
         )

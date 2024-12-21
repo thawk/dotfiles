@@ -3,12 +3,12 @@ from __future__ import annotations
 import argparse
 from typing import Union
 
+import pwndbg.aglib.file
+import pwndbg.aglib.shellcode
 import pwndbg.chain
 import pwndbg.color.message as message
 import pwndbg.commands
 import pwndbg.enhance
-import pwndbg.gdblib.file
-import pwndbg.gdblib.shellcode
 import pwndbg.lib.memory
 import pwndbg.wrappers.checksec
 import pwndbg.wrappers.readelf
@@ -183,7 +183,7 @@ instead.\
         if not force:
             page = pwndbg.lib.memory.Page(addr, int(length), 0, 0)
             collisions = []
-            vm = pwndbg.gdblib.vmmap.get()
+            vm = pwndbg.aglib.vmmap.get()
 
             # FIXME: The ends of the maps are sorted. We could bisect the array
             # in order to quickly reject all of the items we could never hit
@@ -241,14 +241,18 @@ using the address {aligned_addr:#x} instead.\
             )
         )
 
-    pointer = pwndbg.gdblib.shellcode.exec_syscall(
-        "SYS_mmap",
-        int(pwndbg.lib.memory.page_align(addr)),
-        int(length),
-        prot_int,
-        flag_int,
-        int(fd),
-        int(offset),
-    )
+    async def ctrl(ec: pwndbg.dbg_mod.ExecutionController):
+        pointer = await pwndbg.aglib.shellcode.exec_syscall(
+            ec,
+            "SYS_mmap",
+            int(pwndbg.lib.memory.page_align(addr)),
+            int(length),
+            prot_int,
+            flag_int,
+            int(fd),
+            int(offset),
+        )
 
-    print(f"mmap syscall returned {pointer:#x}")
+        print(f"mmap syscall returned {pointer:#x}")
+
+    pwndbg.dbg.selected_inferior().dispatch_execution_controller(ctrl)

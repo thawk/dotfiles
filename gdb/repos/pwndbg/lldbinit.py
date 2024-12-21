@@ -27,11 +27,13 @@ def hash_file(file_path: str | Path) -> str:
     return file_hash.hexdigest()
 
 
-def run_poetry_install(poetry_path: os.PathLike[str], dev: bool = False) -> Tuple[str, str, int]:
+def run_poetry_install(
+    poetry_path: os.PathLike[str], src_root: Path, dev: bool = False
+) -> Tuple[str, str, int]:
     command: List[str | os.PathLike[str]] = [poetry_path, "install"]
     if dev:
         command.extend(("--with", "dev"))
-    result = subprocess.run(command, capture_output=True, text=True)
+    result = subprocess.run(command, capture_output=True, text=True, cwd=src_root)
     return result.stdout.strip(), result.stderr.strip(), result.returncode
 
 
@@ -74,7 +76,7 @@ def update_deps(src_root: Path, venv_path: Path) -> None:
             return
 
         dev_mode = is_dev_mode(venv_path)
-        stdout, stderr, return_code = run_poetry_install(poetry_path, dev=dev_mode)
+        stdout, stderr, return_code = run_poetry_install(poetry_path, src_root, dev=dev_mode)
         if return_code == 0:
             poetry_lock_hash_path.write_text(current_hash)
 
@@ -124,15 +126,7 @@ def skip_venv(src_root) -> bool:
     )
 
 
-class Test:
-    def __init__(self, debugger, _):
-        pass
-
-    def __call__(self, debugger, command, exe_context, result):
-        print(f"{debugger}, {command}, {exe_context}, {result}")
-
-
-def main(debugger: lldb.SBDebugger) -> None:
+def main(debugger: lldb.SBDebugger, major: int, minor: int, debug: bool = False) -> None:
     profiler = cProfile.Profile()
 
     start_time = None
@@ -147,20 +141,18 @@ def main(debugger: lldb.SBDebugger) -> None:
             print(f"Cannot find Pwndbg virtualenv directory: {venv_path}. Please re-run setup.sh")
             sys.exit(1)
 
-        update_deps(src_root, venv_path)
+        no_auto_update = os.getenv("PWNDBG_NO_AUTOUPDATE")
+        if no_auto_update is None:
+            update_deps(src_root, venv_path)
         fixup_paths(src_root, venv_path)
-
-    os.environ["PWNLIB_NOTERM"] = "1"
 
     import pwndbg  # noqa: F811
     import pwndbg.dbg.lldb
 
+    pwndbg.dbg_mod.lldb.LLDB_VERSION = (major, minor)
+
     pwndbg.dbg = pwndbg.dbg_mod.lldb.LLDB()
-    pwndbg.dbg.setup(debugger)
-
-    import pwndbg.lldblib
-
-    pwndbg.lldblib.register_class_as_cmd(debugger, "test", Test)
+    pwndbg.dbg.setup(debugger, __name__, debug=debug)
 
     import pwndbg.profiling
 
@@ -168,15 +160,3 @@ def main(debugger: lldb.SBDebugger) -> None:
     if os.environ.get("PWNDBG_PROFILE") == "1":
         pwndbg.profiling.profiler.stop("pwndbg-load.pstats")
         pwndbg.profiling.profiler.start()
-
-
-def __lldb_init_module(debugger, _):
-    """
-    Actually handles the setup bits for LLDB.
-
-    LLDB, unlike GDB, exposes the bits we're interested in through object
-    instances, and we are initially only passed the instance for the interactive
-    debugger through this function.
-    """
-
-    main(debugger)

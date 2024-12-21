@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 
+import pwndbg.aglib.file
+import pwndbg.aglib.shellcode
 import pwndbg.chain
 import pwndbg.commands
 import pwndbg.enhance
-import pwndbg.gdblib.file
-import pwndbg.gdblib.shellcode
 import pwndbg.lib.memory
 import pwndbg.wrappers.checksec
 import pwndbg.wrappers.readelf
@@ -98,11 +98,14 @@ def mprotect(addr, length, prot) -> None:
     orig_addr = int(addr)
     aligned = pwndbg.lib.memory.page_align(orig_addr)
 
-    print(
-        f"calling mprotect on address {aligned:#x} with protection {prot_int} ({prot_val_to_str(prot_int)})"
-    )
+    async def ctrl(ec: pwndbg.dbg_mod.ExecutionController):
+        print(
+            f"calling mprotect on address {aligned:#x} with protection {prot_int} ({prot_val_to_str(prot_int)})"
+        )
 
-    ret = pwndbg.gdblib.shellcode.exec_syscall(
-        "SYS_mprotect", aligned, int(length) + orig_addr - aligned, int(prot_int)
-    )
-    print(f"mprotect returned {ret}")
+        ret = await pwndbg.aglib.shellcode.exec_syscall(
+            ec, "SYS_mprotect", aligned, int(length) + orig_addr - aligned, int(prot_int)
+        )
+        print(f"mprotect returned {ret}")
+
+    pwndbg.dbg.selected_inferior().dispatch_execution_controller(ctrl)

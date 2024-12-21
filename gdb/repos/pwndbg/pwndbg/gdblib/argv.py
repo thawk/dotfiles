@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import gdb
-
+import pwndbg
+import pwndbg.aglib.arch
+import pwndbg.aglib.memory
+import pwndbg.aglib.regs
 import pwndbg.gdblib.abi
-import pwndbg.gdblib.arch
-import pwndbg.gdblib.events
-import pwndbg.gdblib.memory
-import pwndbg.gdblib.regs
+from pwndbg.dbg import EventType
 
 #: Total number of arguments
 argc = None
@@ -21,7 +20,7 @@ envp = None
 envc = None
 
 
-@pwndbg.gdblib.events.start
+@pwndbg.dbg.event_handler(EventType.START)
 @pwndbg.gdblib.abi.LinuxOnly()
 def update() -> None:
     global argc
@@ -29,14 +28,14 @@ def update() -> None:
     global envp
     global envc
 
-    pwndbg.gdblib.arch_mod.update()  # :-(
+    pwndbg.aglib.arch_mod.update()  # :-(
 
-    sp = pwndbg.gdblib.regs.sp
-    ptrsize = pwndbg.gdblib.arch.ptrsize
+    sp = pwndbg.aglib.regs.sp
+    ptrsize = pwndbg.aglib.arch.ptrsize
     ptrbits = 8 * ptrsize
 
     try:
-        argc = pwndbg.gdblib.memory.u(sp, ptrbits)
+        argc = pwndbg.aglib.memory.u(sp, ptrbits)
     except Exception:
         return
 
@@ -44,7 +43,7 @@ def update() -> None:
 
     argv = sp
 
-    while pwndbg.gdblib.memory.u(sp, ptrbits):
+    while pwndbg.aglib.memory.u(sp, ptrbits):
         sp += ptrsize
 
     sp += ptrsize
@@ -53,8 +52,8 @@ def update() -> None:
 
     envc = 0
     try:
-        while pwndbg.gdblib.memory.u(sp, ptrbits):
+        while pwndbg.aglib.memory.u(sp, ptrbits):
             sp += ptrsize
             envc += 1
-    except gdb.MemoryError:
+    except pwndbg.dbg_mod.Error:
         pass

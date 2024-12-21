@@ -122,6 +122,7 @@ OPCODE_SEPERATOR_TESTS_EXPECTED_OUTPUT = {
 def test_nearpc_opcode_bytes(start_binary, opcode_bytes):
     start_binary(SYSCALLS_BINARY)
     gdb.execute("nextsyscall")
+
     gdb.execute(f"set nearpc-num-opcode-bytes {opcode_bytes}")
     dis = gdb.execute("nearpc", to_string=True)
     expected = (
