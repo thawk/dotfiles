@@ -3,12 +3,13 @@ from __future__ import annotations
 import shlex
 import string
 
+import pwndbg.aglib.file
+import pwndbg.aglib.proc
+import pwndbg.aglib.qemu
 import pwndbg.auxv
 import pwndbg.commands
-import pwndbg.gdblib.file
-import pwndbg.gdblib.net
-import pwndbg.gdblib.proc
 import pwndbg.lib.cache
+import pwndbg.lib.net
 from pwndbg.color import message
 from pwndbg.commands import CommandCategory
 
@@ -66,12 +67,37 @@ capabilities = {
 }
 
 
+def tcp():
+    # For reference, see:
+    # https://www.kernel.org/doc/Documentation/networking/proc_net_tcp.txt
+    """
+    It will first list all listening TCP sockets, and next list all established
+    TCP connections. A typical entry of /proc/net/tcp would look like this (split
+    up into 3 parts because of the length of the line):
+    """
+    data = pwndbg.aglib.file.get("/proc/net/tcp").decode()
+    return pwndbg.lib.net.tcp(data)
+
+
+def unix():
+    # We use errors=ignore because of https://github.com/pwndbg/pwndbg/issues/1544
+    # TODO/FIXME: this may not be the best solution because we may end up with
+    # invalid UDS data. Can this be a problem?
+    data = pwndbg.aglib.file.get("/proc/net/unix").decode(errors="ignore")
+    return pwndbg.lib.net.unix(data)
+
+
+def netlink():
+    data = pwndbg.aglib.file.get("/proc/net/netlink").decode()
+    return pwndbg.lib.net.netlink(data)
+
+
 class Process:
     def __init__(self, pid=None, tid=None) -> None:
         if pid is None:
-            pid = pwndbg.gdblib.proc.pid
+            pid = pwndbg.aglib.proc.pid
         if tid is None:
-            tid = pwndbg.gdblib.proc.tid
+            tid = pwndbg.aglib.proc.tid
         if not tid:
             tid = pid
         self.pid = pid
@@ -81,25 +107,25 @@ class Process:
     @pwndbg.lib.cache.cache_until("stop")
     def selinux(self):
         path = "/proc/%i/task/%i/attr/current" % (self.pid, self.tid)
-        raw = pwndbg.gdblib.file.get(path)
+        raw = pwndbg.aglib.file.get(path)
         return raw.decode().rstrip("\x00").strip()
 
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def cmdline(self):
-        raw = pwndbg.gdblib.file.get(f"/proc/{self.pid}/cmdline")
+        raw = pwndbg.aglib.file.get(f"/proc/{self.pid}/cmdline")
         return " ".join(map(shlex.quote, raw.decode().split("\x00")))
 
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def cwd(self) -> str:
-        link = pwndbg.gdblib.file.readlink(f"/proc/{self.pid}/cwd")
+        link = pwndbg.aglib.file.readlink(f"/proc/{self.pid}/cwd")
         return f"'{link}'"
 
     @property
     @pwndbg.lib.cache.cache_until("stop")
     def status(self):
-        raw = pwndbg.gdblib.file.get("/proc/%i/task/%i/status" % (self.pid, self.tid))
+        raw = pwndbg.aglib.file.get("/proc/%i/task/%i/status" % (self.pid, self.tid))
 
         status = {}
         for line in raw.splitlines():
@@ -157,7 +183,7 @@ class Process:
         fds = {}
 
         for i in range(self.fdsize):
-            link = pwndbg.gdblib.file.readlink("/proc/%i/fd/%i" % (pwndbg.gdblib.proc.pid, i))
+            link = pwndbg.aglib.file.readlink("/proc/%i/fd/%i" % (pwndbg.aglib.proc.pid, i))
 
             if link:
                 fds[i] = link
@@ -173,7 +199,7 @@ class Process:
         socket = "socket:["
         result = []
 
-        functions = [pwndbg.gdblib.net.tcp, pwndbg.gdblib.net.unix, pwndbg.gdblib.net.netlink]
+        functions = [tcp, unix, netlink]
 
         for fd, path in fds.items():
             if socket not in path:
@@ -196,7 +222,7 @@ class Process:
 )
 @pwndbg.commands.OnlyWhenRunning
 def pid() -> None:
-    print(pwndbg.gdblib.proc.pid)
+    print(pwndbg.aglib.proc.pid)
 
 
 @pwndbg.commands.ArgparsedCommand(
@@ -207,7 +233,7 @@ def procinfo() -> None:
     """
     Display information about the running process.
     """
-    if pwndbg.gdblib.qemu.is_qemu():
+    if pwndbg.aglib.qemu.is_qemu():
         print(
             message.error(
                 "QEMU target detected: showing result for the qemu process"
@@ -241,14 +267,9 @@ def procinfo() -> None:
 
     print("%-10s %s" % ("ppid", proc.ppid))
 
-    if not pwndbg.gdblib.android.is_android():
-        print("%-10s %s" % ("uid", proc.uid))
-        print("%-10s %s" % ("gid", proc.gid))
-        print("%-10s %s" % ("groups", proc.groups))
-    else:
-        print("%-10s %s" % ("uid", list(map(pwndbg.lib.android.aid_name, proc.uid))))
-        print("%-10s %s" % ("gid", list(map(pwndbg.lib.android.aid_name, proc.gid))))
-        print("%-10s %s" % ("groups", list(map(pwndbg.lib.android.aid_name, proc.groups))))
+    print("%-10s %s" % ("uid", proc.uid))
+    print("%-10s %s" % ("gid", proc.gid))
+    print("%-10s %s" % ("groups", proc.groups))
 
     for fd, path in files.items():
         if not set(path) < set(string.printable):

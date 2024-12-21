@@ -10,13 +10,17 @@ let
     "armv7l-linux" = "armv7";
 
     "riscv64-linux" = "riscv64";
+
+    "aarch64-darwin" = "macos_arm64";
+    "x86_64-darwin" = "macos_amd64";
   };
 
   buildPackagePFPM =
     {
       drv ? null,
       config ? "nfpm.yaml",
-      packager ? null, # apk|deb|rpm|archlinux
+      packager ? null,
+      # apk|deb|rpm|archlinux
       preremove ? null,
       ...
     }@attrs:
@@ -60,7 +64,7 @@ let
         ln -s ${drv} ./result
         export DIST_TAR=$PWD/dist/${drv.meta.name}_${drv.meta.version}_${
           pfpmArchs.${drv.meta.architecture}
-        }.tar.gz
+        }.tar.xz
 
         pushd ./result
         chmod +x bin/* || true

@@ -29,11 +29,13 @@ pwndbg.config.add_param(
 
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawTextHelpFormatter,
-    description="""Attaches to a given pid, process name or device file.
+    description="""Attaches to a given pid, process name, process found with partial argv match or to a device file.
 
 This command wraps the original GDB `attach` command to add the ability
-to debug a process with given name. In such case the process identifier is
-fetched via the `pidof <name>` command.
+to debug a process with a given name or partial name match. In such cases,
+the process identifier is fetched via the `pidof <name>` command first. If no
+matches are found, then it uses the `ps -eo pid,args` command to search for
+partial name matches.
 
 Original GDB attach command help:
     Attach to a process or file outside of GDB.
@@ -49,12 +51,74 @@ Original GDB attach command help:
     to specify the program, and to load its symbol table.""",
 )
 
+
 parser.add_argument("--no-truncate", action="store_true", help="dont truncate command args")
-parser.add_argument("target", type=str, help="pid, process name or device file to attach to")
+parser.add_argument("--retry", action="store_true", help="retry until a target is found")
+parser.add_argument("--user", type=str, default=None, help="username or uid to filter by")
+parser.add_argument(
+    "-a",
+    "--all",
+    action="store_true",
+    help="get pids for all matches (exact and partial cmdline etc)",
+)
+parser.add_argument(
+    "target",
+    type=str,
+    help="pid, process name, part of cmdline to be matched or device file to attach to",
+)
+
+
+def find_pids(target, user, all):
+    # Note: we can't use `ps -C <target>` because this does not accept process names with spaces
+    # so target='a b' would actually match process names 'a' and 'b' here
+    # so instead, we will filter by process name or full cmdline later on
+    # if provided, filter by effective username or uid; otherwise, select all processes
+    ps_filter = ["-u", user] if user is not None else ["-e"]
+    ps_cmd = ["ps", "-o", "pid,args"] + ps_filter
+
+    try:
+        ps_output = check_output(ps_cmd, universal_newlines=True)
+    except FileNotFoundError:
+        print(message.error("Error: did not find `ps` command"))
+        return
+    except CalledProcessError:
+        print(message.error(f"The `{' '.join(ps_cmd)}` command returned non-zero status"))
+        return
+
+    pids_exact_match_cmd = []
+    pids_partial_match_cmd = []
+    pids_partial_match_args = []
+
+    # Skip header line
+    for line in ps_output.strip().splitlines()[1:]:
+        process_info = line.split(maxsplit=1)
+
+        if len(process_info) <= 1:
+            # No command name?
+            continue
+
+        pid, args = process_info
+        cmd = args.split(maxsplit=1)[0]
+
+        # Cannot attach to gdb itself.
+        if int(pid) == os.getpid():
+            continue
+
+        if target == cmd:
+            pids_exact_match_cmd.append(pid)
+        elif target in cmd:
+            pids_partial_match_cmd.append(pid)
+        elif target in args:
+            pids_partial_match_args.append(pid)
+
+    if all:
+        return pids_exact_match_cmd + pids_partial_match_cmd + pids_partial_match_args
+
+    return pids_exact_match_cmd or pids_partial_match_cmd or pids_partial_match_args
 
 
 @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.START)
-def attachp(no_truncate, target) -> None:
+def attachp(target, no_truncate, retry, all, user=None) -> None:
     try:
         resolved_target = int(target)
     except ValueError:
@@ -74,13 +138,16 @@ def attachp(no_truncate, target) -> None:
             resolved_target = target
 
         else:
-            try:
-                pids = check_output(["pidof", target]).decode().rstrip("\n").split(" ")
-            except FileNotFoundError:
-                print(message.error("Error: did not find `pidof` command"))
-                return
-            except CalledProcessError:
-                pids = []
+            pids = find_pids(target, user, all)
+            if not pids and retry:
+                user_filter = "" if not user else f" and user={user}"
+                print(
+                    message.warn(
+                        f"Looking for pids for target={target}{user_filter} in a loop. Hit CTRL+C to cancel"
+                    )
+                )
+                while not pids:
+                    pids = find_pids(target, user, all)
 
             if not pids:
                 print(message.error(f"Process {target} not found"))

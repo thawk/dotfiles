@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import gdb
 
-import pwndbg
+import pwndbg.aglib.arch
+import pwndbg.aglib.memory
+import pwndbg.aglib.vmmap
 import tests
 
 HEAP_VIS = tests.binaries.get("heap_vis.out")
@@ -15,9 +17,9 @@ def test_vis_heap_chunk_command(start_binary):
 
     # TODO/FIXME: Shall we have a standard method to do this kind of filtering?
     # Note that we have `pages_filter` in pwndbg/pwndbg/commands/vmmap.py heh
-    heap_page = next(page for page in pwndbg.gdblib.vmmap.get() if page.objfile == "[heap]")
+    heap_page = next(page for page in pwndbg.aglib.vmmap.get() if page.objfile == "[heap]")
 
-    first_chunk_size = pwndbg.gdblib.memory.u64(heap_page.start + pwndbg.gdblib.arch.ptrsize)
+    first_chunk_size = pwndbg.aglib.memory.u64(heap_page.start + pwndbg.aglib.arch.ptrsize)
 
     # Just a sanity check...
     assert (heap_page.start & 0xFFF) == 0
@@ -36,7 +38,7 @@ def test_vis_heap_chunk_command(start_binary):
         return heap_addr
 
     def hexdump_16B(gdb_symbol):
-        from pwndbg.commands.heap import bin_ascii
+        from pwndbg.commands.ptmalloc2 import bin_ascii
 
         first, second = gdb.execute(f"x/16xb {gdb_symbol}", to_string=True).splitlines()
         first = [int(v, 16) for v in first.split(":")[1].split("\t")[1:]]
@@ -50,7 +52,7 @@ def test_vis_heap_chunk_command(start_binary):
         hexdump = hexdump_16B(addr)
 
         nonlocal dq2
-        dq1, dq2 = map(pwndbg.gdblib.memory.u64, (addr, addr + 8))
+        dq1, dq2 = map(pwndbg.aglib.memory.u64, (addr, addr + 8))
 
         formatted = f"{addr:#x}\t{dq1:#018x}\t{dq2:#018x}\t{hexdump}"
         formatted += suffix
@@ -67,7 +69,7 @@ def test_vis_heap_chunk_command(start_binary):
         expected.append(
             "%#x\t0x0000000000000000\t0x0000000000000000\t................" % heap_iter()
         )
-    expected.append("%#x\t0x0000000000000000" % heap_iter())
+    expected.append("%#x\t0x0000000000000000\t                  \t........" % heap_iter())
     assert result == expected
 
     ## This time using `default-visualize-chunk-number` to set `count`, to make sure that the config can work
@@ -90,7 +92,7 @@ def test_vis_heap_chunk_command(start_binary):
     expected2 = expected[:-1] + [
         "%#x\t0x0000000000000000\t0x0000000000000021\t........!......." % heap_iter(0),
         "%#x\t0x0000000000000000\t0x0000000000000000\t................" % heap_iter(),
-        "%#x\t0x0000000000000000" % heap_iter(),
+        "%#x\t0x0000000000000000\t                  \t........" % heap_iter(),
     ]
     assert result2 == expected2
 

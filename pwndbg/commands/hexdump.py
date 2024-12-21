@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import argparse
 
-import gdb
-
 import pwndbg
+import pwndbg.aglib.arch
+import pwndbg.aglib.memory
+import pwndbg.aglib.regs
 import pwndbg.commands
-import pwndbg.gdblib.arch
-import pwndbg.gdblib.memory
-import pwndbg.gdblib.regs
 import pwndbg.hexdump
 from pwndbg.color import message
 from pwndbg.commands import CommandCategory
@@ -29,18 +27,17 @@ pwndbg.config.add_param(
 )
 
 
-def address_or_module_name(s):
-    gdbval_or_str = pwndbg.commands.sloppy_gdb_parse(s)
-    if isinstance(gdbval_or_str, str):
-        module_name = gdbval_or_str
-        pages = list(filter(lambda page: module_name in page.objfile, pwndbg.gdblib.vmmap.get()))
+def address_or_module_name(s) -> int:
+    addr_or_str: int | str = pwndbg.commands.sloppy_gdb_parse(s)
+    if isinstance(addr_or_str, str):
+        module_name = addr_or_str
+        pages = list(filter(lambda page: module_name in page.objfile, pwndbg.aglib.vmmap.get()))
         if pages:
             return pages[0].vaddr
         else:
             raise argparse.ArgumentTypeError(f"Could not find pages for module {module_name}")
-    elif isinstance(gdbval_or_str, (int, gdb.Value)):
-        addr = gdbval_or_str
-        return addr
+    elif isinstance(addr_or_str, int):
+        return addr_or_str
     else:
         raise argparse.ArgumentTypeError("Unknown hexdump argument type.")
 
@@ -65,13 +62,12 @@ parser.add_argument(
 def hexdump(address, count=pwndbg.config.hexdump_bytes) -> None:
     if hexdump.repeat:
         address = hexdump.last_address
-        hexdump.offset += 1
     else:
         hexdump.offset = 0
 
     address = int(address)
-    if address > pwndbg.gdblib.arch.ptrmask:
-        new_address = address & pwndbg.gdblib.arch.ptrmask
+    if address > pwndbg.aglib.arch.ptrmask:
+        new_address = address & pwndbg.aglib.arch.ptrmask
         print(
             message.warn("0x%x is larger than the maximum address, truncating to 0x%x instead"),
             address,
@@ -83,11 +79,11 @@ def hexdump(address, count=pwndbg.config.hexdump_bytes) -> None:
     width = int(pwndbg.config.hexdump_width)
 
     group_width = int(pwndbg.config.hexdump_group_width)
-    group_width = pwndbg.gdblib.typeinfo.ptrsize if group_width == -1 else group_width
+    group_width = pwndbg.aglib.typeinfo.ptrsize if group_width == -1 else group_width
 
     # TODO: What if arch endian is big, and use_big_endian is false?
     flip_group_endianness = (
-        pwndbg.config.hexdump_group_use_big_endian and pwndbg.gdblib.arch.endian == "little"
+        bool(pwndbg.config.hexdump_group_use_big_endian) and pwndbg.aglib.arch.endian == "little"
     )
 
     # The user may have input the start and end range to dump instead of the
@@ -98,9 +94,9 @@ def hexdump(address, count=pwndbg.config.hexdump_bytes) -> None:
         count -= address
 
     try:
-        data = pwndbg.gdblib.memory.read(address, count, partial=True)
+        data = pwndbg.aglib.memory.read(address, count, partial=True)
         hexdump.last_address = address + count
-    except gdb.error as e:
+    except pwndbg.dbg_mod.Error as e:
         print(e)
         return
 
@@ -112,12 +108,11 @@ def hexdump(address, count=pwndbg.config.hexdump_bytes) -> None:
         flip_group_endianness=flip_group_endianness,
         offset=hexdump.offset,
     )
-    for i, line in enumerate(result):
+
+    for line in result:
         print(line)
 
-    # If this command is entered again with no arguments, remember where we left off printing
-    # TODO: This is broken if the user inputs a count less than the width
-    hexdump.offset += i
+    hexdump.offset += count
 
 
 hexdump.last_address = 0

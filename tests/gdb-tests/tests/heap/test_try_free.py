@@ -6,7 +6,8 @@ import tempfile
 import gdb
 import pytest
 
-import pwndbg
+import pwndbg.aglib.arch
+import pwndbg.aglib.heap
 import tests
 
 HEAP_BINARY = tests.binaries.get("heap_bugs.out")
@@ -158,9 +159,9 @@ def test_try_free_invalid_fastbin_entry(start_binary):
 
 def test_try_free_double_free_or_corruption_top(start_binary):
     setup_heap(start_binary, 9)
-    allocator = pwndbg.gdblib.heap.current
+    allocator = pwndbg.aglib.heap.current
 
-    ptr_size = pwndbg.gdblib.arch.ptrsize
+    ptr_size = pwndbg.aglib.arch.ptrsize
     arena = allocator.thread_arena or allocator.main_arena
     top_chunk = arena.top + (2 * ptr_size)
 

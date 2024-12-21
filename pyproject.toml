@@ -2,26 +2,18 @@
 line-length = 100
 
 [tool.ruff.lint]
-ignore = [
-    "A003",
-    "E402",
-    "E501",
-    "E731",
-    "F405",
-    "F821",
-    "W505",
-]
+ignore = ["A003", "E402", "E501", "E731", "F405", "F821", "W505"]
 
 select = [
-    "A",  # flake8-builtins
-    "E",  # pycodestyle
-    "F",  # pyflakes
-    "W",  # pycodestyle
-    "C4", # flake8-comprehensions
-    "ISC", # flake8-implicit-str-concat
-    "SLOT", # flake8-slots
-    "FLY", # flynt
-    "PGH", # pygrep-hooks
+    "A",      # flake8-builtins
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "W",      # pycodestyle
+    "C4",     # flake8-comprehensions
+    "ISC",    # flake8-implicit-str-concat
+    "SLOT",   # flake8-slots
+    "FLY",    # flynt
+    "PGH",    # pygrep-hooks
     "RET506", # flake8-return: superfluous-else-raise
     "RET507", # flake8-return: superfluous-else-continue
     "RET508", # flake8-return: superfluous-else-break
@@ -69,34 +61,29 @@ show_error_codes = true
 incremental = false
 disable_error_code = [
     # https://github.com/python/mypy/issues/6232
-    "assignment"
+    "assignment",
 ]
 
 [[tool.mypy.overrides]]
-module = [
-    "pwndbg.gdblib.disasm.*",
-    "pwndbg.gdblib.elf",
-]
+module = ["pwndbg.aglib.elf"]
 disable_error_code = ["name-defined"]
 
 [[tool.mypy.overrides]]
 module = [
+    "pwndbg.aglib.arch",
     "pwndbg.color.*",
     "pwndbg.commands.context",
     "pwndbg.commands.cymbol",
     "pwndbg.commands.hexdump",
     "pwndbg.commands.procinfo",
     "pwndbg.commands.reload",
-    "pwndbg.commands.telescope",
     "pwndbg.commands.version",
     "pwndbg.exception",
-    "pwndbg.gdblib.dt",
-    "pwndbg.gdblib.dynamic",
+    "pwndbg.aglib.dynamic",
     "pwndbg.gdblib.events",
     "pwndbg.gdblib.got",
-    "pwndbg.gdblib.heap_tracking",
-    "pwndbg.gdblib.stack",
-    "pwndbg.gdblib.heap.*",
+    "pwndbg.gdblib.ptmalloc2_tracking",
+    "pwndbg.aglib.heap.*",
     "pwndbg.hexdump",
     "pwndbg.ui",
     "pwndbg.wrappers.*",
@@ -104,20 +91,48 @@ module = [
 disable_error_code = ["attr-defined"]
 
 [[tool.mypy.overrides]]
+module = ["pwndbg.commands.telescope"]
+disable_error_code = ["attr-defined", "index"]
+
+[[tool.mypy.overrides]]
 module = [
-    "pwndbg.gdblib.nearpc",
-    "pwndbg.gdblib.typeinfo",
+    "pwndbg.aglib.nearpc",
+    "pwndbg.aglib.typeinfo",
 ]
 disable_error_code = ["name-defined", "attr-defined"]
 
 [[tool.mypy.overrides]]
-module = ["capstone.*", "unicorn.*", "pwnlib.*", "elftools.*", "ipdb.*", "r2pipe", "rzpipe", "rich.*", "pt_gdb", "lldb.*"]
+module = ["pwndbg.aglib.disasm.*"]
+disable_error_code = ["index", "name-defined", "attr-defined"]
+
+[[tool.mypy.overrides]]
+module = [
+    "capstone.*",
+    "unicorn.*",
+    "pwnlib.*",
+    "ropgadget.*",
+    "elftools.*",
+    "ipdb.*",
+    "r2pipe",
+    "rzpipe",
+    "rich.*",
+    "pt.*",
+    "lldb.*",
+    "gnureadline",
+]
 ignore_missing_imports = true
 
 [tool.isort]
 profile = "black"
 force_single_line = true
-known_third_party = ["capstone", "unicorn", "psutil", "pycparser", "gdb", "lldb"]
+known_third_party = [
+    "capstone",
+    "unicorn",
+    "psutil",
+    "pycparser",
+    "gdb",
+    "lldb",
+]
 add_imports = "from __future__ import annotations"
 
 [tool.coverage.run]
@@ -134,39 +149,44 @@ omit = ["ida_script.py", "tests/*"]
 [tool.poetry]
 name = "pwndbg"
 description = "Exploit Development and Reverse Engineering with GDB Made Easy"
-version = "2024.02.14"
+version = "2024.08.29"
 authors = ["Dominik 'disconnect3d' Czarnota <dominik.b.czarnota+dc@gmail.com>"]
 readme = "README.md"
-packages = [
-    { include = "pwndbg" },
-]
+packages = [{ include = "pwndbg" }]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-# Newer versions of capstone break tests
-capstone = "5.0.0.post1"
-# This is the last version of IPython that supports Python 3.8
-ipython = "8.12.3"
+python = "^3.10"
+capstone = "^5.0.3"
+ipython = "^8.27.0"
 # Needed by Capstone due to https://github.com/pwndbg/pwndbg/pull/1946#issuecomment-1921603947
-setuptools = "^69.5.1"
+setuptools = "^70.0.0"
 psutil = "^5.9.8"
-pwntools = "^4.12.0"
+pwntools = "^4.14.0b0"
 pycparser = "^2.22"
 pyelftools = "^0.29"
-pygments = "^2.17.2"
+pygments = "^2.18.0"
 ropgadget = "7.3"
 sortedcontainers = "^2.4.0"
 tabulate = "^0.9.0"
-typing-extensions = "^4.11.0"
-unicorn = "^2.0.1.post1"
-requests = "^2.32.0"
-pt = {git = "https://github.com/martinradev/gdb-pt-dump", rev = "50227bda0b6332e94027f811a15879588de6d5cb"}
+typing-extensions = "^4.12.0"
+unicorn = "^2.1.1"
+requests = "^2.32.3"
+pt = { git = "https://github.com/martinradev/gdb-pt-dump", rev = "50227bda0b6332e94027f811a15879588de6d5cb" }
+# Newer versions of bcrypt break NIX. Who need bcrypt: pwntools->paramiko->bcrypt
+bcrypt = "4.2.0"
+
+[tool.poetry.group.lldb]
+optional = true
+
+[tool.poetry.group.lldb.dependencies]
+# The LLDB REPL requires readline.
+gnureadline = "^8.2.10"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-coverage = {version = "^7.5.0", extras = ["toml"]}
+coverage = { version = "^7.5.0", extras = ["toml"] }
 isort = "^5.13.2"
 mypy = "^1.10.0"
 # Newer versions of pytest break CI on GitHub

@@ -3,7 +3,7 @@
 
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://choosealicense.com/licenses/mit/)
 [![Unit tests](https://github.com/pwndbg/pwndbg/actions/workflows/tests.yml/badge.svg?branch=dev&event=push)](https://github.com/pwndbg/pwndbg/actions/workflows/tests.yml)
-[![codecov.io](https://codecov.io/github/pwndbg/pwndbg/graph/badge.svg?token=i1cBPFVCav)](https://codecov.io/github/pwndbg/pwndbg?branch=dev)
+[![codecov.io](https://codecov.io/github/pwndbg/pwndbg/branch/dev/badge.svg?token=i1cBPFVCav)](https://app.codecov.io/github/pwndbg/pwndbg/tree/dev)
 [![Discord](https://img.shields.io/discord/843809097920413717?label=Discord&style=plastic)](https://discord.gg/x47DssnGwm)
 
 `pwndbg` (/paʊnˈdiˌbʌɡ/) is a GDB plug-in that makes debugging with GDB suck less, with a focus on features needed by low-level software developers, hardware hackers, reverse-engineers and exploit developers.
@@ -49,7 +49,11 @@ nix shell github:pwndbg/pwndbg
 pwndbg ./your-binary
 ```
 
-Pwndbg is supported on Ubuntu 20.04, and 22.04 with GDB 9.2 and later. We do not test on any older versions of Ubuntu, so `pwndbg` may not work on these versions (for Ubuntu 18.04 use the [2023.07.17: ubuntu18.04-final release](https://github.com/pwndbg/pwndbg/releases/tag/2023.07.17)). We may accept pull requests fixing issues in older versions on a case by case basis, please discuss this with us on [Discord](https://discord.gg/x47DssnGwm) first. You can also always checkout an older version of `pwndbg` from around the time the Ubuntu version you're interested in was still supported by Canonical, or you can attempt to build a newer version of GDB from source.
+Pwndbg is supported on Ubuntu 22.04, and 24.04 with GDB 12.1 and later. We do not test on any older versions of Ubuntu, so `pwndbg` may not work on these versions.
+- For Ubuntu 20.04 use the [2024.08.29 release](https://github.com/pwndbg/pwndbg/releases/tag/2024.08.29)
+- For Ubuntu 18.04 use the [2023.07.17: ubuntu18.04-final release](https://github.com/pwndbg/pwndbg/releases/tag/2023.07.17)
+
+We may accept pull requests fixing issues in older versions on a case by case basis, please discuss this with us on [Discord](https://discord.gg/x47DssnGwm) first. You can also always checkout an older version of `pwndbg` from around the time the Ubuntu version you're interested in was still supported by Canonical, or you can attempt to build a newer version of GDB from source.
 
 Other Linux distributions are also supported via `setup.sh`, including:
 
@@ -77,40 +81,40 @@ The portable version includes all necessary dependencies and should work without
 ### Download the Portable Version:
 
 Download the portable version from the [Pwndbg releases page](https://github.com/pwndbg/pwndbg/releases) by selecting the desired version.
-Choose the appropriate version for your system architecture (x86_64 or aarch64).
+Choose the appropriate version for your system architecture (x86_64, armv7l, aarch64, riscv64).
 
 ### Installation on RPM-based Systems (CentOS/Alma/Rocky/RHEL):
 
 ```shell
-dnf install ./pwndbg-2023.07.17.x86_64.rpm
+dnf install ./pwndbg-2024.08.29.x86_64.rpm
 # pwndbg
 ```
 
 ### Installation on DEB-based Systems (Debian/Ubuntu/Kali):
 
 ```shell
-apt install ./pwndbg_2023.07.17_amd64.deb
+apt install ./pwndbg_2024.08.29_amd64.deb
 # pwndbg
 ```
 
 ### Installation on Alpine:
 
 ```shell
-apk add --allow-untrusted ./pwndbg_2023.07.17_x86_64.apk
+apk add --allow-untrusted ./pwndbg_2024.08.29_x86_64.apk
 # pwndbg
 ```
 
 ### Installation on Arch Linux:
 
 ```shell
-pacman -U ./pwndbg-2023.07.17-1-x86_64.pkg.tar.zst
+pacman -U ./pwndbg-2024.08.29-1-x86_64.pkg.tar.zst
 # pwndbg
 ```
 
 ### Generic Linux Installation:
 
 ```shell
-tar -v -xf ./pwndbg_2023.07.17_amd64.tar.gz
+tar -v -xf ./pwndbg_2024.08.29_amd64.tar.xz
 # ./pwndbg/bin/pwndbg
 ```
 

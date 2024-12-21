@@ -9,24 +9,24 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import TypeVar
 
-import gdb
 from typing_extensions import ParamSpec
 
+import pwndbg.aglib.heap
+import pwndbg.aglib.kernel
+import pwndbg.aglib.proc
+import pwndbg.aglib.qemu
+import pwndbg.aglib.regs
 import pwndbg.exception
-import pwndbg.gdblib.heap
-import pwndbg.gdblib.kernel
-import pwndbg.gdblib.proc
-import pwndbg.gdblib.qemu
-import pwndbg.gdblib.regs
-from pwndbg.gdblib.heap.ptmalloc import DebugSymsHeap
-from pwndbg.gdblib.heap.ptmalloc import GlibcMemoryAllocator
-from pwndbg.gdblib.heap.ptmalloc import HeuristicHeap
-from pwndbg.gdblib.heap.ptmalloc import SymbolUnresolvableError
+from pwndbg.aglib.heap.ptmalloc import DebugSymsHeap
+from pwndbg.aglib.heap.ptmalloc import GlibcMemoryAllocator
+from pwndbg.aglib.heap.ptmalloc import HeuristicHeap
+from pwndbg.aglib.heap.ptmalloc import SymbolUnresolvableError
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,8 @@ class CommandCategory(str, Enum):
     START = "Start"
     NEXT = "Step/Next/Continue"
     CONTEXT = "Context"
-    HEAP = "Heap"
+    PTMALLOC2 = "GLibc ptmalloc2 Heap"
+    JEMALLOC = "jemalloc Heap"
     BREAKPOINT = "Breakpoint"
     MEMORY = "Memory"
     STACK = "Stack"
@@ -58,36 +59,16 @@ class CommandCategory(str, Enum):
     DEV = "Developer"
 
 
-def list_current_commands():
-    current_pagination = gdb.execute("show pagination", to_string=True)
-    current_pagination = current_pagination.split()[-1].rstrip(
-        "."
-    )  # Take last word and skip period
-
-    gdb.execute("set pagination off")
-    command_list = gdb.execute("help all", to_string=True).strip().split("\n")
-    existing_commands: Set[str] = set()
-    for line in command_list:
-        line = line.strip()
-        # Skip non-command entries
-        if (
-            not line
-            or line.startswith("Command class:")
-            or line.startswith("Unclassified commands")
-        ):
-            continue
-        command = line.split()[0]
-        existing_commands.add(command)
-    gdb.execute(f"set pagination {current_pagination}")  # Restore original setting
-    return existing_commands
-
-
-GDB_BUILTIN_COMMANDS = list_current_commands()
+GDB_BUILTIN_COMMANDS = pwndbg.dbg.commands()
 
 # Set in `reload` command so that we can skip double checking for registration
 # of an already existing command when re-registering GDB CLI commands
 # (there is no way to unregister a command in GDB 12.x)
-pwndbg_is_reloading = getattr(gdb, "pwndbg_is_reloading", False)
+pwndbg_is_reloading = False
+if pwndbg.dbg.is_gdblib_available():
+    import gdb
+
+    pwndbg_is_reloading = getattr(gdb, "pwndbg_is_reloading", False)
 
 
 class Command:
@@ -105,11 +86,13 @@ class Command:
         is_alias: bool = False,
         aliases: List[str] = [],
         category: CommandCategory = CommandCategory.MISC,
+        doc: str | None = None,
     ) -> None:
         self.is_alias = is_alias
         self.aliases = aliases
         self.category = category
         self.shell = shell
+        self.doc = doc
 
         if command_name is None:
             command_name = function.__name__
@@ -117,7 +100,7 @@ class Command:
         def _handler(_debugger, arguments, is_interactive):
             self.invoke(arguments, is_interactive)
 
-        self.handle = pwndbg.dbg.add_command(command_name, _handler)
+        self.handle = pwndbg.dbg.add_command(command_name, _handler, doc)
         self.function = function
 
         if command_name in command_names:
@@ -148,17 +131,17 @@ class Command:
 
     def invoke(self, argument: str, from_tty: bool) -> None:
         """Invoke the command with an argument string"""
+        if not pwndbg.dbg.selected_inferior():
+            log.error("Pwndbg commands require a target binary to be selected")
+            return
+
         try:
             args, kwargs = self.split_args(argument)
         except SystemExit:
             # Raised when the usage is printed by an ArgparsedCommand
             return
-        except (TypeError, gdb.error):
+        except (TypeError, pwndbg.dbg_mod.Error):
             pwndbg.exception.handle(self.function.__name__)
-            return
-
-        if not pwndbg.dbg.selected_inferior():
-            log.error("Pwndbg commands require a target binary to be selected")
             return
 
         try:
@@ -230,19 +213,45 @@ def fix(
     )
     assert target, "Reached command expression evaluation with no frame or inferior"
 
+    # Try to evaluate the expression in the local, or, failing that, global
+    # context.
     try:
         return target.evaluate_expression(arg)
     except Exception:
         pass
 
+    ex = None
     try:
-        arg = pwndbg.gdblib.regs.fix(arg)
+        # This will fail if gdblib is not available. While the next check
+        # alleviates the need for this call, it's not really equivalent, and
+        # we'll need a debugger-agnostic version of regs.fix() if we want to
+        # completely get rid of this call. We can't do that now because there's
+        # no debugger-agnostic architecture functions. Those will come later.
+        #
+        # TODO: Port architecutre functions and `pwndbg.gdblib.regs.fix` to debugger-agnostic API and remove this.
+        arg = pwndbg.aglib.regs.fix(arg)
         return target.evaluate_expression(arg)
     except Exception as e:
+        ex = e
+
+    # If that fails, try to treat the argument as the name of a register, and
+    # see if that yields anything.
+    if frame:
+        regs = frame.regs()
+        arg = arg.strip()
+        if arg.startswith("$"):
+            arg = arg[1:]
+        reg = regs.by_name(arg)
+        if reg:
+            return reg
+
+    # If both fail, check whether we want to print or re-raise the error we
+    # might've gotten from `evaluate_expression`.
+    if ex:
         if not quiet:
-            print(e)
+            print(ex)
         if reraise:
-            raise e
+            raise ex
 
     if sloppy:
         return arg
@@ -263,13 +272,30 @@ def fix_int_reraise(*a, **kw) -> int:
     return fix_int(*a, reraise=True, **kw)
 
 
+def OnlyWhenLocal(function: Callable[P, T]) -> Callable[P, Optional[T]]:
+    @functools.wraps(function)
+    def _OnlyWhenLocal(*a: P.args, **kw: P.kwargs) -> Optional[T]:
+        if not pwndbg.aglib.remote.is_remote():
+            return function(*a, **kw)
+
+        msg = f'The "remote" target does not support "{function.__name__}".'
+
+        if pwndbg.dbg.is_gdblib_available():
+            msg += ' Try "help target" or "continue".'
+
+        log.error(msg)
+        return None
+
+    return _OnlyWhenLocal
+
+
 def OnlyWithFile(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWithFile(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.proc.exe:
+        if pwndbg.aglib.proc.exe:
             return function(*a, **kw)
         else:
-            if pwndbg.gdblib.qemu.is_qemu():
+            if pwndbg.aglib.qemu.is_qemu():
                 log.error("Could not determine the target binary on QEMU.")
             else:
                 log.error(f"{function.__name__}: There is no file loaded.")
@@ -281,7 +307,7 @@ def OnlyWithFile(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWhenQemuKernel(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWhenQemuKernel(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.qemu.is_qemu_kernel():
+        if pwndbg.aglib.qemu.is_qemu_kernel():
             return function(*a, **kw)
         else:
             log.error(
@@ -295,7 +321,7 @@ def OnlyWhenQemuKernel(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWhenUserspace(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWhenUserspace(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if not pwndbg.gdblib.qemu.is_qemu_kernel():
+        if not pwndbg.aglib.qemu.is_qemu_kernel():
             return function(*a, **kw)
         else:
             log.error(
@@ -309,7 +335,7 @@ def OnlyWhenUserspace(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWithArch(arch_names: List[str]) -> Callable[[Callable[P, T]], Callable[P, Optional[T]]]:
     """Decorates function to work only with the specified archictectures."""
     for arch in arch_names:
-        if arch not in pwndbg.gdblib.arch_mod.ARCHS:
+        if arch not in pwndbg.aglib.arch_mod.ARCHS:
             raise ValueError(
                 f"OnlyWithArch used with unsupported arch={arch}. Must be one of {', '.join(arch_names)}"
             )
@@ -317,7 +343,7 @@ def OnlyWithArch(arch_names: List[str]) -> Callable[[Callable[P, T]], Callable[P
     def decorator(function: Callable[P, T]) -> Callable[P, Optional[T]]:
         @functools.wraps(function)
         def _OnlyWithArch(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-            if pwndbg.gdblib.arch.name in arch_names:
+            if pwndbg.aglib.arch.name in arch_names:
                 return function(*a, **kw)
             else:
                 arches_str = ", ".join(arch_names)
@@ -331,10 +357,36 @@ def OnlyWithArch(arch_names: List[str]) -> Callable[[Callable[P, T]], Callable[P
     return decorator
 
 
+def OnlyWithDbg(
+    *dbg_names: Literal["lldb", "gdb"],
+) -> Callable[[Callable[P, T]], Callable[P, Optional[T]]]:
+    """Decorates function to work only with the specified debugger."""
+
+    def decorator(function: Callable[P, T]) -> Callable[P, Optional[T]]:
+        @functools.wraps(function)
+        def _OnlyWithDbg(*a: P.args, **kw: P.kwargs) -> Optional[T]:
+            if pwndbg.dbg.is_gdblib_available():
+                if "gdb" in dbg_names:
+                    return function(*a, **kw)
+            else:
+                if "lldb" in dbg_names:
+                    return function(*a, **kw)
+
+            dbg_str = ", ".join(dbg_names)
+            log.error(
+                f"{function.__name__}: This command may only be run on the {dbg_str} debugger(s)"
+            )
+            return None
+
+        return _OnlyWithDbg
+
+    return decorator
+
+
 def OnlyWithKernelDebugSyms(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWithKernelDebugSyms(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.kernel.has_debug_syms():
+        if pwndbg.aglib.kernel.has_debug_syms():
             return function(*a, **kw)
         else:
             log.error(
@@ -348,7 +400,7 @@ def OnlyWithKernelDebugSyms(function: Callable[P, T]) -> Callable[P, Optional[T]
 def OnlyWhenPagingEnabled(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWhenPagingEnabled(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.kernel.paging_enabled():
+        if pwndbg.aglib.kernel.paging_enabled():
             return function(*a, **kw)
         else:
             log.error(f"{function.__name__}: This command may only be run when paging is enabled.")
@@ -360,7 +412,8 @@ def OnlyWhenPagingEnabled(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWhenRunning(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWhenRunning(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.proc.alive:
+        # TODO: Properly support OnlyWhenRunning without `gdblib`.
+        if pwndbg.aglib.proc.alive:
             return function(*a, **kw)
         else:
             log.error(f"{function.__name__}: The program is not being run.")
@@ -372,8 +425,8 @@ def OnlyWhenRunning(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWithTcache(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWithTcache(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        assert isinstance(pwndbg.gdblib.heap.current, GlibcMemoryAllocator)
-        if pwndbg.gdblib.heap.current.has_tcache():
+        assert isinstance(pwndbg.aglib.heap.current, GlibcMemoryAllocator)
+        if pwndbg.aglib.heap.current.has_tcache():
             return function(*a, **kw)
         else:
             log.error(
@@ -387,19 +440,13 @@ def OnlyWithTcache(function: Callable[P, T]) -> Callable[P, Optional[T]]:
 def OnlyWhenHeapIsInitialized(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
     def _OnlyWhenHeapIsInitialized(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.gdblib.heap.current is not None and pwndbg.gdblib.heap.current.is_initialized():
+        if pwndbg.aglib.heap.current is not None and pwndbg.aglib.heap.current.is_initialized():
             return function(*a, **kw)
         else:
             log.error(f"{function.__name__}: Heap is not initialized yet.")
             return None
 
     return _OnlyWhenHeapIsInitialized
-
-
-# TODO/FIXME: Move this elsewhere? Have better logic for that? Maybe caching?
-def _is_statically_linked() -> bool:
-    out = gdb.execute("info dll", to_string=True)
-    return "No shared libraries loaded at this time." in out
 
 
 def _try2run_heap_command(function: Callable[P, T], *a: P.args, **kw: P.kwargs) -> T | None:
@@ -425,7 +472,7 @@ def _try2run_heap_command(function: Callable[P, T], *a: P.args, **kw: P.kwargs) 
         pwndbg.exception.inform_verbose_and_debug()
     except Exception as err:
         e(f"{function.__name__}: An unknown error occurred when running this command.")
-        if isinstance(pwndbg.gdblib.heap.current, HeuristicHeap):
+        if isinstance(pwndbg.aglib.heap.current, HeuristicHeap):
             w(
                 "Maybe you can try to determine the libc symbols addresses manually, set them appropriately and re-run this command. For this, see the `heap_config` command output and set the `main_arena`, `mp_`, `global_max_fast`, `tcache` and `thread_arena` addresses."
             )
@@ -444,33 +491,34 @@ def OnlyWithResolvedHeapSyms(function: Callable[P, T]) -> Callable[P, T | None]:
         e = log.error
         w = log.warn
         if (
-            isinstance(pwndbg.gdblib.heap.current, HeuristicHeap)
+            isinstance(pwndbg.aglib.heap.current, HeuristicHeap)
             and pwndbg.config.resolve_heap_via_heuristic == "auto"
             and DebugSymsHeap().can_be_resolved()
         ):
             # In auto mode, we will try to use the debug symbols if possible
-            pwndbg.gdblib.heap.current = DebugSymsHeap()
+            pwndbg.aglib.heap.current = DebugSymsHeap()
         if (
-            pwndbg.gdblib.heap.current is not None
-            and isinstance(pwndbg.gdblib.heap.current, GlibcMemoryAllocator)
-            and pwndbg.gdblib.heap.current.can_be_resolved()
+            pwndbg.aglib.heap.current is not None
+            and isinstance(pwndbg.aglib.heap.current, GlibcMemoryAllocator)
+            and pwndbg.aglib.heap.current.can_be_resolved()
         ):
             return _try2run_heap_command(function, *a, **kw)
         else:
+            static = not pwndbg.dbg.selected_inferior().is_dynamically_linked()
             if (
-                isinstance(pwndbg.gdblib.heap.current, DebugSymsHeap)
+                isinstance(pwndbg.aglib.heap.current, DebugSymsHeap)
                 and pwndbg.config.resolve_heap_via_heuristic == "auto"
             ):
                 # In auto mode, if the debug symbols are not enough, we will try to use the heuristic if possible
                 heuristic_heap = HeuristicHeap()
                 if heuristic_heap.can_be_resolved():
-                    pwndbg.gdblib.heap.current = heuristic_heap
+                    pwndbg.aglib.heap.current = heuristic_heap
                     w(
                         "pwndbg will try to resolve the heap symbols via heuristic now since we cannot resolve the heap via the debug symbols.\n"
                         "This might not work in all cases. Use `help set resolve-heap-via-heuristic` for more details.\n"
                     )
                     return _try2run_heap_command(function, *a, **kw)
-                elif _is_statically_linked():
+                elif static:
                     e(
                         "Can't find GLIBC version required for this command to work since this is a statically linked binary"
                     )
@@ -486,7 +534,7 @@ def OnlyWithResolvedHeapSyms(function: Callable[P, T]) -> Callable[P, T | None]:
                         "Please set the GLIBC version you think the target binary was compiled (using `set glibc <version>` command; e.g. 2.32) and re-run this command"
                     )
             elif (
-                isinstance(pwndbg.gdblib.heap.current, DebugSymsHeap)
+                isinstance(pwndbg.aglib.heap.current, DebugSymsHeap)
                 and pwndbg.config.resolve_heap_via_heuristic == "force"
             ):
                 e(
@@ -494,7 +542,7 @@ def OnlyWithResolvedHeapSyms(function: Callable[P, T]) -> Callable[P, T | None]:
                 )
                 w("Use `set resolve-heap-via-heuristic auto` and re-run this command.")
             elif pwndbg.glibc.get_version() is None:
-                if _is_statically_linked():
+                if static:
                     e("Can't resolve the heap since the GLIBC version is not set.")
                     w(
                         "Please set the GLIBC version you think the target binary was compiled (using `set glibc <version>` command; e.g. 2.32) and re-run this command."
@@ -536,7 +584,7 @@ class _ArgparsedCommand(Command):
         file = io.StringIO()
         self.parser.print_help(file)
         file.seek(0)
-        self.__doc__ = file.read()
+        doc = file.read()
         # Note: function.__doc__ is used in the `pwndbg [filter]` command display
         function.__doc__ = self.parser.description.strip()
 
@@ -544,6 +592,7 @@ class _ArgparsedCommand(Command):
         super().__init__(  # type: ignore[misc]
             function,
             command_name=command_name,
+            doc=doc,
             *a,
             **kw,
         )
@@ -601,11 +650,12 @@ class ArgparsedCommand:
         )
 
 
-# We use a 64-bit max value literal here instead of pwndbg.gdblib.arch.current
+# We use a 64-bit max value literal here instead of pwndbg.aglib.arch.current
 # as realistically its ok to pull off the biggest possible type here
-# We cache its GDB value type which is 'unsigned long long'
+# We cache its value type which is 'unsigned long long'
 _mask = 0xFFFFFFFFFFFFFFFF
-_mask_val_type = gdb.Value(_mask).type
+_mask_val_type: pwndbg.dbg_mod.Type = None
+_mask_val_proc: pwndbg.dbg_mod.Process = None
 
 
 def sloppy_gdb_parse(s: str) -> int | str:
@@ -633,8 +683,16 @@ def sloppy_gdb_parse(s: str) -> int | str:
         # pwndbg> pi int(gdb.parse_and_eval('__libc_start_main'))
         #
         # Here, the _mask_val.type should be `unsigned long long`
+        global _mask_val_type
+        global _mask_val_proc
+
+        i = pwndbg.dbg.selected_inferior()
+        if not _mask_val_type or _mask_val_proc != i:
+            _mask_val_type = i.create_value(_mask).type
+            _mask_val_proc = i
+
         return int(val.cast(_mask_val_type))
-    except (TypeError, gdb.error):
+    except (TypeError, pwndbg.dbg_mod.Error):
         return s
 
 
@@ -663,14 +721,33 @@ def HexOrAddressExpr(s: str) -> int:
 
 def load_commands() -> None:
     # pylint: disable=import-outside-toplevel
-    import pwndbg.commands.ai
-    import pwndbg.commands.argv
+    import pwndbg.dbg
+
+    if pwndbg.dbg.is_gdblib_available():
+        import pwndbg.commands.ai
+        import pwndbg.commands.argv
+        import pwndbg.commands.attachp
+        import pwndbg.commands.binja
+        import pwndbg.commands.branch
+        import pwndbg.commands.cymbol
+        import pwndbg.commands.got
+        import pwndbg.commands.got_tracking
+        import pwndbg.commands.ptmalloc2_tracking
+        import pwndbg.commands.ida
+        import pwndbg.commands.ignore
+        import pwndbg.commands.ipython_interactive
+        import pwndbg.commands.killthreads
+        import pwndbg.commands.peda
+        import pwndbg.commands.reload
+        import pwndbg.commands.ropper
+        import pwndbg.commands.segments
+        import pwndbg.commands.shell
+        import pwndbg.commands.version
+
     import pwndbg.commands.aslr
     import pwndbg.commands.asm
-    import pwndbg.commands.attachp
     import pwndbg.commands.auxv
     import pwndbg.commands.binder
-    import pwndbg.commands.branch
     import pwndbg.commands.canary
     import pwndbg.commands.checksec
     import pwndbg.commands.comments
@@ -678,27 +755,25 @@ def load_commands() -> None:
     import pwndbg.commands.context
     import pwndbg.commands.cpsr
     import pwndbg.commands.cyclic
-    import pwndbg.commands.cymbol
     import pwndbg.commands.dev
     import pwndbg.commands.distance
     import pwndbg.commands.dt
     import pwndbg.commands.dumpargs
     import pwndbg.commands.elf
     import pwndbg.commands.flags
+    import pwndbg.commands.gdt
     import pwndbg.commands.ghidra
-    import pwndbg.commands.got
-    import pwndbg.commands.got_tracking
-    import pwndbg.commands.heap
-    import pwndbg.commands.heap_tracking
+    import pwndbg.commands.godbg
+    import pwndbg.commands.hex2ptr
     import pwndbg.commands.hexdump
-    import pwndbg.commands.ida
-    import pwndbg.commands.ignore
-    import pwndbg.commands.ipython_interactive
+    import pwndbg.commands.hijack_fd
+    import pwndbg.commands.integration
+    import pwndbg.commands.jemalloc
     import pwndbg.commands.kbase
     import pwndbg.commands.kchecksec
     import pwndbg.commands.kcmdline
     import pwndbg.commands.kconfig
-    import pwndbg.commands.killthreads
+    import pwndbg.commands.klookup
     import pwndbg.commands.kversion
     import pwndbg.commands.leakfind
     import pwndbg.commands.linkmap
@@ -712,29 +787,25 @@ def load_commands() -> None:
     import pwndbg.commands.p2p
     import pwndbg.commands.patch
     import pwndbg.commands.pcplist
-    import pwndbg.commands.peda
     import pwndbg.commands.pie
     import pwndbg.commands.plist
     import pwndbg.commands.probeleak
     import pwndbg.commands.procinfo
+    import pwndbg.commands.ptmalloc2
     import pwndbg.commands.radare2
-    import pwndbg.commands.reload
     import pwndbg.commands.retaddr
     import pwndbg.commands.rizin
     import pwndbg.commands.rop
-    import pwndbg.commands.ropper
     import pwndbg.commands.search
-    import pwndbg.commands.segments
-    import pwndbg.commands.shell
     import pwndbg.commands.sigreturn
     import pwndbg.commands.slab
     import pwndbg.commands.spray
     import pwndbg.commands.start
+    import pwndbg.commands.strings
     import pwndbg.commands.telescope
     import pwndbg.commands.tips
     import pwndbg.commands.tls
     import pwndbg.commands.valist
-    import pwndbg.commands.version
     import pwndbg.commands.vmmap
     import pwndbg.commands.windbg
     import pwndbg.commands.xinfo

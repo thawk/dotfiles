@@ -19,14 +19,14 @@ from typing import Tuple
 
 import gdb
 
+import pwndbg.aglib.arch
+import pwndbg.aglib.dynamic
+import pwndbg.aglib.memory
+import pwndbg.aglib.proc
 import pwndbg.color.message as message
-import pwndbg.gdblib.arch
 import pwndbg.gdblib.bpoint
-import pwndbg.gdblib.dynamic
-import pwndbg.gdblib.memory
 import pwndbg.gdblib.shellcode
-import pwndbg.gdblib.typeinfo
-import pwndbg.gdblib.vmmap
+import pwndbg.lib.memory
 
 
 class RelocTypes:
@@ -110,11 +110,11 @@ IRELATIVE_SLOTS = {
 }
 
 
-def is_mmap_error(ptr):
+def is_mmap_error(ptr: int):
     """
     Checks whether the return value of an mmap of indicates an error.
     """
-    err = ((1 << pwndbg.gdblib.arch.ptrsize) - 1) & pwndbg.lib.memory.PAGE_MASK
+    err = ((1 << pwndbg.aglib.arch.ptrsize) - 1) & pwndbg.lib.memory.PAGE_MASK
     return ptr & pwndbg.lib.memory.PAGE_MASK == err
 
 
@@ -258,7 +258,7 @@ class Patcher(pwndbg.gdblib.bpoint.Breakpoint):
         # tracker will use.
         objfile = self.tracker.link_map_entry.name()
         if objfile == b"":
-            objfile = pwndbg.gdblib.proc.exe
+            objfile = pwndbg.aglib.proc.exe
         self.tracker.obj_display_name = display_name(objfile, basename=True)
 
         self.tracker.sym_display_name = display_name(
@@ -272,7 +272,7 @@ class Patcher(pwndbg.gdblib.bpoint.Breakpoint):
     def should_stop(self) -> bool:
         # Read the new branch target, and update the redirection target of the
         # tracker accordingly.
-        new_target = pwndbg.gdblib.memory.pvoid(self.entry)
+        new_target = pwndbg.aglib.memory.pvoid(self.entry)
         if new_target == self.tracker.trapped_address:
             # The write to this range from within GDB that we do at the end of
             # this function can cause this watchpoint to trigger again.
@@ -363,18 +363,18 @@ def _update_watchpoints() -> None:
     INSTALLED_WATCHPOINTS.clear()
 
     # Install new watchpoints to cover all of the jump slots in all GOTs
-    for obj in pwndbg.gdblib.dynamic.link_map():
+    for obj in pwndbg.aglib.dynamic.link_map():
         name = obj.name()
         if name == b"":
-            name = pwndbg.gdblib.proc.exe
+            name = pwndbg.aglib.proc.exe
 
         try:
-            dynamic = pwndbg.gdblib.dynamic.DynamicSegment(obj.dynamic(), obj.load_bias())
+            dynamic = pwndbg.aglib.dynamic.DynamicSegment(obj.dynamic(), obj.load_bias())
         except RuntimeError as e:
             print(message.warn(f"object {name} has invalid DYNAMIC section: {e}"))
             continue
 
-        jump_slots = JUMP_SLOTS[pwndbg.gdblib.arch.name]
+        jump_slots = JUMP_SLOTS[pwndbg.aglib.arch.name]
         if dynamic.has_rel:
             for i in range(dynamic.rel_entry_count()):
                 if dynamic.rel_read(i, "r_type") not in jump_slots:
@@ -429,7 +429,7 @@ def _update_watchpoints() -> None:
 
 
 # Set the function so that it's called whenever the link map changes.
-pwndbg.gdblib.dynamic.r_debug_link_map_changed_add_listener(_update_watchpoints)
+pwndbg.aglib.dynamic.r_debug_link_map_changed_add_listener(_update_watchpoints)
 
 
 def all_tracked_entries():
@@ -512,7 +512,7 @@ def jump_slots_for(dynamic):
     """
     Returns the jump slot addresses described by the given dynamic section.
     """
-    jump_slots = JUMP_SLOTS[pwndbg.gdblib.arch.name]
+    jump_slots = JUMP_SLOTS[pwndbg.aglib.arch.name]
     if dynamic.has_rel:
         for i in range(dynamic.rel_entry_count()):
             if dynamic.rel_read(i, "r_type") in jump_slots:

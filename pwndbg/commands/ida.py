@@ -7,11 +7,14 @@ import os
 
 import gdb
 
+import pwndbg
+import pwndbg.aglib.regs
 import pwndbg.commands
 import pwndbg.commands.context
-import pwndbg.gdblib.regs
-import pwndbg.ida
+import pwndbg.dbg
+import pwndbg.integration.ida
 from pwndbg.commands import CommandCategory
+from pwndbg.dbg import EventType
 from pwndbg.gdblib.functions import GdbFunction
 
 
@@ -19,15 +22,15 @@ from pwndbg.gdblib.functions import GdbFunction
     "Synchronize IDA's cursor with GDB.", category=CommandCategory.INTEGRATIONS
 )
 @pwndbg.commands.OnlyWhenRunning
-@pwndbg.gdblib.events.stop
-@pwndbg.ida.withIDA
+@pwndbg.dbg.event_handler(EventType.STOP)
+@pwndbg.integration.ida.withIDA
 def j(*args) -> None:
     """
     Synchronize IDA's cursor with GDB
     """
     try:
-        pc = int(gdb.selected_frame().pc())
-        pwndbg.ida.Jump(pc)
+        pc = int(pwndbg.dbg.selected_frame().pc())
+        pwndbg.integration.ida.Jump(pc)
     except Exception:
         pass
 
@@ -89,18 +92,18 @@ def down(n=1) -> None:
 
 
 @pwndbg.commands.ArgparsedCommand("Save the ida database.", category=CommandCategory.INTEGRATIONS)
-@pwndbg.ida.withIDA
+@pwndbg.integration.ida.withIDA
 def save_ida() -> None:
     """Save the IDA database"""
-    if not pwndbg.ida.available():
+    if not pwndbg.integration.ida.available():
         return
 
-    path = pwndbg.ida.GetIdbPath()
+    path = pwndbg.integration.ida.GetIdbPath()
 
     # Need to handle emulated paths for Wine
     if path.startswith("Z:"):
         path = path[2:].replace("\\", "/")
-        pwndbg.ida.SaveBase(path)
+        pwndbg.integration.ida.SaveBase(path)
 
     basename = os.path.basename(path)
     dirname = os.path.dirname(path)
@@ -118,7 +121,7 @@ def save_ida() -> None:
 
     full_path = os.path.join(backups, basename)
 
-    pwndbg.ida.SaveBase(full_path)
+    pwndbg.integration.ida.SaveBase(full_path)
 
     with open(full_path, "rb") as f:
         data = f.read()
@@ -138,7 +141,7 @@ save_ida()
 def ida(name):
     """Evaluate ida.LocByName() on the supplied value."""
     name = name.string()
-    result = pwndbg.ida.LocByName(name)
+    result = pwndbg.integration.ida.LocByName(name)
 
     if 0xFFFFE000 <= result <= 0xFFFFFFFF or 0xFFFFFFFFFFFFE000 <= result <= 0xFFFFFFFFFFFFFFFF:
         raise ValueError("ida.LocByName(%r) == BADADDR" % name)
