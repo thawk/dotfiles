@@ -10,9 +10,6 @@
 [pull]
 	rebase = true
 
-[init]
-	defaultBranch = main
-
 [branch]
     autosetuprebase = always
 
@@ -26,11 +23,9 @@
     #ci = commit
     #st = status -s
     #br = branch
-    # hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
-    #hist = log --abbrev-commit --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
 
     # current branch related log
-    lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%as)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(yellow)%d%C(reset)'
+    lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%as)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(auto)%d%C(reset)'
     # log for all branches
     lga = lg --all
     # current branch's only, omit merge detail
@@ -38,11 +33,11 @@
     # only merges
     lgm= lg --merges
     # two lines format
-    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
+    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
     # show commit Body
-    lgb = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(yellow)%d%C(reset)%n%C(white)%s%C(reset) %C(blue)- %an%C(reset)%n%n%-b' --all
+    lgb = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n%C(white)%s%C(reset) %C(blue)- %an%C(reset)%n%n%-b' --all
     # log with stat
-    lgst = log --pretty=tformat:'%n%C(yellow)%s%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
+    lgst = log --pretty=tformat:'%n%C(yellow)%s%C(auto)%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
     # log with stat and patch
     lgp = lgst --patch
     # simplify graph, only show merges and so
