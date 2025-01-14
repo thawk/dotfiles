@@ -19,11 +19,6 @@
     path = ~/.dotfiles/git/gitalias.txt
 
 [alias]
-    #co = checkout
-    #ci = commit
-    #st = status -s
-    #br = branch
-
     # current branch related log
     lg= log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%as)%C(reset) %C(reset)%s%C(reset) %C(blue)- %an%C(reset)%C(auto)%d%C(reset)'
     # log for all branches
@@ -44,6 +39,7 @@
     lgs = lg --simplify-by-decoration
     # simplify graph, include all branches
     lgsa = lgs --all
+
     type = cat-file -t
     dump = cat-file -p
 
@@ -58,3 +54,10 @@
     fasv = !git fetch --all --verbose && git submodule foreach 'git fetch --all --verbose'
 
     smst = submodule status
+
+    # 找哪些子模块有指定名字的分支
+    find-branch = "!git branch -a | grep \"$1\" || true; git submodule foreach 'git branch -a | grep \"$1\" || true'"
+    find-tag = "!git tag -l | grep \"$1\" || true; git submodule foreach 'git tag -l | grep \"$1\" || true'"
+
+    # 清理已经合并的本地分支，排除当前分支（带*）和主分支
+    bclean = "!git branch --merged | grep -E -v '\\*|^\\s*(master|main)\\b' | xargs -r git branch -d"
