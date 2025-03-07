@@ -39,6 +39,9 @@ if-shell '~/.tmux/version-lt.sh 2.1' \
     set -g mouse-resize-pane on; \
     set -g mouse-select-window on'
 
+if-shell '~/.tmux/version-ge.sh 1.9' \
+    'set-option -g focus-events on'
+
 # More straight forward key bindings for splitting
 # unbind %
 # bind v split-window -h
