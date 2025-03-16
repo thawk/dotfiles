@@ -63,8 +63,8 @@ zi light zsh-users/zsh-history-substring-search
     bindkey -M vicmd 'j' history-substring-search-down
 
 # OS - thefuck
-zi ice wait"0" if'[[ -n "$commands[fuck]" ]]' lucid
-zi snippet OMZ::plugins/thefuck/thefuck.plugin.zsh
+#zi ice wait"0" if'[[ -n "$commands[fuck]" ]]' lucid
+#zi snippet OMZ::plugins/thefuck/thefuck.plugin.zsh
 
 # Python
 zi wait"0" lucid for \
