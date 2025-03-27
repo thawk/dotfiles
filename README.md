@@ -40,13 +40,15 @@ git clone https://github.com/thawk/dotfiles.git ~/.dotfiles
 
 由于在``.zshrc``中在``$0``不是``~/.zshrc``，无法确定``.dotfiles``目录的位置，所以在``zsh``/``.zshrc.symlink``和``bash``/``.bashrc.symlink``中都显式指定``.dotfiles``的位置，因此只能clone到``~/.dotfiles``。
 
-使用``zinit``管理zsh的插件。可以编辑``~/.dotfiles/zsh/scripts/zinit.plugins.zsh``管理插件。
+使用``zi``管理zsh的插件。可以编辑``~/.dotfiles/zsh/scripts/zi.plugins.zsh``管理插件。
 
 一些运行时产生的中间文件会存放到``$XDG_CACHE_HOME/dotfiles``（一般在``~/.cache/dotfiles/``）下，因此也可以删除并重建``~/.dotfiles``以进行升级。
 
 升级后应再次运行``~/.dotfiles/bootstrap.sh``以更新插件配置，更新符号连接等。
 
-如果需要支持aarch64，需要从 `https://github.com/romkatv/gitstatus/releases` 下载相应可执行程序，放到 ``~/.cache/gitstatus/`` 目录下。
+如果需要支持**aarch64**，需要从 `https://github.com/romkatv/gitstatus/releases` 下载相应可执行程序，放到 ``~/.cache/gitstatus/`` 目录下。
+
+**tmux**插件需要在tmux中，按`<C-A>I`进行安装，安装后会自动重启tmux。
 
 ## 配置
 
