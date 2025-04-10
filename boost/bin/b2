@@ -30,7 +30,7 @@ do
         do
             if [ -d "${dir}/${d}" ]
             then
-                IFS=$'\n' read -r -d '' -a boost_roots < <(find "${dir}/${d}/" -maxdepth 1 -type d -name boost -o -name "boost_[0-9]*" | sort -r)
+                IFS=$'\n' read -r -d '' -a boost_roots < <(find "${dir}/${d}" -maxdepth 1 -type d -name boost -o -name "boost_[0-9]*" | sort -r)
                 for boost_root in "${boost_roots[@]}"
                 do
                     if [ -d "${boost_root}/boost" ]
@@ -75,7 +75,7 @@ else
         if [ -x "${BOOST_ROOT}/${d}/bootstrap.sh" ]
         then
             export BOOST_BUILD_PATH="${BOOST_ROOT}/${d}"
-            echo "Detected ${NAME_COLOR}BOOST_BUILD_PATH${NO_COLOR}=${VALUE_COLOR}${BOOST_BUILD_PATH}${NO_COLOR}"
+            echo -e "Detected ${NAME_COLOR}BOOST_BUILD_PATH${NO_COLOR}=${VALUE_COLOR}${BOOST_BUILD_PATH}${NO_COLOR}"
 
             B2="${BOOST_BUILD_PATH}/b2"
             if [ ! -e "${B2}" ]
