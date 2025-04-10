@@ -383,7 +383,7 @@ function join_by {
     printf "%s" "${@/#/$d}"
 }
 
-get_enabled_dir() {
+get_enabled_plugins() {
     local dir
     local old_path=$PATH
     local -a dirs
@@ -503,6 +503,13 @@ generate_script_file() {
     done
 }
 
+list_plugins() {
+    if [ -e "$DOTFILES_LOCAL/enabled.txt" ]
+    then
+        cat "$DOTFILES_LOCAL/enabled.txt"
+    fi
+}
+
 update_subtrees() {
     cat "${DOTFILES_ROOT}/subtrees.txt" |
         grep -v '^#' |
@@ -511,13 +518,14 @@ update_subtrees() {
         done
 }
 
-EchoUsage()
+echo_usage()
 {
     echo "
 Usage: $(basename "$0") [options] [--]
 
     Options:
         -h|help                 Display this message
+        -l|list                 List plugins
         -u|update               Update subtrees
         -V|version              Display script version
         -v|verbose              Display more verbose log
@@ -530,10 +538,14 @@ DRY_RUN=
 VERBOSE=
 TARGET="$HOME"
 
-while getopts ":huVvt:d" opt; do
+while getopts ":hluVvt:d" opt; do
     case $opt in
         h) # |help)
-            EchoUsage
+            echo_usage
+            exit 0
+            ;;
+        l) # |list)
+            list_plugins
             exit 0
             ;;
         u) # |update)
@@ -555,7 +567,7 @@ while getopts ":huVvt:d" opt; do
             ;;
         * )
             echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
-            EchoUsage
+            echo_usage
             exit 1
             ;;
     esac
@@ -582,7 +594,7 @@ info ""
 
 typeset -a dirs
 
-IFS=$'\n' read -r -d '' -a dirs < <(get_enabled_dir)
+IFS=$'\n' read -r -d '' -a dirs < <(get_enabled_plugins)
 
 generate_files "${dirs[@]}"
 [ -e "$DOTFILES_LOCAL/enabled.new.txt" ] && mv "$DOTFILES_LOCAL/enabled.new.txt" "$DOTFILES_LOCAL/enabled.txt"

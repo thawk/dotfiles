@@ -30,7 +30,7 @@ do
         do
             if [ -d "${dir}/${d}" ]
             then
-                IFS=$'\n' read -r -d '' -a boost_roots < <(find "${dir}/${d}/" -maxdepth 1 -type d -name "boost_[0-9]*" | sort -r)
+                IFS=$'\n' read -r -d '' -a boost_roots < <(find "${dir}/${d}/" -maxdepth 1 -type d -name boost -o -name "boost_[0-9]*" | sort -r)
                 for boost_root in "${boost_roots[@]}"
                 do
                     if [ -d "${boost_root}/boost" ]
@@ -95,7 +95,14 @@ then
     exit 1
 fi
 
-cpu_count=$(grep "processor" /proc/cpuinfo | wc -l)
+if [[ -f /proc/cpuinfo ]] ; then
+    # Linux
+    cpu_count=$(grep "processor" /proc/cpuinfo | wc -l)
+else
+    # macOS
+    cpu_count=$(sysctl -n hw.physicalcpu)
+fi
+
 [ $cpu_count -ge 1 ] || cpu_count=1
 [ $cpu_count -ge 5 ] && cpu_count=$((cpu_count - 2))
 [ $cpu_count -ge $MAX_PROCESSES ] && cpu_count=$MAX_PROCESSES
