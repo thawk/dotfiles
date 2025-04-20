@@ -11,7 +11,7 @@ if len(sys.argv) != 4:
 # 底座、0.60筛网、0.85筛网及盖子的净重
 weight_base = 72.1
 weight_60 = 125.5
-weight_85 = 135.3
+weight_85 = 135.2
 weight_cover = 41.5
 
 # 所有筛网加咖啡的重量
