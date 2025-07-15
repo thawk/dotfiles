@@ -56,4 +56,4 @@
     find-tag = "!git tag -l | grep \"$1\" || true; git submodule foreach 'git tag -l | grep \"$1\" || true'"
     sdiff = "!f(){ git diff $@ && git submodule foreach \"git diff $@\";}; f"
     # 清理已经合并的本地分支，排除当前分支（带*）和主分支
-    bclean = "!git branch --merged | grep -E -v '\\*|^\\s*(master|main)\\b' | xargs -r git branch -d"
+    bclean = "!git branch --merged | grep -E -v '^[*+]|^\\s*(master|main)\\b' | xargs -r git branch -d"
