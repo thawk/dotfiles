@@ -1,0 +1,30 @@
+# 通用规则
+
+- 除了专门说明，通常使用简体中文进行交互。代码中的注释也使用简体中文
+- 如果涉及源代码的字符编码，使用`UTF-8`
+
+# C++编码规范
+
+```cpp
+static const int kConstName = 1;
+
+void FreeFunction(int arg_name);
+
+class ClassName
+{
+public:
+    void Method(int arg_name)
+    {
+        for (auto i=0; i<arg_name; ++i)
+        {
+            member_name_ += i;
+        }
+    }
+
+private:
+    int member_name_ = 0;
+};
+```
+
+- 文件名：`class_name.h` / `class_name.cpp`
+- 类中元素按public/protected/private顺序排列
