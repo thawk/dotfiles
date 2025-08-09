@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Time :2022-12-07 09:09:50
+
+# 依赖 Python 包：compiledb
+
+if ! [[ -f Jamroot ]]; then
+    echo " ERROR: Jamroot not found, should be run in project root"
+    exit 1
+fi
+
+if grep '\balias\s\+messages\($\/\s\)' Jamroot > /dev/null 2>&1; then
+    ＃确保 typedef/common、typedef/sts 对应的头文件已被生成
+    b2 messages
+fi
+
+targets=("$@")
+if [[ ${#targets[@]} -le 0 ]]; then
+    targets=(.)
+    if grep '\s\+unittest\($\|\s\)' Jamroot > /dev/null 2>&1; then
+        targets=( "${targets[@]}" unittest )
+    fi
+fi
+
+# 生成编译数据库
+
+compiledb=compiledb
+if ! type compiledb &> /dev/null; then
+    if type uvx &> /dev/null; then
+        compiledb=uvx compiledb
+    else
+        echo "ERROR: neither compiledb nor uvx found, unable to execute!"
+        exit 1
+    fi
+fi
+
+b2 -n -a "${targets[@]}" | ${compiledb} -o compile_commands.json
