@@ -1114,7 +1114,7 @@ class GlibcMemoryAllocator(pwndbg.aglib.heap.heap.MemoryAllocator, Generic[TheTy
     @pwndbg.lib.cache.cache_until("objfile")
     def malloc_alignment(self) -> int:
         """Corresponds to MALLOC_ALIGNMENT in glibc malloc.c"""
-        if pwndbg.aglib.arch.current == "i386" and pwndbg.glibc.get_version() >= (2, 26):
+        if pwndbg.aglib.arch.name == "i386" and pwndbg.glibc.get_version() >= (2, 26):
             # i386 will override it to 16 when GLIBC version >= 2.26
             # See https://elixir.bootlin.com/glibc/glibc-2.26/source/sysdeps/i386/malloc-alignment.h#L22
             return 16
@@ -1539,7 +1539,16 @@ class GlibcMemoryAllocator(pwndbg.aglib.heap.heap.MemoryAllocator, Generic[TheTy
 
 
 class DebugSymsHeap(GlibcMemoryAllocator[pwndbg.dbg_mod.Type, pwndbg.dbg_mod.Value]):
-    can_be_resolved = GlibcMemoryAllocator.libc_has_debug_syms
+    def can_be_resolved(self) -> bool:
+        if not self.libc_has_debug_syms():
+            return False
+        # Check if thread_arena is needed and available, but if the binary is not multithreaded, then we don't care
+        # Note: it's possible that we unstripped the libc but still don't have libthread_db.so
+        return (
+            not self.multithreaded
+            or pwndbg.aglib.symbol.lookup_symbol_addr("thread_arena", prefer_static=True)
+            is not None
+        )
 
     @property
     def main_arena(self) -> Arena | None:
@@ -1561,10 +1570,10 @@ class DebugSymsHeap(GlibcMemoryAllocator[pwndbg.dbg_mod.Type, pwndbg.dbg_mod.Val
                 "thread_arena", prefer_static=True
             )
             if thread_arena_addr:
-                thread_arena_value = pwndbg.aglib.memory.pvoid(thread_arena_addr)
+                thread_arena_value = pwndbg.aglib.memory.read_pointer_width(thread_arena_addr)
                 # thread_arena might be NULL if the thread doesn't allocate arena yet
                 if thread_arena_value:
-                    return Arena(pwndbg.aglib.memory.pvoid(thread_arena_addr))
+                    return Arena(pwndbg.aglib.memory.read_pointer_width(thread_arena_addr))
             return None
         else:
             return self.main_arena
@@ -1576,7 +1585,7 @@ class DebugSymsHeap(GlibcMemoryAllocator[pwndbg.dbg_mod.Type, pwndbg.dbg_mod.Val
         """
         if self.has_tcache():
             if self.multithreaded:
-                tcache_addr = pwndbg.aglib.memory.pvoid(
+                tcache_addr = pwndbg.aglib.memory.read_pointer_width(
                     pwndbg.aglib.symbol.lookup_symbol_addr("tcache", prefer_static=True)
                 )
                 if tcache_addr == 0:
@@ -1916,7 +1925,7 @@ class HeuristicHeap(
                 and offset % pwndbg.aglib.arch.ptrsize == 0
                 and pwndbg.aglib.memory.is_readable_address(offset + tls_address)
             ):
-                guess = pwndbg.aglib.memory.pvoid(offset + tls_address)
+                guess = pwndbg.aglib.memory.read_pointer_width(offset + tls_address)
                 if validator(guess):
                     return guess, offset + tls_address
         return None
@@ -1938,7 +1947,7 @@ class HeuristicHeap(
             for addr in search_range:
                 if pwndbg.aglib.memory.is_readable_address(addr):
                     reading = True
-                    guess = pwndbg.aglib.memory.pvoid(addr)
+                    guess = pwndbg.aglib.memory.read_pointer_width(addr)
                     if validator(guess):
                         return guess, addr
                 elif reading:
@@ -1952,7 +1961,7 @@ class HeuristicHeap(
             "thread_arena", prefer_static=True
         )
         if thread_arena_via_symbol:
-            thread_arena_value = pwndbg.aglib.memory.pvoid(thread_arena_via_symbol)
+            thread_arena_value = pwndbg.aglib.memory.read_pointer_width(thread_arena_via_symbol)
             return Arena(thread_arena_value) if thread_arena_value else None
         thread_arena_via_config = int(str(pwndbg.config.thread_arena), 0)
         if thread_arena_via_config:
@@ -2025,7 +2034,9 @@ class HeuristicHeap(
             self._thread_cache = tps(thread_cache_via_config)
             return self._thread_cache
         elif thread_cache_via_symbol:
-            thread_cache_struct_addr = pwndbg.aglib.memory.pvoid(thread_cache_via_symbol)
+            thread_cache_struct_addr = pwndbg.aglib.memory.read_pointer_width(
+                thread_cache_via_symbol
+            )
             if thread_cache_struct_addr:
                 self._thread_cache = tps(int(thread_cache_struct_addr))
                 return self._thread_cache

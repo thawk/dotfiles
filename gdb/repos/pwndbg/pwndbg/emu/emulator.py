@@ -14,10 +14,9 @@ from typing import Tuple
 
 import capstone as C
 import unicorn as U
-import unicorn.riscv_const
 
 import pwndbg.aglib.arch
-import pwndbg.aglib.disasm
+import pwndbg.aglib.disasm.disassembly
 import pwndbg.aglib.memory
 import pwndbg.aglib.regs
 import pwndbg.aglib.strings
@@ -32,6 +31,7 @@ import pwndbg.integration
 import pwndbg.lib.memory
 import pwndbg.lib.regs
 from pwndbg import color
+from pwndbg.aglib.disasm.instruction import PwndbgInstruction
 from pwndbg.color.syntax_highlight import syntax_highlight
 
 if pwndbg.dbg.is_gdblib_available():
@@ -91,6 +91,7 @@ arch_to_UC = {
     # 'powerpc': U.UC_ARCH_PPC,
     "rv32": U.UC_ARCH_RISCV,
     "rv64": U.UC_ARCH_RISCV,
+    "s390x": U.UC_ARCH_S390X,
 }
 
 # Architecture specific maps: Map<"UC_*_REG_*",constant>
@@ -104,6 +105,7 @@ arch_to_UC_consts = {
     "aarch64": parse_consts(U.arm64_const),
     "rv32": parse_consts(U.riscv_const),
     "rv64": parse_consts(U.riscv_const),
+    "s390x": parse_consts(U.s390x_const),
 }
 
 # Architecture specific maps: Map<reg_name, Unicorn constant>
@@ -122,8 +124,13 @@ arch_to_reg_const_map = {
     ),
     "rv32": create_reg_to_const_map(arch_to_UC_consts["rv32"]),
     "rv64": create_reg_to_const_map(arch_to_UC_consts["rv64"]),
+    "s390x": create_reg_to_const_map(arch_to_UC_consts["s390x"]),
 }
 
+# Architectures for which we want to enable virtual TLB mode
+enable_virtual_tlb = {
+    "s390x": True,
+}
 
 # combine the flags with | operator. -1 for all
 (
@@ -173,7 +180,7 @@ arch_to_SYSCALL = {
     U.UC_ARCH_MIPS: [C.mips_const.MIPS_INS_SYSCALL],
     U.UC_ARCH_SPARC: [C.sparc_const.SPARC_INS_T],
     U.UC_ARCH_ARM: [C.arm_const.ARM_INS_SVC],
-    U.UC_ARCH_ARM64: [C.arm64_const.ARM64_INS_SVC],
+    U.UC_ARCH_ARM64: [C.aarch64_const.AARCH64_INS_SVC],
     U.UC_ARCH_PPC: [C.ppc_const.PPC_INS_SC],
     U.UC_ARCH_RISCV: [C.riscv_const.RISCV_INS_ECALL],
 }
@@ -187,9 +194,10 @@ ARM_BANNED_INSTRUCTIONS = {
 # We stop emulation when hitting these instructions, since they depend on co-processors or other information
 # unavailable to the emulator
 BANNED_INSTRUCTIONS = {
-    "mips": {C.mips.MIPS_INS_RDHWR},
+    "mips": {C.mips.MIPS_INS_RDHWR, C.mips.MIPS_INS_ALIAS_RDHWR},
     "arm": ARM_BANNED_INSTRUCTIONS,
     "armcm": ARM_BANNED_INSTRUCTIONS,
+    "aarch64": {C.aarch64.AARCH64_INS_MRS},
 }
 
 # https://github.com/unicorn-engine/unicorn/issues/550
@@ -210,7 +218,7 @@ class InstructionExecutedResult(NamedTuple):
 # with a copy of the current processor state.
 class Emulator:
     def __init__(self) -> None:
-        self.arch = pwndbg.aglib.arch.current
+        self.arch = pwndbg.aglib.arch.name
 
         if self.arch not in arch_to_UC:
             raise NotImplementedError(f"Cannot emulate code for {self.arch}")
@@ -222,6 +230,10 @@ class Emulator:
         debug(DEBUG_INIT, "# Instantiating Unicorn for %s", self.arch)
         debug(DEBUG_INIT, "uc = U.Uc(%r, %r)", (arch_to_UC[self.arch], self.uc_mode))
         self.uc = U.Uc(arch_to_UC[self.arch], self.uc_mode)
+
+        if enable_virtual_tlb.get(self.arch, False):
+            debug(DEBUG_INIT, "# Setting TLB mode to virtual")
+            self.uc.ctl_set_tlb_mode(U.UC_TLB_VIRTUAL)  # type: ignore[attr-defined]
 
         self.regs: pwndbg.lib.regs.RegisterSet = pwndbg.aglib.regs.current
 
@@ -242,7 +254,8 @@ class Emulator:
         self.last_single_step_result = InstructionExecutedResult(None, None)
 
         # Initialize the register state
-        for reg in self.regs.emulated_regs_order:
+        for emu_reg in self.regs.emulated_regs_order:
+            reg = emu_reg.name
             enum = self.get_reg_enum(reg)
 
             if not reg:
@@ -258,8 +271,9 @@ class Emulator:
                     debug(DEBUG_INIT, "# Could not set register %r", reg)
                 continue
 
-            # All registers are initialized to zero.
-            if value == 0:
+            # Most registers are initialized to zero.
+            # However, some registers (CPSR on AArch64) do not default to zero, so we must explicitly set them to 0
+            if not emu_reg.force_write and value == 0:
                 continue
 
             name = f"U.x86_const.UC_X86_REG_{reg.upper()}"
@@ -287,16 +301,6 @@ class Emulator:
         reg = self.get_reg_enum(name)
 
         if reg:
-            if self.arch == "aarch64":
-                # Workaround for an issue from upstream: https://github.com/pwndbg/pwndbg/issues/2548
-                # Remove this after upgrading to unicorn > 2.1.1
-                if reg == U.arm64_const.UC_ARM64_REG_WSP:
-                    return self.uc.reg_read(U.arm64_const.UC_ARM64_REG_SP) & 0xFFFFFFFF
-                elif reg == U.arm64_const.UC_ARM64_REG_XZR:
-                    return 0
-                elif reg == U.arm64_const.UC_ARM64_REG_WZR:
-                    return 0
-
             return self.uc.reg_read(reg)
 
         return None
@@ -441,7 +445,7 @@ class Emulator:
             rwx = exe = False
 
         if exe:
-            pwndbg_instr = pwndbg.aglib.disasm.one_raw(value)
+            pwndbg_instr = pwndbg.aglib.disasm.disassembly.one_raw(value)
             if pwndbg_instr:
                 instr = f"{pwndbg_instr.mnemonic} {pwndbg_instr.op_str}"
                 if pwndbg.config.syntax_highlight:
@@ -582,7 +586,7 @@ class Emulator:
         """
         Retrieve the mode used by Unicorn for the current architecture.
         """
-        arch = pwndbg.aglib.arch.current
+        arch = pwndbg.aglib.arch.name
         mode = 0
 
         if arch == "armcm":
@@ -601,6 +605,8 @@ class Emulator:
             and "isa32r6" in gdb.newest_frame().architecture().name()
         ):
             mode |= U.UC_MODE_MIPS32R6
+        elif arch == "s390x":
+            pass  # fails with invalid mode error otherwise
         else:
             mode |= {4: U.UC_MODE_32, 8: U.UC_MODE_64}[pwndbg.aglib.arch.ptrsize]
 
@@ -742,16 +748,14 @@ class Emulator:
         debug(DEBUG_MEM_READ, "uc.mem_read(*%r, **%r)", (a, kw))
         return self.uc.mem_read(*a, **kw)
 
-    def until_jump(self, pc=None):
+    def until_jump(self, pc: int = None):
         """
         Emulates instructions starting at the specified address until the
         program counter is set to an address which does not linearly follow
         the previously-emulated instruction.
 
         Arguments:
-            pc(int): Address to start at.  If `None`, uses the current instruction.
-            types(list,set): List of instruction groups to stop at.
-                By default, it stops at all jumps, calls, and returns.
+            pc: Address to start at.  If `None`, uses the current instruction.
 
         Return:
             Returns a tuple containing the address of the jump instruction,
@@ -803,7 +807,7 @@ class Emulator:
     def until_call(self, pc=None):
         addr, target = self.until_jump(pc)
 
-        while target and not pwndbg.aglib.disasm.one_raw(addr).call_like:
+        while target and not pwndbg.aglib.disasm.disassembly.one_raw(addr).call_like:
             addr, target = self.until_jump(target)
 
         return addr, target
@@ -824,7 +828,7 @@ class Emulator:
         )
         self.until_syscall_address = address
 
-    def single_step(self, pc=None) -> Tuple[int, int]:
+    def single_step(self, pc=None, instruction: PwndbgInstruction | None = None) -> Tuple[int, int]:
         """Steps one instruction.
 
         Yields:
@@ -841,21 +845,22 @@ class Emulator:
 
         pc = pc or self.pc
 
-        insn = pwndbg.aglib.disasm.one_raw(pc)
+        if instruction is None:
+            instruction = pwndbg.aglib.disasm.disassembly.one_raw(pc)
 
-        # If we don't know how to disassemble, bail.
-        if insn is None:
-            debug(DEBUG_EXECUTING, "Can't disassemble instruction at %#x", pc)
-            return self.last_single_step_result
+            # If we don't know how to disassemble, bail.
+            if instruction is None:
+                debug(DEBUG_EXECUTING, "Can't disassemble instruction at %#x", pc)
+                return self.last_single_step_result
 
-        if insn.id in BANNED_INSTRUCTIONS.get(self.arch, {}):
+        if instruction.id in BANNED_INSTRUCTIONS.get(self.arch, {}):
             debug(DEBUG_EXECUTING, "Hit illegal instruction at %#x", pc)
             return self.last_single_step_result
 
         debug(
             DEBUG_EXECUTING,
-            "# Emulator attempting to single-step at %#x: %s %s",
-            (pc, insn.mnemonic, insn.op_str),
+            "# Instruction: attempting to single-step at %#x: %s %s",
+            (pc, instruction.mnemonic, instruction.op_str),
         )
 
         try:

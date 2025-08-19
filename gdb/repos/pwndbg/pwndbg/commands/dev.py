@@ -3,12 +3,20 @@ from __future__ import annotations
 import argparse
 import logging
 
-import pwndbg.aglib.disasm
+import pwndbg.aglib.disasm.disassembly
 import pwndbg.color.message as MessageColor
 import pwndbg.commands
 from pwndbg.commands import CommandCategory
 
-parser = argparse.ArgumentParser(description="Dump internal PwndbgInstruction attributes.")
+parser = argparse.ArgumentParser(
+    description="""
+Dump internal PwndbgInstruction attributes.
+
+Useful for debugging the disassembly and annotation subsystems
+in Pwndbg. See https://pwndbg.re/pwndbg/dev/contributing/improving-annotations/#bug-root-cause
+for more information.
+"""
+)
 
 # We don't have a parser to pass in true/false in arguments, so there are two args to force the enabling/disabling of emulation
 parser.add_argument(
@@ -38,12 +46,14 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.DEV)
+@pwndbg.commands.Command(parser, category=CommandCategory.DEV)
 @pwndbg.commands.OnlyWhenRunning
 def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) -> None:
     if address is not None:
         address = int(address)
-        cached_instruction = pwndbg.aglib.disasm.computed_instruction_cache.get(address, None)
+        cached_instruction = pwndbg.aglib.disasm.disassembly.computed_instruction_cache.get(
+            address, None
+        )
         if cached_instruction:
             print(repr(cached_instruction))
         else:
@@ -56,7 +66,7 @@ def dev_dump_instruction(address=None, force_emulate=False, no_emulate=False) ->
             bool(pwndbg.config.emulate == "on") if override_setting is None else override_setting
         )
 
-        instructions, index_of_pc = pwndbg.aglib.disasm.near(
+        instructions, index_of_pc = pwndbg.aglib.disasm.disassembly.near(
             pwndbg.aglib.regs.pc, 1, emulate=use_emulation, show_prev_insns=False, use_cache=False
         )
 
@@ -76,7 +86,7 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.DEV)
+@pwndbg.commands.Command(parser, category=CommandCategory.DEV)
 def log_level(level: str) -> None:
     logging.getLogger().setLevel(getattr(logging, level.upper()))
     print(f"Log level set to {level}")

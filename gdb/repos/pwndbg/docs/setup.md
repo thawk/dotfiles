@@ -1,80 +1,98 @@
+---
+hide:
+  - navigation
+---
 
-## Quick start
-Installation from source is straightforward:
+# Setup
 
-```shell
-git clone https://github.com/pwndbg/pwndbg
-cd pwndbg
-./setup.sh
+There are multiple ways to install Pwndbg, depending on whether you want to use it [with GDB](#installing-pwndbg-gdb), [with LLDB](#installing-pwndbg-lldb), use a [portable release](#download-the-portable-version), or install it [from source](#installing-from-source).
+
+## Installing pwndbg-gdb
+Install via curl/sh (Linux/macOS)
+```{.bash .copy}
+curl -qsL 'https://install.pwndbg.re' | sh -s -- -t pwndbg-gdb
 ```
-## Install on Linux distributions
-Nix package manager (you can use Nix on any distribution):
-```shell
+Install via Homebrew (macOS)
+```{.bash .copy}
+brew install pwndbg/tap/pwndbg-gdb
+```
+Install via the Nix package manager (Linux/macOS)
+```{.bash .copy}
 nix shell github:pwndbg/pwndbg
-pwndbg ./your-binary
+```
+### Official Pwndbg packages
+When installing with GDB, you may also download a package to install through your package manager of choice. Download the package from the [releases page](https://github.com/pwndbg/pwndbg/releases) and pick the appropriate download from the second table.
+
+RPM-based Systems (CentOS/Alma/Rocky/RHEL):
+```{.bash .copy}
+dnf install ./pwndbg-2025.05.30.x86_64.rpm
+```
+DEB-based Systems (Debian/Ubuntu/Kali):
+```{.bash .copy}
+apt install ./pwndbg_2025.05.30_amd64.deb
+```
+Alpine:
+```{.bash .copy}
+apk add --allow-untrusted ./pwndbg_2025.05.30_x86_64.apk
+```
+Arch Linux:
+```{.bash .copy}
+pacman -U ./pwndbg-2025.05.30-1-x86_64.pkg.tar.zst
+```
+### Distro packages
+You may want to install Pwndbg through your distribution's package manager. This installation method is **not officially supported** because we cannot control the versions of the python dependencies Pwndbg uses in this case. Please use any other installation method when reproducing bug reports (portable package is probably simplest in this case). If a bug reproduces with a distro package but not with any of the supported installation methods, please report it to the package maintainer; if the problem cannot be fixed, let us know and we will add it to a list of known issues below.
+
+=== "Arch"
+    ```{.bash .copy}
+    sudo pacman -S pwndbg
+    ```
+    You will also need to source Pwndbg from your `~/.gdbinit`. Add this line to the beginning of that file:
+    ```{.bash .copy}
+    source /usr/share/pwndbg/gdbinit.py
+    ```
+    Pwndbg will be started every time you invoke `gdb` now.
+
+=== "Gentoo"
+    ```{.bash .copy}
+    sudo emerge --ask dev-debug/pwndbg
+    ```
+
+----
+
+## Installing pwndbg-lldb
+These installation methods provide the
+```{.bash .copy}
+pwndbg-lldb ./your-binary
+```
+command.
+
+Install via curl/sh (Linux/macOS)
+```{.bash .copy}
+curl -qsL 'https://install.pwndbg.re' | sh -s -- -t pwndbg-lldb
+```
+Install via Homebrew (macOS)
+```{.bash .copy}
+brew install pwndbg/tap/pwndbg-lldb
+```
+Install via the Nix package manager (Linux/macOS):
+```{.bash .copy}
+nix shell github:pwndbg/pwndbg#pwndbg-lldb
 ```
 
-Pwndbg is supported on Ubuntu 22.04, and 24.04 with GDB 12.1 and later. We do not test on any older versions of Ubuntu, so `pwndbg` may not work on these versions (for Ubuntu 18.04 use the [2023.07.17: ubuntu18.04-final release](https://github.com/pwndbg/pwndbg/releases/tag/2023.07.17)). We may accept pull requests fixing issues in older versions on a case by case basis, please discuss this with us on [Discord](https://discord.gg/x47DssnGwm) first. You can also always checkout an older version of `pwndbg` from around the time the Ubuntu version you're interested in was still supported by Canonical, or you can attempt to build a newer version of GDB from source.
-
-Other Linux distributions are also supported via `setup.sh`, including:
-
-* Debian-based OSes (via apt-get)
-* Fedora and Red Hat (via dnf)
-* Clear (via swiped)
-* OpenSUSE LEAP (via zypper)
-* Arch and Manjaro (via community AUR packages)
-* Void (via xbps)
-* Gentoo (via emerge)
-
-If you use any Linux distribution other than Ubuntu, we recommend using the [latest available GDB](https://www.gnu.org/software/gdb/download/) built from source. You can build it as:
+## Download the Portable Version
+You can download a portable release on the [Pwndbg releases page](https://github.com/pwndbg/pwndbg/releases). There are seperate releases for GDB and LLDB. Use the first table to pick the appropriate download for your system architecture. You can then unpack the archive with:
+```{.bash .copy}
+tar -v -xf <archive-name>
 ```
-cd <gdb-sources-dir>
-mkdir build
-cd build
-../configure --disable-nls --disable-werror --with-system-readline --with-python=`which python3` --with-system-gdbinit=/etc/gdb/gdbinit --enable-targets=all
-make -j7
+And run Pwndbg with
+```bash
+./pwndbg/bin/pwndbg
 ```
-
-## Portable Installation from package
-
-The portable version includes all necessary dependencies and should work without the need to install additional packages.
-
-### Download the Portable Version:
-
-Download the portable version from the [Pwndbg releases page](https://github.com/pwndbg/pwndbg/releases) by selecting the desired version.
-Choose the appropriate version for your system architecture (x86_64, armv7l, aarch64, riscv64).
-
-### Installation on RPM-based Systems (CentOS/Alma/Rocky/RHEL):
-
-```shell
-dnf install ./pwndbg-2024.08.29.x86_64.rpm
-# pwndbg
+or
 ```
-
-### Installation on DEB-based Systems (Debian/Ubuntu/Kali):
-
-```shell
-apt install ./pwndbg_2024.08.29_amd64.deb
-# pwndbg
+./pwndbg/bin/pwndbg-lldb
 ```
+depending on which version you installed. You may add the appropriate file to your shell's PATH.
 
-### Installation on Alpine:
-
-```shell
-apk add --allow-untrusted ./pwndbg_2024.08.29_x86_64.apk
-# pwndbg
-```
-
-### Installation on Arch Linux:
-
-```shell
-pacman -U ./pwndbg-2024.08.29-1-x86_64.pkg.tar.zst
-# pwndbg
-```
-
-### Generic Linux Installation:
-
-```shell
-tar -v -xf ./pwndbg_2024.08.29_amd64.tar.xz
-# ./pwndbg/bin/pwndbg
-```
+## Installing from source
+See [contributing/Installing Pwndbg from source](contributing/setup-pwndbg-dev.md#installing-pwndbg-from-source), you do not need the "The development environment" section.

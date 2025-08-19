@@ -1,28 +1,27 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Optional
 
 import pwndbg
-import pwndbg.color.message as message
 import pwndbg.commands
 import pwndbg.lib.config as cfg
 
 
-def pset(name: str, value: str) -> bool:
+def pget(name: str) -> Optional[pwndbg.lib.config.Parameter]:
+    """
+    Retrieves a parameter with a given name.
+    """
+    return pwndbg.config.params.get(name.replace("-", "_"))
+
+
+def pset(param: pwndbg.lib.config.Parameter, value: str):
     """
     Parses and sets a Pwndbg configuration value.
-    """
-    name = name.replace("-", "_")
-    if name not in pwndbg.config.params:
-        print(message.error(f"Unknown setting '{name}'"))
-        return False
 
-    param = pwndbg.config.params[name]
-    try:
-        new_value = parse_value(param, value)
-    except InvalidParse as e:
-        print(message.error(f"Invalid value '{value}' for setting '{name}': {e}"))
-        return False
+    Raises `InvalidParse` if the value is not valid.
+    """
+    new_value = parse_value(param, value)
 
     param.value = new_value
     for trigger in pwndbg.config.triggers[param.name]:

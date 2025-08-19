@@ -34,7 +34,7 @@ skip_repeating_values = pwndbg.config.add_param(
     "whether to skip repeating values of the telescope command",
 )
 skip_repeating_values_minimum = pwndbg.config.add_param(
-    "telescope-skip-repeating-val-minimum",
+    "telescope-skip-repeating-val-min",
     3,
     "minimum amount of repeated values before skipping lines",
 )
@@ -42,6 +42,12 @@ print_framepointer_offset = pwndbg.config.add_param(
     "telescope-framepointer-offset",
     True,
     "print offset to framepointer for each address, if sufficiently small",
+)
+print_retaddr_in_frame = pwndbg.config.add_param(
+    "telescope-frame-print-retaddr", True, "print one pointer past the stack frame"
+)
+dont_skip_registers = pwndbg.config.add_param(
+    "telescope-dont-skip-registers", True, "don't skip a repeated line if a registers points to it"
 )
 
 offset_separator = theme.add_param(
@@ -95,7 +101,7 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
 @pwndbg.commands.OnlyWhenRunning
 def telescope(
     address=None, count=telescope_lines, to_string=False, reverse=False, frame=False, inverse=False
@@ -133,6 +139,9 @@ def telescope(
 
     # Allow invocation of telescope -f (--frame) to dump all addresses in a frame
     if frame:
+        if not pwndbg.aglib.regs.frame:
+            print("The frame register is not defined for this architecture.")
+            return
         sp = pwndbg.aglib.regs.sp
         bp = pwndbg.aglib.regs[pwndbg.aglib.regs.frame]
         if sp > bp:
@@ -148,6 +157,7 @@ def telescope(
 
         address = sp
         count = int((bp - sp) / ptrsize) + 1
+        count += 1 if print_retaddr_in_frame else 0
 
     # Allow invocation of "telescope a b" to dump all bytes from A to B
     if int(address) <= int(count):
@@ -218,7 +228,6 @@ def telescope(
 
     bp = None
     if print_framepointer_offset and pwndbg.aglib.regs.frame is not None:
-        # regs.frame can be None on aarch64
         bp = pwndbg.aglib.regs[pwndbg.aglib.regs.frame]
 
     for i, addr in enumerate(range(start, stop, step)):
@@ -249,8 +258,12 @@ def telescope(
 
         # Buffer repeating values.
         if skip_repeating_values:
-            value = pwndbg.aglib.memory.pvoid(addr)
-            if last == value and addr != input_address:
+            value = pwndbg.aglib.memory.read_pointer_width(addr)
+            if (
+                last == value
+                and addr != input_address
+                and (not dont_skip_registers or not regs[addr])
+            ):
                 collapse_buffer.append(line)
                 continue
             collapse_repeating_values()
@@ -270,9 +283,9 @@ def telescope(
 
 def regs_or_frame_offset(addr: int, bp: int | None, regs: Dict[int, str], longest_regs: int) -> str:
     # bp only set if print_framepointer_offset=True
-    # len(regs[addr]) == 1 if no registers pointer to address
-    if bp is None or len(regs[addr]) > 1 or not -0xFFF <= addr - bp <= 0xFFF:
-        return " " + T.register(regs[addr].ljust(longest_regs))
+    if bp is None or regs[addr] or not -0xFFF <= addr - bp <= 0xFFF:
+        # We do .rjust(3) because some arches have two-letter registers.
+        return " " + T.register(regs[addr].ljust(longest_regs).rjust(3))
     else:
         # If offset to frame pointer as hex fits in hex 3 digits, print it
         return ("%+04x" % (addr - bp)).ljust(longest_regs + 1)
@@ -309,7 +322,7 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.STACK)
+@pwndbg.commands.Command(parser, category=CommandCategory.STACK)
 @pwndbg.commands.OnlyWhenRunning
 def stack(count, offset, frame, inverse) -> None:
     ptrsize = pwndbg.aglib.typeinfo.ptrsize
@@ -332,7 +345,7 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.STACK)
+@pwndbg.commands.Command(parser, category=CommandCategory.STACK)
 @pwndbg.commands.OnlyWhenRunning
 def stackf(count, offset) -> None:
     ptrsize = pwndbg.aglib.typeinfo.ptrsize

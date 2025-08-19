@@ -1,3 +1,7 @@
+"""
+Specific command output wrappers.
+"""
+
 from __future__ import annotations
 
 import functools
@@ -39,5 +43,5 @@ class OnlyWithCommand:
         return _OnlyWithCommand
 
 
-def call_cmd(cmd: str | List[str]) -> str:
+def call_cmd(*cmd: str) -> str:
     return subprocess.check_output(cmd, stderr=STDOUT).decode("utf-8")

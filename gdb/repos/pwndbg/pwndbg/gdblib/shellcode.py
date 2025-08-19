@@ -9,11 +9,11 @@ amount of code in the context of the inferior.
 from __future__ import annotations
 
 import gdb
-import pwnlib.asm
 import pwnlib.shellcraft
 
 import pwndbg
 import pwndbg.aglib.arch
+import pwndbg.aglib.asm
 import pwndbg.aglib.memory
 import pwndbg.aglib.regs
 import pwndbg.aglib.vmmap
@@ -27,7 +27,7 @@ def _get_syscall_return_value():
     just returned.
     """
 
-    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.current]
+    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.name]
     return pwndbg.aglib.regs[register_set.retval]
 
 
@@ -48,7 +48,7 @@ def exec_syscall(
 
     # Build machine code that runs the requested syscall.
     syscall_asm = pwnlib.shellcraft.syscall(syscall, arg0, arg1, arg2, arg3, arg4, arg5)
-    syscall_bin = pwnlib.asm.asm(syscall_asm)
+    syscall_bin = pwndbg.aglib.asm.asm(syscall_asm)
 
     # Run the syscall and pass its return value onward to the caller.
     return exec_shellcode(
@@ -79,7 +79,7 @@ def exec_shellcode(blob, restore_context=True, capture=None, disable_breakpoints
     or currupt the memory in the inferior.
     """
 
-    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.current]
+    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.name]
     preserve_set = register_set.gpr + register_set.args + (register_set.pc, register_set.stack)
 
     registers = {reg: pwndbg.aglib.regs[reg] for reg in preserve_set}

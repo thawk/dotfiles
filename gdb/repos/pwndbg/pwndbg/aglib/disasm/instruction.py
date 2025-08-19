@@ -5,26 +5,34 @@ from collections import defaultdict
 from enum import Enum
 from typing import Dict
 from typing import List
+from typing import Protocol
 from typing import Set
+
+import pwnlib
 
 # Reverse lookup tables for debug printing
 from capstone import CS_AC
 from capstone import CS_GRP
 from capstone import CS_OP
 from capstone import *  # noqa: F403
+from capstone.aarch64 import AARCH64_INS_BL
+from capstone.aarch64 import AARCH64_INS_BLR
+from capstone.aarch64 import AARCH64_INS_BR
 from capstone.arm import ARM_INS_TBB
 from capstone.arm import ARM_INS_TBH
-
-# from capstone.arm64 import ARM64_INS_B
-from capstone.arm64 import ARM64_INS_BL
-from capstone.arm64 import ARM64_INS_BLR
-from capstone.arm64 import ARM64_INS_BR
+from capstone.loongarch import LOONGARCH_INS_ALIAS_JR
+from capstone.loongarch import LOONGARCH_INS_B
+from capstone.loongarch import LOONGARCH_INS_BL
+from capstone.loongarch import LOONGARCH_INS_JIRL
+from capstone.mips import MIPS_INS_ALIAS_B
+from capstone.mips import MIPS_INS_ALIAS_BAL
 from capstone.mips import MIPS_INS_B
 from capstone.mips import MIPS_INS_BAL
 from capstone.mips import MIPS_INS_BLTZAL
 from capstone.mips import MIPS_INS_J
 from capstone.mips import MIPS_INS_JAL
 from capstone.mips import MIPS_INS_JALR
+from capstone.mips import MIPS_INS_JALR_HB
 from capstone.mips import MIPS_INS_JR
 from capstone.ppc import PPC_INS_B
 from capstone.ppc import PPC_INS_BA
@@ -38,21 +46,39 @@ from capstone.riscv import RISCV_INS_JAL
 from capstone.riscv import RISCV_INS_JALR
 from capstone.sparc import SPARC_INS_JMP
 from capstone.sparc import SPARC_INS_JMPL
+from capstone.systemz import SYSTEMZ_INS_B
+from capstone.systemz import SYSTEMZ_INS_BAL
+from capstone.systemz import SYSTEMZ_INS_BALR
+from capstone.x86 import X86_INS_CALL
 from capstone.x86 import X86_INS_JMP
 from capstone.x86 import X86Op
+from typing_extensions import override
+
+import pwndbg.dbg
+from pwndbg.dbg import DisassembledInstruction
 
 # Architecture specific instructions that mutate the instruction pointer unconditionally
 # The Capstone RET and CALL groups are also used to filter CALL and RET types when we check for unconditional jumps,
 # so we don't need to manually specify those for each architecture
 UNCONDITIONAL_JUMP_INSTRUCTIONS: Dict[int, Set[int]] = {
-    CS_ARCH_X86: {X86_INS_JMP},
-    CS_ARCH_MIPS: {MIPS_INS_J, MIPS_INS_JR, MIPS_INS_JAL, MIPS_INS_JALR, MIPS_INS_BAL, MIPS_INS_B},
+    CS_ARCH_X86: {X86_INS_CALL, X86_INS_JMP},
+    CS_ARCH_MIPS: {
+        MIPS_INS_J,
+        MIPS_INS_JR,
+        MIPS_INS_JAL,
+        MIPS_INS_JALR,
+        MIPS_INS_JALR_HB,
+        MIPS_INS_BAL,
+        MIPS_INS_ALIAS_BAL,
+        MIPS_INS_B,
+        MIPS_INS_ALIAS_B,
+    },
     CS_ARCH_SPARC: {SPARC_INS_JMP, SPARC_INS_JMPL},
     CS_ARCH_ARM: {
         ARM_INS_TBB,
         ARM_INS_TBH,
     },
-    CS_ARCH_ARM64: {ARM64_INS_BL, ARM64_INS_BLR, ARM64_INS_BR},
+    CS_ARCH_AARCH64: {AARCH64_INS_BL, AARCH64_INS_BLR, AARCH64_INS_BR},
     CS_ARCH_RISCV: {
         RISCV_INS_JAL,
         RISCV_INS_JALR,
@@ -62,6 +88,13 @@ UNCONDITIONAL_JUMP_INSTRUCTIONS: Dict[int, Set[int]] = {
         RISCV_INS_C_JR,
     },
     CS_ARCH_PPC: {PPC_INS_B, PPC_INS_BA, PPC_INS_BL, PPC_INS_BLA},
+    CS_ARCH_SYSTEMZ: {SYSTEMZ_INS_B, SYSTEMZ_INS_BAL, SYSTEMZ_INS_BALR},
+    CS_ARCH_LOONGARCH: {
+        LOONGARCH_INS_B,
+        LOONGARCH_INS_BL,
+        LOONGARCH_INS_JIRL,
+        LOONGARCH_INS_ALIAS_JR,
+    },
 }
 
 # See: https://github.com/capstone-engine/capstone/issues/2448
@@ -106,30 +139,81 @@ class SplitType(Enum):
 # Only use within the instruction.__repr__ to give a nice output
 CAPSTONE_ARCH_MAPPING_STRING = {
     CS_ARCH_ARM: "arm",
-    CS_ARCH_ARM64: "aarch64",
+    CS_ARCH_AARCH64: "aarch64",
     CS_ARCH_X86: "x86",
     CS_ARCH_PPC: "powerpc",
     CS_ARCH_MIPS: "mips",
     CS_ARCH_SPARC: "sparc",
     CS_ARCH_RISCV: "RISCV",
+    CS_ARCH_SYSTEMZ: "s390x",
+    CS_ARCH_LOONGARCH: "loongarch",
 }
+
+
+# Interface for enhanced instructions - there are two implementations defined in this file
+class PwndbgInstruction(Protocol):
+    cs_insn: CsInsn
+    address: int
+    size: int
+    mnemonic: str
+    op_str: str
+    groups: Set[int]
+    id: int
+    operands: List[EnhancedOperand]
+    asm_string: str
+    next: int
+    target: int
+    target_string: str | None
+    target_const: bool | None
+    condition: InstructionCondition
+    declare_conditional: bool | None
+    declare_is_unconditional_jump: bool
+    force_unconditional_jump_target: bool
+    annotation: str | None
+    annotation_padding: int | None
+    syscall: int | None
+    syscall_name: str | None
+    causes_branch_delay: bool
+    split: SplitType
+    emulated: bool
+
+    @property
+    def call_like(self) -> bool: ...
+
+    @property
+    def jump_like(self) -> bool: ...
+
+    @property
+    def has_jump_target(self) -> bool: ...
+
+    @property
+    def is_conditional_jump(self) -> bool: ...
+
+    @property
+    def is_unconditional_jump(self) -> bool: ...
+
+    @property
+    def is_conditional_jump_taken(self) -> bool: ...
+
+    @property
+    def bytes(self) -> bytearray: ...
+
+    def op_find(self, op_type: int, position: int) -> EnhancedOperand: ...
+
+    def op_count(self, op_type: int) -> int: ...
 
 
 # This class is used to provide context to an instructions execution, used both
 # in the disasm view output (see 'pwndbg.color.disasm.instruction()'), as well as for
 # Pwndbg commands like "nextcall" that need to know the instructions target to set breakpoints
-class PwndbgInstruction:
-    def __init__(self, cs_insn: CsInsn | None) -> None:
+# The information in this class is backed by metadata from Capstone
+class PwndbgInstructionImpl(PwndbgInstruction):
+    def __init__(self, cs_insn: CsInsn) -> None:
         self.cs_insn: CsInsn = cs_insn
         """
-        The underlying Capstone instruction, if present.
-        Ideally, only the enhancement code will access the 'cs_insn' property
+        The underlying Capstone instruction object.
+        Only the enhancement code should access the 'cs_insn' property
         """
-
-        # None if Capstone don't support the arch being disassembled
-        # See "make_simple_instruction" function
-        if cs_insn is None:
-            return
 
         self.address: int = cs_insn.address
 
@@ -154,16 +238,18 @@ class PwndbgInstruction:
         Groups that apply to all architectures: CS_GRP_INVALID | CS_GRP_JUMP | CS_GRP_CALL | CS_GRP_RET | CS_GRP_INT | CS_GRP_IRET | CS_GRP_PRIVILEGE | CS_GRP_BRANCH_RELATIVE
         """
 
-        self.id: int = cs_insn.id
+        self.id: int = cs_insn.alias_id if cs_insn.is_alias else cs_insn.id
         """
         The underlying Capstone ID for the instruction
+        If it's an alias, use the id of the alias
+
         Examples: X86_INS_JMP, X86_INS_CALL, RISCV_INS_C_JAL
         """
 
         # For ease, for x86 we will assume Intel syntax (destination operand first).
         # However, Capstone will disassemble using the `set disassembly-flavor` preference,
         # and the order of operands are read left to right into the .operands array. So we flip operand order if AT&T
-        if self.cs_insn._cs.syntax == CS_OPT_SYNTAX_ATT:
+        if self.cs_insn._cs.arch == CS_ARCH_X86 and self.cs_insn._cs.syntax == CS_OPT_SYNTAX_ATT:
             self.cs_insn.operands.reverse()
 
         self.operands: List[EnhancedOperand] = [EnhancedOperand(op) for op in self.cs_insn.operands]
@@ -173,7 +259,7 @@ class PwndbgInstruction:
         # in pwndbg.aglib.disasm.arch.py
         # ***********
 
-        self.asm_string: str = "%-06s %s" % (self.mnemonic, self.op_str)
+        self.asm_string: str = f"{self.mnemonic:<6} {self.op_str}"
         """
         The full string representing the instruction - `mov    rdi, rsp` with appropriate padding.
 
@@ -235,8 +321,8 @@ class PwndbgInstruction:
         In most cases, we can determine this purely based on the instruction ID, and this field is irrelevent.
         However, in some arches, like Arm, the same instruction can be made conditional by certain instruction attributes.
         Ex:
-            Arm, `bls` instruction. This is encoded as a `b` (Capstone ID 11) under the code, with an additional condition code field.
-            In this case, sometimes a `b` instruction (ID 11) is unconditional (always branches), in other cases it is conditional.
+            Arm, `bls` instruction. This is encoded as a `b` under the code, with an additional condition code field.
+            In this case, sometimes a `b` instruction is unconditional (always branches), in other cases it is conditional.
             We use this field to disambiguate these cases.
 
         True if we manually determine this instruction is a conditional instruction
@@ -247,9 +333,9 @@ class PwndbgInstruction:
         self.declare_is_unconditional_jump: bool = False
         """
         This field is used to declare that this instruction is an unconditional jump.
-        Most of the type, we depend on Capstone groups to check for jump instructions,
-        but sometimes these are lacking, such as in the case of general-purpose instructions
-        where the PC is the destination register, such as Arm `add`, `sub`, `ldr`, and `pop` instructions.
+        Most of the time, we depend on Capstone groups to check for jump instructions.
+        However, some instructions become branches depending on the operands,
+        such as Arm `add`, `sub`, `ldr`, `pop`, where PC is the destination register
 
         In these cases, we want to forcefully state that this instruction mutates the PC, so we set this attribute to True.
 
@@ -359,6 +445,7 @@ class PwndbgInstruction:
         """
         return (
             self.declare_conditional is not False
+            and self.declare_is_unconditional_jump is False
             and bool(self.groups & GENERIC_JUMP_GROUPS)
             and self.id not in UNCONDITIONAL_JUMP_INSTRUCTIONS[self.cs_insn._cs.arch]
         )
@@ -423,7 +510,9 @@ class PwndbgInstruction:
         operands_str = " ".join([repr(op) for op in self.operands])
 
         info = f"""{self.mnemonic} {self.op_str} at {self.address:#x} (size={self.size}) (arch: {CAPSTONE_ARCH_MAPPING_STRING.get(self.cs_insn._cs.arch,None)})
+        Bytes: {pwnlib.util.fiddling.enhex(self.bytes)}
         ID: {self.id}, {self.cs_insn.insn_name()}
+        Capstone ID/Alias ID: {self.cs_insn.id} / {self.cs_insn.alias_id if self.cs_insn.is_alias else 'None'}
         Raw asm: {'%-06s %s' % (self.mnemonic, self.op_str)}
         New asm: {self.asm_string}
         Next: {self.next:#x}
@@ -434,7 +523,7 @@ class PwndbgInstruction:
         Operands: [{operands_str}]
         Conditional jump: {self.is_conditional_jump}. Taken: {self.is_conditional_jump_taken}
         Unconditional jump: {self.is_unconditional_jump}
-        Declare unconditional: {self.declare_conditional}
+        Declare conditional: {self.declare_conditional}
         Declare unconditional jump: {self.declare_is_unconditional_jump}
         Force jump target: {self.force_unconditional_jump_target}
         Can change PC: {self.has_jump_target}
@@ -446,6 +535,7 @@ class PwndbgInstruction:
         # Hacky, but this is just for debugging
         if hasattr(self.cs_insn, "cc"):
             info += f"\n\tARM condition code: {self.cs_insn.cc}"
+            info += f"\n\tThumb mode: {1 if self.cs_insn._cs._mode & CS_MODE_THUMB else 0}"
 
         return info
 
@@ -555,29 +645,100 @@ class EnhancedOperand:
         return f"[{info}]"
 
 
-def make_simple_instruction(address: int) -> PwndbgInstruction:
-    """
-    Instantiate a PwndbgInstruction for an architecture that Capstone/pwndbg doesn't support (as defined in the CapstoneArch structure)
-    """
-    ins = pwndbg.dbg.selected_inferior().disasm(address)
-    asm = ins["asm"].split(maxsplit=1)
+# Represents a disassembled instruction
+# Conforms to the PwndbgInstruction interface
+class ManualPwndbgInstruction(PwndbgInstruction):
+    def __init__(self, address: int) -> None:
+        """
+        This class provides an implementation of PwndbgInstruction for cases where the architecture
+        at hand is not supported by the Capstone disassembler. The backing information is sourced from
+        GDB/LLDB's built-in disassemblers.
 
-    pwn_ins = PwndbgInstruction(None)
-    pwn_ins.address = address
-    pwn_ins.size = ins["length"]
+        Instances of this class do not go through the 'enhancement' process due to lacking important information provided by Capstone.
+        As a result of this, some of the methods raise NotImplementedError, because if they are called it indicates a bug elsewhere in the codebase.
+        """
+        ins: DisassembledInstruction = pwndbg.dbg.selected_inferior().disasm(address)
+        asm = ins["asm"].split(maxsplit=1)
 
-    pwn_ins.mnemonic = asm[0].strip()
-    pwn_ins.op_str = asm[1].strip() if len(asm) > 1 else ""
+        # The enhancement code assumes this value exists.
+        # However, a ManualPwndbgInstruction should never be used in the enhancement code.
+        self.cs_insn: CsInsn = None
 
-    pwn_ins.next = address + pwn_ins.size
-    pwn_ins.target = pwn_ins.next
+        self.address = address
+        self.size = ins["length"]
 
-    pwn_ins.groups = []
+        self.mnemonic = asm[0].strip()
+        self.op_str = asm[1].strip() if len(asm) > 1 else ""
+        self.groups = set()
 
-    pwn_ins.condition = InstructionCondition.UNDETERMINED
+        # Set Capstone ID to -1
+        self.id = -1
 
-    pwn_ins.annotation = None
+        self.operands = []
 
-    pwn_ins.operands = []
+        self.asm_string = f"{self.mnemonic:<6} {self.op_str}"
 
-    return pwn_ins
+        self.next = address + self.size
+        self.target = self.next
+        self.target_string = None
+        self.target_const = None
+
+        self.condition = InstructionCondition.UNDETERMINED
+
+        self.declare_conditional = None
+        self.declare_is_unconditional_jump = False
+        self.force_unconditional_jump_target = False
+
+        self.annotation = None
+
+        self.annotation_padding = None
+
+        self.syscall = None
+        self.syscall_name = None
+
+        self.causes_branch_delay = False
+
+        self.split = SplitType.NO_SPLIT
+
+        self.emulated = False
+
+    @property
+    def bytes(self) -> bytearray:
+        # GDB simply doesn't provide us with the raw bytes.
+        # However, it is important that this returns a valid bytearray,
+        # since the disasm code indexes this for nearpc-num-opcode-bytes.
+        return bytearray()
+
+    @property
+    def call_like(self) -> bool:
+        return False
+
+    @property
+    def jump_like(self) -> bool:
+        return False
+
+    @property
+    def has_jump_target(self) -> bool:
+        return False
+
+    @property
+    def is_conditional_jump(self) -> bool:
+        return False
+
+    @property
+    def is_unconditional_jump(self) -> bool:
+        return False
+
+    @property
+    def is_conditional_jump_taken(self) -> bool:
+        return False
+
+    @override
+    def op_find(self, op_type: int, position: int) -> EnhancedOperand:
+        # raise NotImplementedError, because if this is called it indicates a bug elsewhere in the codebase.
+        # ManualPwndbgInstruction should not go through the enhancement process, where this would be called.
+        raise NotImplementedError
+
+    @override
+    def op_count(self, op_type: int) -> int:
+        raise NotImplementedError

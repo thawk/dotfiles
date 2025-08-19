@@ -28,14 +28,14 @@ import pwndbg.lib.config
 CLASS_MAPPING = {
     pwndbg.lib.config.PARAM_BOOLEAN: gdb.PARAM_BOOLEAN,
     pwndbg.lib.config.PARAM_AUTO_BOOLEAN: gdb.PARAM_AUTO_BOOLEAN,
+    pwndbg.lib.config.PARAM_INTEGER: gdb.PARAM_INTEGER,
     pwndbg.lib.config.PARAM_ZINTEGER: gdb.PARAM_ZINTEGER,
-    pwndbg.lib.config.PARAM_STRING: gdb.PARAM_STRING,
+    pwndbg.lib.config.PARAM_UINTEGER: gdb.PARAM_UINTEGER,
     pwndbg.lib.config.PARAM_ZUINTEGER: gdb.PARAM_ZUINTEGER,
+    pwndbg.lib.config.PARAM_ZUINTEGER_UNLIMITED: gdb.PARAM_ZUINTEGER_UNLIMITED,
+    pwndbg.lib.config.PARAM_STRING: gdb.PARAM_STRING,
     pwndbg.lib.config.PARAM_ENUM: gdb.PARAM_ENUM,
     pwndbg.lib.config.PARAM_OPTIONAL_FILENAME: gdb.PARAM_OPTIONAL_FILENAME,
-    pwndbg.lib.config.PARAM_ZUINTEGER_UNLIMITED: gdb.PARAM_ZUINTEGER_UNLIMITED,
-    pwndbg.lib.config.PARAM_INTEGER: gdb.PARAM_INTEGER,
-    pwndbg.lib.config.PARAM_UINTEGER: gdb.PARAM_UINTEGER,
 }
 
 
@@ -53,6 +53,7 @@ class Parameter(gdb.Parameter):
         self.init_super(param)
         self.param = param
         self.value = param.value
+        self.param.add_update_listener(self.on_change)
 
     def init_super(self, param: pwndbg.lib.config.Parameter) -> None:
         """Initializes the super class for GDB >= 9"""
@@ -66,6 +67,12 @@ class Parameter(gdb.Parameter):
             )
             return
         super().__init__(param.name, gdb.COMMAND_SUPPORT, c)
+
+    def on_change(self, value: Any) -> None:
+        """Called when the value of the pwndbg.lib.config.Parameter changes
+        Transfer the value to the GDB parameter to keep them in sync.
+        """
+        self.value = value
 
     @property
     def native_value(self):

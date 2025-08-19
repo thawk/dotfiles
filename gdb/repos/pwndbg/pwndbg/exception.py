@@ -1,3 +1,7 @@
+"""
+Common exception handling.
+"""
+
 from __future__ import annotations
 
 import functools
@@ -37,29 +41,11 @@ def print_exception(exception_msg) -> None:
 verbose = config.add_param(
     "exception-verbose",
     False,
-    "whether to print a full stacktrace for exceptions raised in Pwndbg commands",
+    "print a full stacktrace for exceptions raised in Pwndbg commands",
 )
 debug = config.add_param(
     "exception-debugger", False, "whether to debug exceptions raised in Pwndbg commands"
 )
-
-
-def inform_unmet_dependencies(errors) -> None:
-    """
-    Informs user about unmet dependencies
-    """
-    import pkg_resources
-
-    msg = message.error("You appear to have unmet Pwndbg dependencies.\n")
-    for e in errors:
-        if isinstance(e, pkg_resources.DistributionNotFound):
-            msg += message.notice(f"- required {e.args[0]}, but not installed\n")
-        else:
-            msg += message.notice(f"- required {e.args[1]}, installed: {e.args[0]}\n")
-    msg += message.notice("Consider running: ")
-    msg += message.hint("`setup.sh` ")
-    msg += message.notice("from Pwndbg project directory.\n")
-    print(msg)
 
 
 @pwndbg.lib.cache.cache_until("forever")

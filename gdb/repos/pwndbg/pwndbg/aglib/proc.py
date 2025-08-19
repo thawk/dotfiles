@@ -19,6 +19,7 @@ from elftools.elf.relocation import Relocation
 from typing_extensions import ParamSpec
 
 import pwndbg.aglib.qemu
+import pwndbg.lib.arch
 import pwndbg.lib.cache
 import pwndbg.lib.memory
 
@@ -48,16 +49,10 @@ def OnlyWithArch(
 class module(ModuleType):
     @property
     def pid(self) -> int:
-        # QEMU usermode emulation always returns 42000 for some reason.
-        # In any case, we can't use the info.
-        if pwndbg.aglib.qemu.is_qemu_usermode():
-            return pwndbg.aglib.qemu.pid()
         return pwndbg.dbg.selected_inferior().pid()
 
     @property
     def tid(self) -> int:
-        if pwndbg.aglib.qemu.is_qemu_usermode():
-            return pwndbg.aglib.qemu.pid()
         return pwndbg.dbg.selected_thread().ptid()
 
     @property
@@ -167,7 +162,7 @@ class module(ModuleType):
     ) -> Callable[[Callable[P, T]], Callable[P, Optional[T]]]:
         """Decorates function to work only with the specified archictectures."""
         for arch in arch_names:
-            if arch not in pwndbg.aglib.arch_mod.ARCHS:
+            if arch not in pwndbg.lib.arch.PWNDBG_SUPPORTED_ARCHITECTURES:
                 raise ValueError(
                     f"OnlyWithArch used with unsupported arch={arch}. Must be one of {', '.join(arch_names)}"
                 )

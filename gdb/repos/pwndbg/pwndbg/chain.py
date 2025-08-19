@@ -1,3 +1,7 @@
+"""
+Dereference and format pointer chains.
+"""
+
 from __future__ import annotations
 
 from typing import List
@@ -41,23 +45,27 @@ def get(
     Recursively dereferences an address. For bare metal, it will stop when the address is not in any of vmmap pages to avoid redundant dereference.
 
     Arguments:
-        address(int): the first address to begin dereferencing
-        limit(int): number of valid pointers
-        offset(int): offset into the address to get the next pointer
-        hard_stop(int): address to stop at
+        address: the first address to begin dereferencing
+        limit: number of valid pointers
+        offset: offset into the address to get the next pointer
+        hard_stop: address to stop at
         hard_end: value to append when hard_stop is reached
-        include_start(bool): whether to include starting address or not
-        safe_linking(bool): whether this chain use safe-linking
+        include_start: whether to include starting address or not
+        safe_linking: whether this chain use safe-linking
 
     Returns:
         A list representing pointers of each ```address``` and reference
     """
     if address is None:
         return None
+    assert address >= 0, "address must be positive"
 
     limit = int(limit)
 
     result = [address] if include_start else []
+
+    is_pagefault_supported = pwndbg.aglib.memory.is_pagefault_supported()
+
     for _ in range(limit):
         # Don't follow cycles, except to stop at the second occurrence.
         if result.count(address) >= 2:
@@ -70,16 +78,13 @@ def get(
         try:
             address = address + offset
 
-            # Avoid redundant dereferences in bare metal mode by checking
-            # if address is in any of vmmap pages
-            if not pwndbg.dbg.selected_inferior().is_linux() and not pwndbg.aglib.vmmap.find(
-                address
-            ):
+            # On embedded systems, it's non uncommon for MMIO regions to exist where memory reads might mutate the hardware/process state.
+            # This check prevents the memory dereferences to protect against this case.
+            # See discussion here: https://github.com/pwndbg/pwndbg/pull/385
+            if not is_pagefault_supported and not pwndbg.aglib.vmmap.find(address):
                 break
 
-            next_address = int(
-                pwndbg.aglib.memory.get_typed_pointer_value(pwndbg.aglib.typeinfo.ppvoid, address)
-            )
+            next_address = pwndbg.aglib.memory.read_pointer_width(address)
             address = next_address ^ ((address >> 12) if safe_linking else 0)
             address &= pwndbg.aglib.arch.ptrmask
             result.append(address)
@@ -111,14 +116,14 @@ def format(
     of address dereferences into string representation.
 
     Arguments:
-        value(int|list): Either the starting address to be sent to get, or the result of get (a list)
-        limit(int): Number of valid pointers
-        code(bool): Hint that indicates the value may be an instruction
-        offset(int): Offset into the address to get the next pointer
-        hard_stop(int): Value to stop on
+        value: Either the starting address to be sent to get, or the result of get (a list)
+        limit: Number of valid pointers
+        code: Hint that indicates the value may be an instruction
+        offset: Offset into the address to get the next pointer
+        hard_stop: Value to stop on
         hard_end: Value to append when hard_stop is reached: null, value of hard stop, a string.
-        safe_linking(bool): whether this chain use safe-linking
-        enhance_string_len(int): The length of string to display for enhancement of the last pointer
+        safe_linking: whether this chain use safe-linking
+        enhance_string_len: The length of string to display for enhancement of the last pointer
     Returns:
         A string representing pointers of each address and reference
         Strings format: 0x0804a10 —▸ 0x08061000 ◂— 0x41414141
@@ -138,7 +143,7 @@ def format(
     arrow_right = c.arrow(f" {config_arrow_right} ")
 
     # Colorize the chain
-    rest = [M.get_address_and_symbol(link) for link in chain]
+    rest = [M.get_address_and_symbol(addr) if addr >= 0 else "" for addr in chain]
 
     # If the dereference limit is zero, skip any enhancements.
     if limit == 0:

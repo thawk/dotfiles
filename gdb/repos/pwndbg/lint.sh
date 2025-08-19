@@ -2,6 +2,10 @@
 
 set -o errexit
 
+source "$(dirname "$0")/scripts/common.sh"
+
+cd $PWNDBG_ABS_PATH
+
 help_and_exit() {
     echo "Usage: ./lint.sh [-f|--fix]"
     echo "  -f,  --fix         fix issues if possible"
@@ -26,27 +30,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Use Python virtual env for all programs used here
-if [[ -z "${PWNDBG_VENV_PATH}" ]]; then
-    PWNDBG_VENV_PATH="./.venv"
-fi
-
-if [[ "${PWNDBG_VENV_PATH}" != "PWNDBG_PLEASE_SKIP_VENV" ]]; then
-    source "${PWNDBG_VENV_PATH}/bin/activate"
-fi
-
 set -o xtrace
 
-LINT_FILES="pwndbg tests *.py"
-LINT_TOOLS="isort ruff vermin mypy"
-
-if ! type ${LINT_TOOLS} &> /dev/null; then
-    PIP_CMD="poetry install --with dev"
-    echo "Missing one of the following tools: ${LINT_TOOLS}"
-    echo "Running '${PIP_CMD}'"
-
-    $PIP_CMD
-fi
+LINT_FILES="pwndbg pwndbginit tests *.py scripts"
 
 call_shfmt() {
     local FLAGS=$1
@@ -54,20 +40,21 @@ call_shfmt() {
         local SHFMT_FILES=$(find . -name "*.sh" -not -path "./.venv/*")
         # Indents are four spaces, binary ops can start a line, indent switch cases,
         # and allow spaces following a redirect
-        shfmt ${FLAGS} -i 4 -bn -ci -sr -d ${SHFMT_FILES}
+        $UV_RUN_LINT shfmt ${FLAGS} -i 4 -bn -ci -sr -d ${SHFMT_FILES}
     else
-        echo "shfmt not installed, skipping"
+        echo "shfmt not installed, please install it"
+        exit 2
     fi
 }
 
 if [[ $FIX == 1 ]]; then
-    isort ${LINT_FILES}
-    ruff format ${LINT_FILES}
-    ruff check --fix --output-format=full ${LINT_FILES}
+    $UV_RUN_LINT isort ${LINT_FILES}
+    $UV_RUN_LINT ruff format ${LINT_FILES}
+    $UV_RUN_LINT ruff check --fix --output-format=full ${LINT_FILES}
     call_shfmt -w
 else
-    isort --check-only --diff ${LINT_FILES}
-    ruff format --check --diff ${LINT_FILES}
+    $UV_RUN_LINT isort --check-only --diff ${LINT_FILES}
+    $UV_RUN_LINT ruff format --check --diff ${LINT_FILES}
     call_shfmt
 
     if [[ -z "$GITHUB_ACTIONS" ]]; then
@@ -76,13 +63,13 @@ else
         RUFF_OUTPUT_FORMAT=github
     fi
 
-    ruff check --output-format="${RUFF_OUTPUT_FORMAT}" ${LINT_FILES}
+    $UV_RUN_LINT ruff check --output-format="${RUFF_OUTPUT_FORMAT}" ${LINT_FILES}
 fi
 
 # Checking minimum python version
-vermin -vvv --no-tips -t=3.10- --eval-annotations --violations ${LINT_FILES}
+$UV_RUN_LINT vermin -vvv --no-tips -t=3.10- --eval-annotations --violations ${LINT_FILES}
 
 # mypy is run in a separate step on GitHub Actions
 if [[ -z "$GITHUB_ACTIONS" ]]; then
-    mypy pwndbg gdbinit.py lldbinit.py pwndbg-lldb.py
+    $UV_RUN_MYPY mypy pwndbg pwndbginit tests/host
 fi

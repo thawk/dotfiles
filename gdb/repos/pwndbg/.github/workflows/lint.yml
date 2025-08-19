@@ -17,16 +17,22 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
+
     - name: Cache for pip
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
         key: ${{ matrix.os }}-cache-pip
 
+    - name: Install latest uv
+      uses: astral-sh/setup-uv@v6
+      with:
+        version: "latest"
+
     - name: Install dependencies
       run: |
-        ./setup.sh
-        ./setup-dev.sh
+        sudo apt install -y shfmt curl
+        uv sync --group lint --group dev
 
     - name: Run linters
       run: |
@@ -44,9 +50,8 @@ jobs:
         level: error
         # Change the current directory to run mypy command.
         # mypy command reads setup.cfg or other settings file in this path.
-        execute_command: poetry run mypy
+        execute_command: uv run --group dev --group lint --group tests --extra gdb --extra lldb mypy
         install_types: false
-        target: pwndbg
+        target: pwndbg pwndbginit tests/host
         filter_mode: nofilter
         fail_on_error: true
-

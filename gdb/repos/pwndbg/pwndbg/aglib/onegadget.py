@@ -324,12 +324,6 @@ def parse_expression(expr: str) -> Tuple[int | None, str, str | None]:
 
         return result, f"{cast}{lambda_expr.color_str}", None
     except pwndbg.dbg_mod.Error as e:
-        error_message = (
-            f"Pwndbg encountered an issue while evaluating the expression: {cast}{lambda_expr.color_str}\n"
-            f"Error details: {str(e)}\n"
-            f"Consider creating an issue in the pwndbg repository."
-        )
-        print(M.warn(error_message))
         return None, f"{cast}{lambda_expr.color_str}", str(e)
 
 
@@ -400,7 +394,7 @@ def check_non_stack_argv(expr: str) -> Tuple[CheckSatResult, str]:
     n = 0
     while True:
         try:
-            argv_n = pwndbg.aglib.memory.pvoid(argv + n * pwndbg.aglib.arch.ptrsize)
+            argv_n = pwndbg.aglib.memory.read_pointer_width(argv + n * pwndbg.aglib.arch.ptrsize)
         except pwndbg.dbg_mod.Error:
             output_msg += f"&argv[{n}] = {argv + n * pwndbg.aglib.arch.ptrsize:#x}, {argv + n * pwndbg.aglib.arch.ptrsize:#x} is a invalid address\n"
             return UNSAT, output_msg
@@ -450,7 +444,7 @@ def check_envp(expr: str) -> Tuple[bool, str]:
     n = 0
     while True:
         try:
-            envp_n = pwndbg.aglib.memory.pvoid(envp + n * pwndbg.aglib.arch.ptrsize)
+            envp_n = pwndbg.aglib.memory.read_pointer_width(envp + n * pwndbg.aglib.arch.ptrsize)
         except pwndbg.dbg_mod.Error:
             output_msg += f"&envp[{n}] = {envp + n * pwndbg.aglib.arch.ptrsize:#x}, {envp + n * pwndbg.aglib.arch.ptrsize:#x} is a invalid address\n"
             return False, output_msg

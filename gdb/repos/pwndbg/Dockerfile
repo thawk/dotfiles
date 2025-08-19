@@ -9,15 +9,15 @@
 #
 
 ARG image=mcr.microsoft.com/devcontainers/base:jammy
-FROM $image
+FROM $image AS base
 
 WORKDIR /pwndbg
 
 ENV PIP_NO_CACHE_DIR=true
-ENV LANG en_US.utf8
+ENV LANG=en_US.utf8
 ENV TZ=America/New_York
-ENV ZIGPATH=/opt/zig
 ENV PWNDBG_VENV_PATH=/venv
+ENV UV_PROJECT_ENVIRONMENT=/venv
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone && \
@@ -28,22 +28,27 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     apt-get update && \
     apt-get install -y vim
 
+# setup.sh needs scripts/common.sh
+RUN mkdir scripts
+ADD ./scripts/common.sh /pwndbg/scripts/
+
 ADD ./setup.sh /pwndbg/
-ADD ./poetry.lock /pwndbg/
+ADD ./uv.lock /pwndbg/
 ADD ./pyproject.toml /pwndbg/
-ADD ./poetry.toml /pwndbg/
 
 # pyproject.toml requires these files, pip install would fail
 RUN touch README.md && mkdir pwndbg && touch pwndbg/empty.py
 
 RUN DEBIAN_FRONTEND=noninteractive ./setup.sh
 
-# Cleanup dummy files
-RUN rm README.md && rm -rf pwndbg
-
 # Comment these lines if you won't run the tests.
 ADD ./setup-dev.sh /pwndbg/
 RUN ./setup-dev.sh
+
+# Cleanup dummy files
+RUN rm README.md && rm -rf pwndbg
+
+FROM base AS full
 
 ADD . /pwndbg/
 

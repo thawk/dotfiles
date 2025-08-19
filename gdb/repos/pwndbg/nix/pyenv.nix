@@ -1,96 +1,377 @@
 {
-  pkgs ? import <nixpkgs> { },
+  pkgs,
+  inputs,
   python3 ? pkgs.python3,
-  inputs ? null,
   isDev ? false,
   isLLDB ? false,
-  lib,
+  isEditable ? false,
   ...
 }:
-pkgs.poetry2nix.mkPoetryEnv {
-  groups = [ "main" ] ++ lib.optionals isDev [ "dev" ] ++ lib.optionals isLLDB [ "lldb" ];
-  checkGroups = lib.optionals isDev [ "dev" ] ++ lib.optionals isLLDB [ "lldb" ];
-  projectDir = inputs.pwndbg;
-  python = python3;
-  overrides = pkgs.poetry2nix.overrides.withDefaults (
-    self: super: {
-      pip = python3.pkgs.pip; # fix infinite loop in nix, look here: https://github.com/nix-community/poetry2nix/issues/1184#issuecomment-1644878841
+let
+  lib = pkgs.lib;
+  hacks = pkgs.callPackage inputs.pyproject-nix.build.hacks { };
+  workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ./..; };
 
-      # disable build from source, because rust's hash had to be repaired many times, see: PR https://github.com/pwndbg/pwndbg/pull/2024
-      cryptography = super.cryptography.override { preferWheel = true; };
+  pyprojectOverlay = workspace.mkPyprojectOverlay {
+    sourcePreference = "sdist";
+  };
 
-      unix-ar = super.unix-ar.overridePythonAttrs (old: {
-        nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ self.setuptools ];
-      });
+  editableOverlay = workspace.mkEditablePyprojectOverlay {
+    root = "$REPO_ROOT";
+  };
 
-      pt = super.pt.overridePythonAttrs (old: {
-        buildInputs = (old.buildInputs or [ ]) ++ [ super.poetry-core ];
-      });
+  pkgsNeedSetuptools = [
+    "capstone"
+    "unicorn"
+    "parso"
+    "paramiko"
+    "prompt"
+    "colored"
+    "pycparser"
+    "gnureadline"
+    "asttokens"
+    "bcrypt"
+    "cffi"
+    "pexpect"
+    "ipython"
+    "intervaltree"
+    "colored-traceback"
+    "psutil"
+    "prompt-toolkit"
+    "pynacl"
+    "pyserial"
+    "pwntools"
+    "pysocks"
+    "requests"
+    "six"
+    "sortedcontainers"
+    "python-dateutil"
+    "tabulate"
+    "wcwidth"
+    "ropgadget"
+    "zstandard"
+    "certifi"
+    "charset-normalizer"
+    "executing"
+    "jedi"
+    "decorator"
+    "mako"
+    "markupsafe"
+    "matplotlib-inline"
+    "pure-eval"
+    "pip"
+    "pluggy"
+    "stack-data"
+    "unix-ar"
+    "pyelftools"
+    "types-requests"
+    "types-tabulate"
+    "types-pygments"
+    "types-docutils"
+    "types-psutil"
+    "types-gdb"
+    "types-setuptools"
+    "cryptography"
+    "setuptools-scm"
+    "trove-classifiers"
+    "coverage"
+    "mypy-extensions"
+    "pytest"
+    "pytest-cov"
+    "mypy"
+    "vermin"
+  ];
+  pkgsNeedFlitcore = [
+    "typing-extensions"
+    "idna"
+    "packaging"
+    "mdurl"
+    "ptyprocess"
+    "pathspec"
+    "markdown-it-py"
+  ];
+  pkgsNeedHatchling = [
+    "traitlets"
+    "pygments"
+    "urllib3"
+    "plumbum"
+    "rpyc"
+    "iniconfig"
+  ];
+  pkgsNeedPoetry = [
+    "pt"
+    "rich"
+    "sortedcontainers-stubs"
+    "isort"
+  ];
 
-      # Patch psutil to work on macOS (Darwin)
-      # https://github.com/pwndbg/pwndbg/pull/2526#issuecomment-2476732310
-      psutil = (
-        super.psutil.overridePythonAttrs (
-          old:
-          pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
-            stdenv = pkgs.overrideSDK pkgs.stdenv "11.0";
-            NIX_CFLAGS_COMPILE = "-DkIOMainPortDefault=0";
-            buildInputs =
-              old.buildInputs or [ ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isx86_64 [ pkgs.darwin.apple_sdk.frameworks.CoreFoundation ]
-              ++ [ pkgs.darwin.apple_sdk.frameworks.IOKit ];
-          }
+  genPkgsNeeded =
+    listNeed: pydeps: final: prev:
+    (lib.genAttrs listNeed (
+      pkgName:
+      prev.${pkgName}.overrideAttrs (old: {
+        nativeBuildInputs =
+          old.nativeBuildInputs ++ final.resolveBuildSystem (lib.genAttrs pydeps (name: [ ]));
+      })
+    ));
+
+  isBuildWheel = old: lib.strings.hasSuffix ".whl" old.src.name;
+  isBuildSource = old: !(isBuildWheel old);
+  isCross = pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform;
+
+  pyprojectOverrides1 =
+    final: prev:
+    (genPkgsNeeded pkgsNeedSetuptools [ "setuptools" ] final prev)
+    // (genPkgsNeeded pkgsNeedFlitcore [ "flit-core" ] final prev)
+    // (genPkgsNeeded pkgsNeedHatchling [ "hatchling" "hatch-vcs" ] final prev)
+    // (genPkgsNeeded pkgsNeedPoetry [ "poetry-core" ] final prev);
+
+  dummy = pkgs.runCommand "dummy" { } "mkdir $out";
+
+  pyprojectOverrides2 = final: prev: {
+    # paramiko is only used in pwntools for pwnlib.tubes.ssh
+    paramiko = dummy;
+    pip = dummy;
+    uv = dummy;
+    gdb-for-pwndbg = dummy;
+    lldb-for-pwndbg = dummy;
+
+    # ziglang is only supported on few platforms
+    ziglang =
+      if
+        (
+          pkgs.stdenv.hostPlatform.isDarwin
+          || (pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isx86)
+          || (pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isAarch)
+          || (pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isS390x)
+          || (pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.isRiscV64)
+          || (
+            pkgs.stdenv.hostPlatform.isLinux
+            && pkgs.stdenv.hostPlatform.isPower64
+            && pkgs.stdenv.hostPlatform.isLittleEndian
+          )
         )
-      );
-
-      # Disable tests for unicorn on macOS in GitHub Actions (to avoid segmentation faults)
-      # https://github.com/pwndbg/pwndbg/pull/2526#issuecomment-2476732310
-      unicorn = python3.pkgs.unicorn.overridePythonAttrs (
-        old:
-        pkgs.lib.optionalAttrs pkgs.stdenv.isDarwin {
-          doCheck = false;
+      then
+        prev.ziglang.override {
+          sourcePreference = "wheel";
         }
-      );
+      else
+        dummy;
 
-      capstone =
-        # capstone=5.0.3 build is broken only in darwin :(, soo we use wheel
-        if pkgs.stdenv.isDarwin then
-          super.capstone.override { preferWheel = true; }
-        else
-          super.capstone.overridePythonAttrs (old: {
-            # fix darwin
-            preBuild = pkgs.lib.optionalString pkgs.stdenv.isDarwin ''
-              sed -i 's/^IS_APPLE := .*$/IS_APPLE := 1/' ./src/Makefile
-            '';
-            # fix darwin
-            nativeBuildInputs =
-              (old.nativeBuildInputs or [ ])
-              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                pkgs.cmake
-                pkgs.fixDarwinDylibNames
+    psutil = pkgs.callPackage (
+      {
+        darwin,
+        stdenv,
+        python3,
+        breakpointHook,
+      }:
+      prev.psutil.overrideAttrs (
+        old:
+        lib.optionalAttrs isCross {
+          buildInputs = [ python3 ];
+        }
+        // lib.optionalAttrs stdenv.hostPlatform.isDarwin {
+          NIX_CFLAGS_COMPILE = "-DkIOMainPortDefault=0";
+        }
+      )
+    ) { };
+
+    capstone = pkgs.callPackage (
+      {
+        cmake,
+        stdenv,
+      }:
+      prev.capstone.overrideAttrs (
+        old:
+        lib.optionalAttrs (isBuildSource old) {
+          nativeBuildInputs = old.nativeBuildInputs ++ [
+            cmake
+          ];
+        }
+      )
+    ) { };
+
+    unicorn = pkgs.callPackage (
+      {
+        cmake,
+        pkg-config,
+        cctools,
+        stdenv,
+        fetchFromGitHub,
+        fetchpatch,
+      }:
+      prev.unicorn.overrideAttrs (
+        old:
+        lib.optionalAttrs ((isBuildSource old)) {
+          nativeBuildInputs =
+            old.nativeBuildInputs
+            ++ [
+              cmake
+              pkg-config
+            ]
+            ++ lib.optionals stdenv.hostPlatform.isDarwin [
+              cctools
+            ];
+
+          postPatch = lib.optionalString stdenv.hostPlatform.isDarwin ''
+            substituteInPlace ./src/CMakeLists.txt \
+                --replace-fail 'set(CMAKE_C_COMPILER "/usr/bin/cc")' 'set(CMAKE_C_COMPILER "${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc")'
+          '';
+
+          # Remove this block after upgrading to unicorn 2.2.0
+          patches = lib.optionals stdenv.hostPlatform.isDarwin [
+            (fetchpatch {
+              url = "https://github.com/unicorn-engine/unicorn/commit/79f910ea73220f4f603b6050593af86483573908.patch";
+              hash = "sha256-AIMetsuYx1wz2KNtHcsyBfue+dBIDMVdqIiPaQ3xfgs=";
+              includes = [
+                "src/qemu/configure"
+                "src/qemu/include/tcg/tcg-apple-jit.h"
               ];
-            # fix build for aarch64: https://github.com/capstone-engine/capstone/issues/2102
-            postPatch = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
-              substituteInPlace setup.py --replace manylinux1 manylinux2014
+              stripLen = 1;
+              extraPrefix = "src/";
+            })
+          ];
+        }
+        // lib.optionalAttrs stdenv.hostPlatform.isLoongArch64 {
+          # Remove this block after upgrading to unicorn 2.2.0
+          src = fetchFromGitHub {
+            owner = "unicorn-engine";
+            repo = "unicorn";
+            rev = "e867b08c66544ddf8cd62c1e36e8ff35d32c3e77";
+            hash = "sha256-vov6io2+RY8CZAoF0S00J2trlEEQHeMxw4HV8gm2Q2Y=";
+          };
+          sourceRoot = "source/bindings/python";
+          preBuild = ''
+            chmod -R +w ../../../
+          '';
+        }
+      )
+    ) { };
+
+    gnureadline = pkgs.callPackage (
+      {
+        python3,
+        readline,
+        ncurses,
+      }:
+      prev.gnureadline.overrideAttrs (
+        old:
+        let
+          readlineStatic = readline.overrideAttrs (old': {
+            configureFlags = (old'.configureFlags or [ ]) ++ [
+              "--enable-static"
+              "--disable-shared"
+            ];
+            postInstall = ''
+              cp -v ./libhistory.a $out/lib/
+              cp -v ./libreadline.a $out/lib/
             '';
           });
+        in
+        {
+          preBuild = ''
+            mkdir readline
+            cp -rf ${readlineStatic.dev}/include/readline/*.h ./readline/
+            cp -rf ${readlineStatic.out}/lib/*.a ./readline/
+          '';
+          buildInputs = [
+            ncurses
+          ]
+          ++ lib.optionals isCross [
+            python3
+          ];
+        }
+      )
+    ) { };
 
-      sortedcontainers-stubs = super.sortedcontainers-stubs.overridePythonAttrs (old: {
-        buildInputs = (old.buildInputs or [ ]) ++ [ super.poetry-core ];
-      });
+    zstandard = pkgs.callPackage (
+      { python3 }:
+      prev.zstandard.overrideAttrs (old: {
+        buildInputs =
+          (old.buildInputs or [ ])
+          ++ lib.optionals isCross [
+            python3
+          ];
+      })
+    ) { };
+  };
 
-      # Dev-only dependencies
+  overlays = lib.composeManyExtensions [
+    inputs.pyproject-build-systems.overlays.default
+    pyprojectOverlay
+    pyprojectOverrides1
+    pyprojectOverrides2
+    (final: prev: {
+      pythonPkgsBuildHost = prev.pythonPkgsBuildHost.overrideScope (
+        lib.composeManyExtensions [
+          inputs.pyproject-build-systems.overlays.default
+        ]
+      );
+    })
+  ];
 
-      # Because compiling mypy is slow
-      mypy = super.mypy.override { preferWheel = true; };
-      types-gdb = super.types-gdb.overridePythonAttrs (old: {
-        buildInputs = (old.buildInputs or [ ]) ++ [ super.setuptools ];
-      });
-      vermin = super.vermin.overridePythonAttrs (old: {
-        buildInputs = (old.buildInputs or [ ]) ++ [ super.setuptools ];
-      });
-      # Hash issues, so just wheel
-      ruff = super.ruff.override { preferWheel = true; };
-    }
+  baseSet = pkgs.callPackage inputs.pyproject-nix.build.packages {
+    python = python3;
+    stdenv = pkgs.stdenv.override {
+      targetPlatform = pkgs.stdenv.targetPlatform // {
+        # See https://en.wikipedia.org/wiki/MacOS_version_history#Releases for more background on version numbers.
+        darwinSdkVersion = "13.0";
+      };
+    };
+  };
+  pythonSet = baseSet.overrideScope overlays;
+  editablePythonSet = pythonSet.overrideScope (
+    lib.composeManyExtensions [
+      inputs.pyproject-build-systems.overlays.default
+      editableOverlay
+      pyprojectOverrides1
+      pyprojectOverrides2
+      (final: prev: {
+        pythonPkgsBuildHost = prev.pythonPkgsBuildHost.overrideScope (
+          lib.composeManyExtensions [
+            inputs.pyproject-build-systems.overlays.default
+          ]
+        );
+      })
+      (final: prev: {
+        pwndbg = prev.pwndbg.overrideAttrs (old: {
+          nativeBuildInputs =
+            old.nativeBuildInputs
+            ++ final.resolveBuildSystem {
+              editables = [ ];
+            };
+        });
+      })
+    ]
   );
-}
+
+  pyenv = pythonSet.mkVirtualEnv "pwndbg-env" {
+    pwndbg =
+      [ ]
+      ++ lib.optionals isLLDB [
+        "lldb"
+      ]
+      ++ lib.optionals isDev [
+        "dev"
+        "tests"
+        # We don't need linters in "dev" build
+        # "lint"
+      ];
+  };
+
+  pyenvEditable = editablePythonSet.mkVirtualEnv "pwndbg-editable-env" {
+    pwndbg =
+      [ ]
+      ++ lib.optionals isLLDB [
+        "lldb"
+      ]
+      ++ lib.optionals (!isLLDB) [
+        "gdb"
+      ]
+      ++ lib.optionals isDev [
+        "dev"
+        "tests"
+      ];
+  };
+in
+if isEditable then pyenvEditable else pyenv

@@ -1,3 +1,7 @@
+"""
+Rizin integration with rzpipe.
+"""
+
 from __future__ import annotations
 
 import pwndbg.aglib.elf
@@ -17,7 +21,7 @@ def rzpipe():
     Raises Exception if anything goes fatally wrong.
     Returns a rzpipe.open handle.
     """
-    filename = pwndbg.dbg.selected_inferior().main_module_name()
+    filename = pwndbg.aglib.proc.exe
     if not filename:
         raise Exception("Could not find objfile to create a rzpipe for")
 
