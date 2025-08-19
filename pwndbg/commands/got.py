@@ -9,6 +9,7 @@ from elftools.elf.elffile import ELFFile
 
 import pwndbg.aglib.arch
 import pwndbg.aglib.file
+import pwndbg.aglib.memory
 import pwndbg.aglib.proc
 import pwndbg.aglib.qemu
 import pwndbg.aglib.vmmap
@@ -24,15 +25,7 @@ from pwndbg.commands import CommandCategory
 from pwndbg.wrappers.readelf import RelocationType
 
 parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawTextHelpFormatter,
-    description="""Show the state of the Global Offset Table.
-
-Examples:
-    got
-    got puts
-    got -p libc
-    got -a
-""",
+    description="Show the state of the Global Offset Table.",
 )
 group = parser.add_mutually_exclusive_group()
 group.add_argument(
@@ -64,7 +57,21 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.LINUX)
+@pwndbg.commands.Command(
+    parser,
+    category=CommandCategory.LINUX,
+    examples="""
+> got
+    Print all writable GOT entries in the executable.
+> got -r puts
+    Print all GOT entries that contain the string "puts".
+> got -p libc
+    Print all writable GOT entries used by libc. (And any other loaded
+    object files that contain the string "libc" in their path).
+> got -ra
+    Print all GOT entries in the address space.
+""",
+)
 @pwndbg.commands.OnlyWhenRunning
 def got(path_filter: str, all_: bool, accept_readonly: bool, symbol_filter: str) -> None:
     if pwndbg.aglib.qemu.is_qemu_usermode():
@@ -186,5 +193,5 @@ def _got(path: str, accept_readonly: bool, symbol_filter: str) -> None:
     )
     for output in outputs:
         print(
-            f"[{M.get(output['address'])}] {message.hint(output['name'])} -> {pwndbg.chain.format(pwndbg.aglib.memory.pvoid(output['address']))}"  # type: ignore[arg-type]
+            f"[{M.get(output['address'])}] {message.hint(output['name'])} -> {pwndbg.chain.format(pwndbg.aglib.memory.read_pointer_width(output['address']))}"  # type: ignore[arg-type]
         )

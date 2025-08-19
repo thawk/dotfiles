@@ -1,7 +1,14 @@
+"""
+Pwndbg command implementations.
+
+As well as various command-handling logic.
+"""
+
 from __future__ import annotations
 
 import argparse
 import functools
+import inspect
 import io
 import logging
 from enum import Enum
@@ -16,12 +23,14 @@ from typing import Tuple
 from typing import TypeVar
 
 from typing_extensions import ParamSpec
+from typing_extensions import override
 
 import pwndbg.aglib.heap
 import pwndbg.aglib.kernel
 import pwndbg.aglib.proc
 import pwndbg.aglib.qemu
 import pwndbg.aglib.regs
+import pwndbg.color.message as message
 import pwndbg.exception
 from pwndbg.aglib.heap.ptmalloc import DebugSymsHeap
 from pwndbg.aglib.heap.ptmalloc import GlibcMemoryAllocator
@@ -33,7 +42,7 @@ log = logging.getLogger(__name__)
 T = TypeVar("T")
 P = ParamSpec("P")
 
-commands: List[Command] = []
+commands: List[CommandObj] = []
 command_names: Set[str] = set()
 
 
@@ -45,6 +54,7 @@ class CommandCategory(str, Enum):
     JEMALLOC = "jemalloc Heap"
     BREAKPOINT = "Breakpoint"
     MEMORY = "Memory"
+    MUSL = "musl"
     STACK = "Stack"
     REGISTER = "Register"
     PROCESS = "Process"
@@ -54,7 +64,7 @@ class CommandCategory(str, Enum):
     KERNEL = "Kernel"
     INTEGRATIONS = "Integrations"
     WINDBG = "WinDbg"
-    PWNDBG = "pwndbg"
+    PWNDBG = "Pwndbg"
     SHELL = "Shell"
     DEV = "Developer"
 
@@ -71,63 +81,230 @@ if pwndbg.dbg.is_gdblib_available():
     pwndbg_is_reloading = getattr(gdb, "pwndbg_is_reloading", False)
 
 
-class Command:
-    """Generic command wrapper"""
+class InvalidDebuggerError(Exception):
+    """
+    Raised when a command is called in a debugger for which
+    it is disallowed.
+    """
 
-    builtin_override_whitelist: Set[str] = {"up", "down", "search", "pwd", "start", "ignore"}
+    pass
+
+
+class CommandFormatter(argparse.RawDescriptionHelpFormatter):
+    """
+    The formatter_class that is passed to argparse for all
+    commands.
+
+    Subclassing this isn't officially supported, but there
+    isn't a good alternative.
+    """
+
+    @override
+    def _get_help_string(self, action):
+        # Yoinked from argparse.ArgumentDefaultsHelpFormatter with
+        # the added ` and action.default not in (None, False)` check.
+        help_ = action.help
+        if help_ is None:
+            help_ = ""
+
+        if "%(default)" not in help_:
+            is_false_bool = (
+                action.type is bool or isinstance(action.default, bool)
+            ) and not action.default
+            is_none = action.default is None
+            if action.default is not argparse.SUPPRESS and not (is_false_bool or is_none):
+                defaulting_nargs = [argparse.OPTIONAL, argparse.ZERO_OR_MORE]
+                if action.option_strings or action.nargs in defaulting_nargs:
+                    if action.type is str:
+                        help_ += " (default: '%(default)s')"
+                    else:
+                        help_ += " (default: %(default)s)"
+
+        return help_
+
+
+class CommandObj:
+    """
+    Represents a command that can be invoked from the
+    debugger.
+    """
+
+    builtin_override_whitelist: Set[str] = {
+        "up",
+        "down",
+        "search",
+        "pwd",
+        "start",
+        "starti",
+        "ignore",
+    }
     history: Dict[int, str] = {}
 
     def __init__(
         self,
         function: Callable[..., str | None],
-        prefix: bool = False,
-        command_name: str | None = None,
-        shell: bool = False,
-        is_alias: bool = False,
-        aliases: List[str] = [],
-        category: CommandCategory = CommandCategory.MISC,
-        doc: str | None = None,
+        parser: argparse.ArgumentParser,
+        command_name: str | None,
+        category: CommandCategory,
+        aliases: List[str],
+        examples: str,
+        notes: str,
+        /,  # All parameters must be passed in positionally
     ) -> None:
-        self.is_alias = is_alias
-        self.aliases = aliases
-        self.category = category
-        self.shell = shell
-        self.doc = doc
+        assert function
+        self.function = function
 
-        if command_name is None:
-            command_name = function.__name__
+        self.command_name = command_name
+        if self.command_name is None:
+            # Take the command name from the name of the function
+            # which defines it, but replace '_' with '-'.
+            self.command_name = function.__name__.replace("_", "-")
+
+        assert "_" not in self.command_name and "Use '-' instead of '_' in command names."
+        assert self.command_name not in command_names and "Command already exists."
+        assert (
+            not (
+                self.command_name in GDB_BUILTIN_COMMANDS
+                and self.command_name not in CommandObj.builtin_override_whitelist
+                and not pwndbg_is_reloading
+            )
+            and "Cannot override non-whitelisted built-in command."
+        )
+
+        assert category
+        self.category = category
+
+        self.aliases = aliases
+        self.examples = examples.strip()
+        self.notes = notes.strip()
+
+        assert parser
+        self.parser = parser
+        # Sets self.help_str and self.description (among other stuff).
+        self.initialize_parser()
+
+        # Let the debugger and pwndbg global state know about it.
+        self.register_command()
+
+        # For commands like hexdump where you get new output from
+        # continuous invocations.
+        self.repeat = False
+
+    def register_command(self):
+        """
+        Register this object command with the underlying debugger
+        and update pwndbg global state to know about this command.
+        """
 
         def _handler(_debugger, arguments, is_interactive):
             self.invoke(arguments, is_interactive)
 
-        self.handle = pwndbg.dbg.add_command(command_name, _handler, doc)
-        self.function = function
+        # Keep a handle to the command and its aliases so we can
+        # easily remove them if necessary (not supported with GDB).
+        self.handles = []
 
-        if command_name in command_names:
-            raise Exception(f"Cannot add command {command_name}: already exists.")
-        if (
-            command_name in GDB_BUILTIN_COMMANDS
-            and command_name not in self.builtin_override_whitelist
-            and not pwndbg_is_reloading
-        ):
-            raise Exception(f'Cannot override non-whitelisted built-in command "{command_name}"')
+        # Tell the debugger about the command...
+        self.handles.append(pwndbg.dbg.add_command(self.command_name, _handler, self.help_str))
+        # ...and all of its aliases.
+        for alias in self.aliases:
+            self.handles.append(pwndbg.dbg.add_command(alias, _handler, self.help_str))
 
-        command_names.add(command_name)
+        command_names.add(self.command_name)
         commands.append(self)
 
-        functools.update_wrapper(self, function)
-        self.__name__ = command_name
+    @staticmethod
+    def has_notes_string(text: str) -> bool:
+        return any(nt in text.lower() for nt in ("note:", "notes:"))
 
-        self.repeat = False
+    @staticmethod
+    def has_examples_string(text: str) -> bool:
+        return any(ex in text.lower() for ex in ("example:", "examples:"))
 
-    def split_args(self, argument: str) -> Tuple[List[str], Dict[Any, Any]]:
-        """Split a command-line string from the user into arguments.
+    def initialize_parser(self):
+        # Set parser.prog so the help is generated properly.
+        self.parser.prog = self.command_name
 
-        Returns:
-            A ``(tuple, dict)``, in the form of ``*args, **kwargs``.
-            The contents of the tuple/dict are undefined.
-        """
-        return pwndbg.dbg.lex_args(argument), {}
+        # We want to run all integer and otherwise-unspecified arguments
+        # through fix() so that GDB parses it.
+        # FIXME: this is weird
+        for action in self.parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                action.type = str
+            if action.dest == "help":
+                continue
+            if action.type is int:
+                action.type = fix_int_reraise_arg
+            elif action.type is None:
+                action.type = fix_reraise_arg
+
+        assert (
+            self.parser.formatter_class is argparse.HelpFormatter
+            and "All pwndbg commands should use the same formatter."
+        )
+
+        self.parser.formatter_class = CommandFormatter
+
+        # Used by `pwndbg [filter]`
+        assert (
+            self.parser.description
+            and self.parser.description.strip()
+            and "A command must contain a description."
+        )
+        self.description = self.parser.description = self.parser.description.strip()
+
+        assert (
+            not self.has_examples_string(self.description)
+            and "Put examples into pwndbg.commands.Command(examples=your_example)."
+        )
+        assert (
+            not self.has_notes_string(self.description)
+            and "Put notes into pwndbg.commands.Command(notes=your_note)."
+        )
+
+        # Build the actual epilog from the examples, notes and passed epilog.
+        self.epilog = ""
+        self.pure_epilog = ""
+
+        if self.examples:
+            assert (
+                not self.has_examples_string(self.examples)
+                and "No need, `Examples:` is added automatically."
+            )
+            # Not putting '\n' in the notice() so .strip() works properly.
+            self.epilog += "\n" + message.notice("Examples:") + "\n"
+            self.epilog += self.examples + "\n"
+
+        if self.notes:
+            assert (
+                not self.has_notes_string(self.notes)
+                and "No need, `Notes:` is added automatically."
+            )
+            self.epilog += "\n" + message.notice("Notes:") + "\n"
+            self.epilog += self.notes + "\n"
+
+        if self.parser.epilog:
+            self.pure_epilog = self.parser.epilog.strip()
+            assert (
+                not self.has_examples_string(self.pure_epilog)
+                and "Put examples into pwndbg.commands.Command(examples=your_example)."
+            )
+            assert (
+                not self.has_notes_string(self.pure_epilog)
+                and "Put notes into pwndbg.commands.Command(notes=your_note)."
+            )
+            self.epilog += "\n" + self.pure_epilog + "\n"
+
+        if self.aliases:
+            alias_txt = "Alias" + ("es" if len(self.aliases) > 1 else "") + ": "
+            self.epilog += "\n" + message.notice(alias_txt)
+            self.epilog += ", ".join(self.aliases) + "\n"
+
+        # Update the parser so the help is correctly generated.
+        self.parser.epilog = self.epilog = self.epilog.strip()
+
+        # Generate command help (after stripping the parser's variables
+        # and defining a formatter).
+        self.help_str = self.parser.format_help()
 
     def invoke(self, argument: str, from_tty: bool) -> None:
         """Invoke the command with an argument string"""
@@ -135,23 +312,32 @@ class Command:
             log.error("Pwndbg commands require a target binary to be selected")
             return
 
+        # Put the arguments through the debugger
         try:
-            args, kwargs = self.split_args(argument)
-        except SystemExit:
-            # Raised when the usage is printed by an ArgparsedCommand
-            return
+            arg_list = pwndbg.dbg.lex_args(argument)
         except (TypeError, pwndbg.dbg_mod.Error):
             pwndbg.exception.handle(self.function.__name__)
             return
 
+        # Put the arguments through argparse
+        try:
+            kwargs = vars(self.parser.parse_args(arg_list))
+        except SystemExit:
+            # argparse complained about incorrect usage or printed
+            # help and exited. Either way the appropriate message
+            # is already printed and we shouldn't call the function.
+            return
+
         try:
             self.repeat = self.check_repeated(argument, from_tty)
-            self(*args, **kwargs)
+            # Call this object, same as `self(**kwargs)` but faster.
+            self.__call__(**kwargs)
         finally:
             self.repeat = False
 
     def check_repeated(self, argument: str, from_tty: bool) -> bool:
-        """Keep a record of all commands which come from the TTY.
+        """
+        Keep a record of all commands which come from the TTY.
 
         Returns:
             True if this command was executed by the user just hitting "enter".
@@ -168,8 +354,8 @@ class Command:
 
         number, command = last_line[-1]
         # A new command was entered by the user
-        if number not in Command.history:
-            Command.history[number] = command
+        if number not in CommandObj.history:
+            CommandObj.history[number] = command
             return False
 
         # Somehow the command is different than we got before?
@@ -182,11 +368,85 @@ class Command:
         try:
             return self.function(*args, **kwargs)
         except TypeError:
-            print(f"{self.function.__name__.strip()!r}: {self.function.__doc__.strip()}")
+            print(f"{self.command_name}: {self.description}")
             pwndbg.exception.handle(self.function.__name__)
         except Exception:
             pwndbg.exception.handle(self.function.__name__)
         return None
+
+
+class Command:
+    """
+    Parametrized decorator for functions that serve as pwndbg commands.
+
+    Always use this to decorate your commands.
+    """
+
+    def __init__(
+        self,
+        parser_or_desc: argparse.ArgumentParser | str,
+        *,  # All further parameters are not positional
+        category: CommandCategory,
+        command_name: str | None = None,
+        aliases: List[str] = [],
+        examples: str = "",
+        notes: str = "",
+        only_debuggers: Set[pwndbg.dbg_mod.DebuggerType] = None,
+        exclude_debuggers: Set[pwndbg.dbg_mod.DebuggerType] = None,
+    ) -> None:
+        # Setup an ArgumentParser even if we were only passed a description.
+        if isinstance(parser_or_desc, str):
+            self.parser = argparse.ArgumentParser(description=parser_or_desc)
+        else:
+            assert isinstance(parser_or_desc, argparse.ArgumentParser)
+            self.parser = parser_or_desc
+
+        self.category = category
+        self.command_name = command_name
+        self.aliases = aliases
+        self.examples = examples
+        self.notes = notes
+        self.only_debuggers = only_debuggers
+        self.exclude_debuggers = exclude_debuggers
+
+    def __call__(self, function: Callable[..., Any]) -> CommandObj:
+        # Since this is the __call__ of a parametrized decorator, it is
+        # invoked during decoration, and it must return a callable object
+        # i.e. the "real" decorator of the function.
+
+        # If this command is not valid for this debugger, do not even
+        # pass it to ComandObj to be registered with the debugger API.
+        # Also make sure it raises an error if it is called from the code.
+        if self.only_debuggers is not None and pwndbg.dbg.name() not in self.only_debuggers:
+
+            def decorator(*args, **kwargs):
+                raise InvalidDebuggerError(
+                    f"This command cannot be used in {pwndbg.dbg.name()}.\n"
+                    f"It is only valid for {self.only_debuggers}."
+                )
+
+            return decorator  # type: ignore[return-value]
+        if self.exclude_debuggers is not None and pwndbg.dbg.name() in self.exclude_debuggers:
+
+            def decorator(*args, **kwargs):
+                raise InvalidDebuggerError(
+                    f"This command cannot be used in {pwndbg.dbg.name()}.\n"
+                    f"It is invalid for {self.exclude_debuggers}."
+                )
+
+            return decorator  # type: ignore[return-value]
+
+        # Since CommandObj has __call__ defined, an instance of it is a
+        # callable object (which essentially decorates the function).
+        return CommandObj(
+            function,
+            self.parser,
+            self.command_name,
+            self.category,
+            self.aliases,
+            self.examples,
+            self.notes,
+        )
 
 
 def fix(
@@ -195,10 +455,10 @@ def fix(
     """Fix a single command-line argument coming from the CLI.
 
     Arguments:
-        arg(str): Original string representation (e.g. '0', '$rax', '$rax+44')
-        sloppy(bool): If ``arg`` cannot be evaluated, return ``arg``. (default: False)
-        quiet(bool): If an error occurs, suppress it. (default: True)
-        reraise(bool): If an error occurs, raise the exception. (default: False)
+        arg: Original string representation (e.g. '0', '$rax', '$rax+44')
+        sloppy: If ``arg`` cannot be evaluated, return ``arg``. (default: False)
+        quiet: If an error occurs, suppress it. (default: True)
+        reraise: If an error occurs, raise the exception. (default: False)
 
     Returns:
         Ideally a ``Value`` object.  May return a ``str`` if ``sloppy==True``.
@@ -264,12 +524,39 @@ def fix_reraise(*a, **kw) -> str | pwndbg.dbg_mod.Value | None:
     return fix(*a, reraise=True, **kw)  # type: ignore[misc]
 
 
+def fix_reraise_arg(arg) -> pwndbg.dbg_mod.Value:
+    """fix_reraise wrapper for evaluating command arguments"""
+    try:
+        # Will always return pwndbg.dbg_mod.Value because
+        # sloppy=False (not str) and reraise=True (not None)
+        fixed = fix(arg, sloppy=False, quiet=True, reraise=True)
+        assert isinstance(fixed, pwndbg.dbg_mod.Value)
+        return fixed
+    except pwndbg.dbg_mod.Error as dbge:
+        raise argparse.ArgumentTypeError(f"debugger couldn't resolve argument '{arg}': {dbge}")
+
+
 def fix_int(*a, **kw) -> int:
     return int(fix(*a, **kw))
 
 
 def fix_int_reraise(*a, **kw) -> int:
     return fix_int(*a, reraise=True, **kw)
+
+
+def fix_int_reraise_arg(arg) -> int:
+    """fix_int_reraise wrapper for evaluating command arguments"""
+    try:
+        fixed = fix_reraise_arg(arg)
+        return int(fixed)
+    except pwndbg.dbg_mod.Error as e:
+        raise argparse.ArgumentTypeError(
+            f"couldn't convert '{arg}' ({fixed.type.name_to_human_readable}) to int: {e}"
+        )
+
+
+def func_name(function: Callable[P, T]) -> str:
+    return function.__name__.replace("_", "-")
 
 
 def OnlyWhenLocal(function: Callable[P, T]) -> Callable[P, Optional[T]]:
@@ -298,7 +585,7 @@ def OnlyWithFile(function: Callable[P, T]) -> Callable[P, Optional[T]]:
             if pwndbg.aglib.qemu.is_qemu():
                 log.error("Could not determine the target binary on QEMU.")
             else:
-                log.error(f"{function.__name__}: There is no file loaded.")
+                log.error(f"{func_name(function)}: There is no file loaded.")
             return None
 
     return _OnlyWithFile
@@ -311,7 +598,7 @@ def OnlyWhenQemuKernel(function: Callable[P, T]) -> Callable[P, Optional[T]]:
             return function(*a, **kw)
         else:
             log.error(
-                f"{function.__name__}: This command may only be run when debugging the Linux kernel in QEMU."
+                f"{func_name(function)}: This command may only be run when debugging the Linux kernel in QEMU."
             )
             return None
 
@@ -325,76 +612,39 @@ def OnlyWhenUserspace(function: Callable[P, T]) -> Callable[P, Optional[T]]:
             return function(*a, **kw)
         else:
             log.error(
-                f"{function.__name__}: This command may only be run when not debugging a QEMU kernel target."
+                f"{func_name(function)}: This command may only be run when not debugging a QEMU kernel target."
             )
             return None
 
     return _OnlyWhenUserspace
 
 
-def OnlyWithArch(arch_names: List[str]) -> Callable[[Callable[P, T]], Callable[P, Optional[T]]]:
-    """Decorates function to work only with the specified archictectures."""
-    for arch in arch_names:
-        if arch not in pwndbg.aglib.arch_mod.ARCHS:
-            raise ValueError(
-                f"OnlyWithArch used with unsupported arch={arch}. Must be one of {', '.join(arch_names)}"
-            )
-
-    def decorator(function: Callable[P, T]) -> Callable[P, Optional[T]]:
-        @functools.wraps(function)
-        def _OnlyWithArch(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-            if pwndbg.aglib.arch.name in arch_names:
-                return function(*a, **kw)
-            else:
-                arches_str = ", ".join(arch_names)
-                log.error(
-                    f"{function.__name__}: This command may only be run on the {arches_str} architecture(s)"
-                )
-                return None
-
-        return _OnlyWithArch
-
-    return decorator
-
-
-def OnlyWithDbg(
-    *dbg_names: Literal["lldb", "gdb"],
-) -> Callable[[Callable[P, T]], Callable[P, Optional[T]]]:
-    """Decorates function to work only with the specified debugger."""
-
-    def decorator(function: Callable[P, T]) -> Callable[P, Optional[T]]:
-        @functools.wraps(function)
-        def _OnlyWithDbg(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-            if pwndbg.dbg.is_gdblib_available():
-                if "gdb" in dbg_names:
-                    return function(*a, **kw)
-            else:
-                if "lldb" in dbg_names:
-                    return function(*a, **kw)
-
-            dbg_str = ", ".join(dbg_names)
-            log.error(
-                f"{function.__name__}: This command may only be run on the {dbg_str} debugger(s)"
-            )
-            return None
-
-        return _OnlyWithDbg
-
-    return decorator
-
-
-def OnlyWithKernelDebugSyms(function: Callable[P, T]) -> Callable[P, Optional[T]]:
+def OnlyWithKernelDebugInfo(function: Callable[P, T]) -> Callable[P, Optional[T]]:
     @functools.wraps(function)
-    def _OnlyWithKernelDebugSyms(*a: P.args, **kw: P.kwargs) -> Optional[T]:
-        if pwndbg.aglib.kernel.has_debug_syms():
+    def _OnlyWithKernelDebugInfo(*a: P.args, **kw: P.kwargs) -> Optional[T]:
+        if pwndbg.aglib.kernel.has_debug_info():
             return function(*a, **kw)
         else:
             log.error(
-                f"{function.__name__}: This command may only be run when debugging a Linux kernel with debug symbols."
+                f"{func_name(function)}: This command may only be run when debugging a Linux kernel with debug info."
             )
             return None
 
-    return _OnlyWithKernelDebugSyms
+    return _OnlyWithKernelDebugInfo
+
+
+def OnlyWithKernelDebugSymbols(function: Callable[P, T]) -> Callable[P, Optional[T]]:
+    @functools.wraps(function)
+    def _OnlyWithKernelDebugSymbols(*a: P.args, **kw: P.kwargs) -> Optional[T]:
+        if pwndbg.aglib.kernel.has_debug_symbols():
+            return function(*a, **kw)
+        else:
+            log.error(
+                f"{func_name(function)}: This command may only be run when debugging a Linux kernel with debug symbols."
+            )
+            return None
+
+    return _OnlyWithKernelDebugSymbols
 
 
 def OnlyWhenPagingEnabled(function: Callable[P, T]) -> Callable[P, Optional[T]]:
@@ -403,7 +653,9 @@ def OnlyWhenPagingEnabled(function: Callable[P, T]) -> Callable[P, Optional[T]]:
         if pwndbg.aglib.kernel.paging_enabled():
             return function(*a, **kw)
         else:
-            log.error(f"{function.__name__}: This command may only be run when paging is enabled.")
+            log.error(
+                f"{func_name(function)}: This command may only be run when paging is enabled."
+            )
             return None
 
     return _OnlyWhenPagingEnabled
@@ -416,7 +668,7 @@ def OnlyWhenRunning(function: Callable[P, T]) -> Callable[P, Optional[T]]:
         if pwndbg.aglib.proc.alive:
             return function(*a, **kw)
         else:
-            log.error(f"{function.__name__}: The program is not being run.")
+            log.error(f"{func_name(function)}: The program is not being run.")
             return None
 
     return _OnlyWhenRunning
@@ -430,7 +682,7 @@ def OnlyWithTcache(function: Callable[P, T]) -> Callable[P, Optional[T]]:
             return function(*a, **kw)
         else:
             log.error(
-                f"{function.__name__}: This version of GLIBC was not compiled with tcache support."
+                f"{func_name(function)}: This version of GLIBC was not compiled with tcache support."
             )
             return None
 
@@ -443,7 +695,7 @@ def OnlyWhenHeapIsInitialized(function: Callable[P, T]) -> Callable[P, Optional[
         if pwndbg.aglib.heap.current is not None and pwndbg.aglib.heap.current.is_initialized():
             return function(*a, **kw)
         else:
-            log.error(f"{function.__name__}: Heap is not initialized yet.")
+            log.error(f"{func_name(function)}: Heap is not initialized yet.")
             return None
 
     return _OnlyWhenHeapIsInitialized
@@ -456,7 +708,7 @@ def _try2run_heap_command(function: Callable[P, T], *a: P.args, **kw: P.kwargs) 
     try:
         return function(*a, **kw)
     except SymbolUnresolvableError as err:
-        e(f"{function.__name__}: Fail to resolve the symbol: `{err.symbol}`")
+        e(f"{func_name(function)}: Fail to resolve the symbol: `{err.symbol}`")
         if "thread_arena" == err.symbol:
             w(
                 "You are probably debugging a multi-threaded target without debug symbols, so we failed to determine which arena is used by the current thread.\n"
@@ -464,17 +716,17 @@ def _try2run_heap_command(function: Callable[P, T], *a: P.args, **kw: P.kwargs) 
             )
         else:
             w(
-                f"You can try to determine the libc symbols addresses manually and set them appropriately. For this, see the `heap_config` command output and set the config for `{err.symbol}`."
+                f"You can try to determine the libc symbols addresses manually and set them appropriately. For this, see the `heap-config` command output and set the config for `{err.symbol}`."
             )
         if pwndbg.config.exception_verbose or pwndbg.config.exception_debugger:
             raise err
 
         pwndbg.exception.inform_verbose_and_debug()
     except Exception as err:
-        e(f"{function.__name__}: An unknown error occurred when running this command.")
+        e(f"{func_name(function)}: An unknown error occurred when running this command.")
         if isinstance(pwndbg.aglib.heap.current, HeuristicHeap):
             w(
-                "Maybe you can try to determine the libc symbols addresses manually, set them appropriately and re-run this command. For this, see the `heap_config` command output and set the `main_arena`, `mp_`, `global_max_fast`, `tcache` and `thread_arena` addresses."
+                "Maybe you can try to determine the libc symbols addresses manually, set them appropriately and re-run this command. For this, see the `heap-config` command output and set the `main_arena`, `mp_`, `global_max_fast`, `tcache` and `thread_arena` addresses."
             )
         else:
             w("You can try `set resolve-heap-via-heuristic force` and re-run this command.\n")
@@ -489,7 +741,7 @@ def OnlyWithResolvedHeapSyms(function: Callable[P, T]) -> Callable[P, T | None]:
     @functools.wraps(function)
     def _OnlyWithResolvedHeapSyms(*a: P.args, **kw: P.kwargs) -> T | None:
         e = log.error
-        w = log.warn
+        w = log.warning
         if (
             isinstance(pwndbg.aglib.heap.current, HeuristicHeap)
             and pwndbg.config.resolve_heap_via_heuristic == "auto"
@@ -566,98 +818,6 @@ def OnlyWithResolvedHeapSyms(function: Callable[P, T]) -> Callable[P, T | None]:
     return _OnlyWithResolvedHeapSyms
 
 
-class _ArgparsedCommand(Command):
-    def __init__(
-        self,
-        parser: argparse.ArgumentParser,
-        function,
-        command_name=None,
-        *a,
-        **kw,
-    ) -> None:
-        self.parser = parser
-        if command_name is None:
-            self.parser.prog = function.__name__
-        else:
-            self.parser.prog = command_name
-
-        file = io.StringIO()
-        self.parser.print_help(file)
-        file.seek(0)
-        doc = file.read()
-        # Note: function.__doc__ is used in the `pwndbg [filter]` command display
-        function.__doc__ = self.parser.description.strip()
-
-        # Type error likely due to https://github.com/python/mypy/issues/6799
-        super().__init__(  # type: ignore[misc]
-            function,
-            command_name=command_name,
-            doc=doc,
-            *a,
-            **kw,
-        )
-
-    def split_args(self, argument: str):
-        argv = pwndbg.dbg.lex_args(argument)
-        return (), vars(self.parser.parse_args(argv))
-
-
-class ArgparsedCommand:
-    """Adds documentation and offloads parsing for a Command via argparse"""
-
-    def __init__(
-        self,
-        parser_or_desc: argparse.ArgumentParser | str,
-        aliases: List[str] = [],
-        command_name: str | None = None,
-        category: CommandCategory = CommandCategory.MISC,
-    ) -> None:
-        """
-        :param parser_or_desc: `argparse.ArgumentParser` instance or `str`
-        """
-        if isinstance(parser_or_desc, str):
-            self.parser = argparse.ArgumentParser(description=parser_or_desc)
-        else:
-            self.parser = parser_or_desc
-        self.aliases = aliases
-        self._command_name = command_name
-        self.category = category
-        # We want to run all integer and otherwise-unspecified arguments
-        # through fix() so that GDB parses it.
-        for action in self.parser._actions:
-            if isinstance(action, argparse._SubParsersAction):
-                action.type = str
-            if action.dest == "help":
-                continue
-            if action.type == int:
-                action.type = fix_int_reraise
-            if action.type is None:
-                action.type = fix_reraise
-            if action.default is not None:
-                action.help += " (default: %(default)s)"
-
-    def __call__(self, function: Callable[..., Any]) -> _ArgparsedCommand:
-        for alias in self.aliases:
-            _ArgparsedCommand(
-                self.parser, function, command_name=alias, is_alias=True, category=self.category
-            )
-        return _ArgparsedCommand(
-            self.parser,
-            function,
-            command_name=self._command_name,
-            aliases=self.aliases,
-            category=self.category,
-        )
-
-
-# We use a 64-bit max value literal here instead of pwndbg.aglib.arch.current
-# as realistically its ok to pull off the biggest possible type here
-# We cache its value type which is 'unsigned long long'
-_mask = 0xFFFFFFFFFFFFFFFF
-_mask_val_type: pwndbg.dbg_mod.Type = None
-_mask_val_proc: pwndbg.dbg_mod.Process = None
-
-
 def sloppy_gdb_parse(s: str) -> int | str:
     """
     This function should be used as ``argparse.ArgumentParser`` .add_argument method's `type` helper.
@@ -676,22 +836,10 @@ def sloppy_gdb_parse(s: str) -> int | str:
     assert target, "Reached command expression evaluation with no frame or inferior"
 
     try:
-        val = target.evaluate_expression(s)
-        # We can't just return int(val) because GDB may return:
-        # "Python Exception <class 'gdb.error'> Cannot convert value to long."
-        # e.g. for:
-        # pwndbg> pi int(gdb.parse_and_eval('__libc_start_main'))
-        #
-        # Here, the _mask_val.type should be `unsigned long long`
-        global _mask_val_type
-        global _mask_val_proc
-
-        i = pwndbg.dbg.selected_inferior()
-        if not _mask_val_type or _mask_val_proc != i:
-            _mask_val_type = i.create_value(_mask).type
-            _mask_val_proc = i
-
-        return int(val.cast(_mask_val_type))
+        val = pwndbg.aglib.symbol.lookup_symbol(s) or target.evaluate_expression(s)
+        if val.type.code == pwndbg.dbg_mod.TypeCode.FUNC:
+            return int(val.address)
+        return int(val)
     except (TypeError, pwndbg.dbg_mod.Error):
         return s
 
@@ -725,9 +873,8 @@ def load_commands() -> None:
 
     if pwndbg.dbg.is_gdblib_available():
         import pwndbg.commands.ai
-        import pwndbg.commands.argv
         import pwndbg.commands.attachp
-        import pwndbg.commands.binja
+        import pwndbg.commands.binja_functions
         import pwndbg.commands.branch
         import pwndbg.commands.cymbol
         import pwndbg.commands.got
@@ -741,13 +888,14 @@ def load_commands() -> None:
         import pwndbg.commands.reload
         import pwndbg.commands.ropper
         import pwndbg.commands.segments
-        import pwndbg.commands.shell
-        import pwndbg.commands.version
 
+    import pwndbg.commands.argv
     import pwndbg.commands.aslr
     import pwndbg.commands.asm
     import pwndbg.commands.auxv
     import pwndbg.commands.binder
+    import pwndbg.commands.binja
+    import pwndbg.commands.buddydump
     import pwndbg.commands.canary
     import pwndbg.commands.checksec
     import pwndbg.commands.comments
@@ -773,29 +921,39 @@ def load_commands() -> None:
     import pwndbg.commands.kchecksec
     import pwndbg.commands.kcmdline
     import pwndbg.commands.kconfig
+    import pwndbg.commands.kdmesg
     import pwndbg.commands.klookup
+    import pwndbg.commands.kmod
+    import pwndbg.commands.knft
+    import pwndbg.commands.ksyscalls
+    import pwndbg.commands.ktask
     import pwndbg.commands.kversion
     import pwndbg.commands.leakfind
+    import pwndbg.commands.libcinfo
     import pwndbg.commands.linkmap
+    import pwndbg.commands.mallocng
     import pwndbg.commands.memoize
     import pwndbg.commands.misc
     import pwndbg.commands.mmap
     import pwndbg.commands.mprotect
+    import pwndbg.commands.msr
     import pwndbg.commands.nearpc
     import pwndbg.commands.next
     import pwndbg.commands.onegadget
     import pwndbg.commands.p2p
+    import pwndbg.commands.paging
     import pwndbg.commands.patch
-    import pwndbg.commands.pcplist
     import pwndbg.commands.pie
     import pwndbg.commands.plist
     import pwndbg.commands.probeleak
     import pwndbg.commands.procinfo
+    import pwndbg.commands.profiler
     import pwndbg.commands.ptmalloc2
     import pwndbg.commands.radare2
     import pwndbg.commands.retaddr
     import pwndbg.commands.rizin
     import pwndbg.commands.rop
+    import pwndbg.commands.saved_register_frames
     import pwndbg.commands.search
     import pwndbg.commands.sigreturn
     import pwndbg.commands.slab
@@ -806,6 +964,7 @@ def load_commands() -> None:
     import pwndbg.commands.tips
     import pwndbg.commands.tls
     import pwndbg.commands.valist
+    import pwndbg.commands.version
     import pwndbg.commands.vmmap
     import pwndbg.commands.windbg
     import pwndbg.commands.xinfo

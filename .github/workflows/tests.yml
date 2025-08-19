@@ -1,4 +1,4 @@
-name: Unit tests
+name: Tests
 on:
   push:
     branches:
@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        type: [qemu-user-tests, qemu-tests, tests]
+        type: [qemu-user-tests, qemu-system-tests, tests, unit-tests]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     env:
@@ -35,6 +35,9 @@ jobs:
       run: |
         ./setup-dev.sh --install-only
 
+    - name: install uv
+      run: nix profile install --inputs-from . nixpkgs#uv
+
     - name: Build pwndbg
       run: |
         nix build '.#pwndbg-dev' --accept-flake-config -o result
@@ -43,36 +46,46 @@ jobs:
     - name: Setup
       run: |
         sudo sysctl -w kernel.yama.ptrace_scope=0
-        mkdir .cov
 
     - name: Run tests
+      if: matrix.type == 'unit-tests'
+      run: |
+        ./unit-tests.sh
+
+    - name: Run GDB Tests
       if: matrix.type == 'tests'
       run: |
-        ./tests.sh --nix --cov
+        ./tests.sh --nix -d gdb -g gdb
 
-    - name: Run qemu-user-tests
+    - name: Run DBG Tests on GDB
+      if: matrix.type == 'tests'
+      run: |
+        ./tests.sh --nix -d gdb -g dbg
+
+    - name: Run cross-arch tests
       if: matrix.type == 'qemu-user-tests'
       run: |
-        ./qemu-tests.sh --nix --cov
+        ./tests.sh --nix -d gdb -g cross-arch-user
 
     - name: Set up cache for QEMU images
-      if: matrix.type == 'qemu-tests'
+      if: matrix.type == 'qemu-system-tests'
       id: qemu-cache
       uses: actions/cache@v3
       with:
-        path: ./tests/qemu-tests/images
+        path: ./tests/library/qemu-system/kimages
         key: ${{ matrix.os }}-cache-qemu-images
 
     - name: Download QEMU images
-      if: matrix.type == 'qemu-tests'
+      if: matrix.type == 'qemu-system-tests'
       run: |
-        ./tests/qemu-tests/download_images.sh
+        # Would happen in the next step as well, but this way
+        # it looks nicer in the CI.
+        ./tests/library/qemu_system/download-kernel-images.sh
 
-    - name: Run qemu-tests
-      if: matrix.type == 'qemu-tests'
-      working-directory: ./tests/qemu-tests
+    - name: Run kernel tests
+      if: matrix.type == 'qemu-system-tests'
       run: |
-        ./tests.sh --nix --cov
+        ./kernel-tests.sh --nix
 
   tests:
     strategy:
@@ -89,7 +102,7 @@ jobs:
         path: ~/.cache/pip
         key: ${{ matrix.os }}-cache-pip
 
-    - name: Install dependencies
+    - name: Setup pwndbg
       run: |
         ./setup.sh
         ./setup-dev.sh
@@ -101,26 +114,24 @@ jobs:
         echo 'Installed py:'
         ./.venv/bin/python -V
         echo 'Installed packages:'
-        ./.venv/bin/python -m pip freeze
+        ./.venv/bin/pip freeze
 
     # We set `kernel.yama.ptrace_scope=0` for `attachp` command tests
-    - name: Run tests
+    - name: Run GDB Tests
       run: |
-        source .venv/bin/activate
-        mkdir .cov
         sudo sysctl -w kernel.yama.ptrace_scope=0
-        ./tests.sh --cov
-        ./unit-tests.sh --cov
-
-    - name: Process coverage data
-      if: matrix.os == 'ubuntu-22.04'
+        ./tests.sh -d gdb -g gdb
+  
+    - name: Run DBG Tests on GDB
       run: |
-        ./.venv/bin/coverage combine
-        ./.venv/bin/coverage xml
-
-    - name: "Upload coverage to Codecov"
-      if: matrix.os == 'ubuntu-22.04'
-      uses: codecov/codecov-action@v3
+        sudo sysctl -w kernel.yama.ptrace_scope=0
+        ./tests.sh -d gdb -g dbg
+    
+    - name: Run DBG Tests on LLDB
+      if: matrix.os != 'ubuntu-22.04'
+      run: |
+        sudo sysctl -w kernel.yama.ptrace_scope=0
+        ./tests.sh -d lldb -g dbg
 
   qemu-user-tests:
     runs-on: [ubuntu-24.04]
@@ -133,26 +144,17 @@ jobs:
       with:
         path: ~/.cache/pip
         key: ${{ matrix.os }}-cache-pip
-    
-    - name: Install dependencies
+
+    - name: Setup pwndbg
       run: |
         ./setup.sh
         ./setup-dev.sh
-        mkdir .cov
 
     - name: Run cross-architecture tests
       run: |
-        ./qemu-tests.sh --cov
+        ./tests.sh -g cross-arch-user -d gdb
 
-    - name: Process coverage data
-      run: |
-        ./.venv/bin/coverage combine
-        ./.venv/bin/coverage xml
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-
-  qemu-tests:
+  qemu-system-tests:
     runs-on: [ubuntu-22.04]
     timeout-minutes: 30
     steps:
@@ -164,34 +166,24 @@ jobs:
         path: ~/.cache/pip
         key: ${{ matrix.os }}-cache-pip
 
-    - name: Install dependencies
+    - name: Setup pwndbg
       run: |
         ./setup.sh
         ./setup-dev.sh
-        mkdir .cov
-        
+
     - name: Set up cache for QEMU images
       id: qemu-cache
       uses: actions/cache@v3
       with:
-        path: ./tests/qemu-tests/images
+        path: ./tests/library/qemu-system/kimages
         key: ${{ matrix.os }}-cache-qemu-images
 
     - name: Download images
       run: |
-        ./tests/qemu-tests/download_images.sh
+        ./tests/library/qemu_system/download-kernel-images.sh
 
     # We set `kernel.yama.ptrace_scope=0` for `gdb-pt-dump`
-    - name: Run tests
-      working-directory: ./tests/qemu-tests
+    - name: Run kernel tests
       run: |
         sudo sysctl -w kernel.yama.ptrace_scope=0
-        ./tests.sh --cov
-
-    - name: Process coverage data
-      run: |
-        ./.venv/bin/coverage combine
-        ./.venv/bin/coverage xml
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+        ./kernel-tests.sh

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import os
 import threading
 import xmlrpc.client as xmlclient
 from xml.sax.saxutils import escape
@@ -48,8 +49,8 @@ xmlclient.Marshaller.dispatch[type(1 << 63)] = create_marshaller("<value><i8>%d<
 xmlclient.Marshaller.dispatch[int] = create_marshaller("<value><i8>%d</i8></value>")
 xmlclient.Marshaller.dispatch[idaapi.cfuncptr_t] = create_marshaller(just_to_str=True)
 
-host = "127.0.0.1"
-port = 31337
+host = os.environ.get("PWNDBG_IDA_SERVER_HOST", "127.0.0.1")
+port = int(os.environ.get("PWNDBG_IDA_SERVER_PORT", "31337"))
 
 mutex = threading.Condition()
 
@@ -161,10 +162,10 @@ register_module(
     idc
 )  # prioritize idc functions over above (e.g. idc.get_next_seg/ida_segment.get_next_seg)
 
-server.register_function(lambda a: eval(a, globals(), locals()), "eval")
-server.register_function(wrap(decompile))  # overwrites idaapi/ida_hexrays.decompile
+server.register_function(wrap(lambda a: eval(a, globals(), locals())), "eval")
+server.register_function(wrap(decompile), "decompile")  # overwrites idaapi/ida_hexrays.decompile
 server.register_function(wrap(decompile_context), "decompile_context")  # support context decompile
-server.register_function(wrap(versions))
+server.register_function(wrap(versions), "versions")
 server.register_introspection_functions()
 
 print(f"IDA Pro xmlrpc hosted on http://{host}:{port}")

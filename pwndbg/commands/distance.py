@@ -10,11 +10,13 @@ from pwndbg.commands import CommandCategory
 parser = argparse.ArgumentParser(
     description="Print the distance between the two arguments, or print the offset to the address's page base."
 )
-parser.add_argument("a", type=int, help="The first address.")
-parser.add_argument("b", nargs="?", default=None, type=int, help="The second address.")
+parser.add_argument("a", type=pwndbg.commands.AddressExpr, help="The first address.")
+parser.add_argument(
+    "b", nargs="?", default=None, type=pwndbg.commands.AddressExpr, help="The second address."
+)
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
 def distance(a, b) -> None:
     """Print the distance between the two arguments"""
 

@@ -116,6 +116,8 @@ class BinderVisitor:
 
             if t.code == pwndbg.dbg_mod.TypeCode.INT:
                 value = int(value)
+            elif t.code == pwndbg.dbg_mod.TypeCode.BOOL:
+                value = True if int(value) else False
             elif t.code == pwndbg.dbg_mod.TypeCode.POINTER:
                 typename = t.target().name_identifier
                 if int(value) == 0:
@@ -143,7 +145,7 @@ class BinderVisitor:
                 if typename == "spinlock":
                     value = self.format_spinlock(value).strip()
                 elif typename == "atomic_t":
-                    value = value["counter"]
+                    value = value["counter"].value_to_human_readable()
                 elif typename == "rb_root":
                     assert field is not None
                     value, num_elts = self.format_rb_tree(field, value)
@@ -233,7 +235,11 @@ class BinderVisitor:
 
     def format_proc(self, proc: pwndbg.dbg_mod.Value, only_heading=False):
         res = []
-        res.append(self._format_heading("binder_proc", "PID %s" % proc["pid"], int(proc)))
+        res.append(
+            self._format_heading(
+                "binder_proc", "PID %s" % proc["pid"].value_to_human_readable(), int(proc)
+            )
+        )
 
         if only_heading:
             return "\n".join(res)
@@ -256,7 +262,11 @@ class BinderVisitor:
 
     def format_thread(self, thread: pwndbg.dbg_mod.Value, only_heading: bool = False) -> str:
         res = []
-        res.append(self._format_heading("binder_thread", "PID %s" % thread["pid"], int(thread)))
+        res.append(
+            self._format_heading(
+                "binder_thread", "PID %s" % thread["pid"].value_to_human_readable(), int(thread)
+            )
+        )
 
         if only_heading:
             return "\n".join(res)
@@ -277,7 +287,9 @@ class BinderVisitor:
         res = []
         res.append(
             self._format_heading(
-                "binder_transaction", "ID %s" % str(transaction["debug_id"]), int(transaction)
+                "binder_transaction",
+                "ID %s" % transaction["debug_id"].value_to_human_readable(),
+                int(transaction),
             )
         )
 
@@ -325,7 +337,11 @@ class BinderVisitor:
 
     def format_ref(self, ref: pwndbg.dbg_mod.Value, only_heading: bool = False) -> str:
         res = []
-        res.append(self._format_heading("binder_ref", "HANDLE %s" % ref["data"]["desc"], int(ref)))
+        res.append(
+            self._format_heading(
+                "binder_ref", "HANDLE %s" % ref["data"]["desc"].value_to_human_readable(), int(ref)
+            )
+        )
 
         if only_heading:
             return "\n".join(res)
@@ -338,7 +354,11 @@ class BinderVisitor:
 
     def format_work(self, work: pwndbg.dbg_mod.Value) -> str:
         res = []
-        res.append(self._format_heading("binder_work", str(work["type"]), int(work.address)))
+        res.append(
+            self._format_heading(
+                "binder_work", work["type"].value_to_human_readable(), int(work.address)
+            )
+        )
 
         t = int(work["type"])
         # TODO: Create enum
@@ -376,9 +396,9 @@ class BinderVisitor:
 parser = argparse.ArgumentParser(description="Show Android Binder information")
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.KERNEL)
+@pwndbg.commands.Command(parser, category=CommandCategory.KERNEL)
 @pwndbg.commands.OnlyWhenQemuKernel
-@pwndbg.commands.OnlyWithKernelDebugSyms
+@pwndbg.commands.OnlyWithKernelDebugInfo
 @pwndbg.commands.OnlyWhenPagingEnabled
 def binder():
     log.warning("This command is a work in progress and may not work as expected.")

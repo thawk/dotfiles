@@ -23,21 +23,31 @@ from typing import TypeVar
 import gdb
 from typing_extensions import ParamSpec
 
+import pwndbg
 from pwndbg import config
 from pwndbg.color import message
 
+DISABLED = "disabled"
+DISABLED_DEADLOCK = "disabled-deadlock"
+ENABLED = "enabled"
+
 debug = config.add_param("debug-events", False, "display internal event debugging info")
+
 gdb_workaround_stop_event = config.add_param(
     "gdb-workaround-stop-event",
-    0,
-    """Enable asynchronous stop events as a workaround to improve 'commands' functionality.
-Note: This may cause unexpected behavior with pwndbg or gdb.execute.
+    DISABLED,
+    "asynchronous stop events to improve 'commands' functionality",
+    help_docstring=f"""
+Note that this may cause unexpected behavior with Pwndbg or gdb.execute.
 
-Values:
-0 - Disable the workaround (default).
-1 - Enable asynchronous stop events; gdb.execute may behave unexpectedly(asynchronously).
-2 - Disable only deadlock detection; deadlocks may still occur.
+Values explained:
+
++ `{DISABLED}` - Disable the workaround (default).
++ `{DISABLED_DEADLOCK}` - Disable only deadlock detection; deadlocks may still occur.
++ `{ENABLED}` - Enable asynchronous stop events; gdb.execute may behave unexpectedly (asynchronously).
     """,
+    param_class=pwndbg.lib.config.PARAM_ENUM,
+    enum_sequence=[DISABLED, DISABLED_DEADLOCK, ENABLED],
 )
 
 P = ParamSpec("P")
@@ -87,6 +97,7 @@ class StartEvent:
 
 
 gdb.events.start = StartEvent()
+gdb.events.suspend_all = object()
 
 
 def _is_safe_event_packet():
@@ -109,6 +120,7 @@ def _is_safe_event_thread():
 
 queued_events: Deque[Callable[..., Any]] = deque()
 executing_event = False
+workaround_thread_conn = None
 
 
 def _update_start_event_state(event_type: Any):
@@ -130,7 +142,7 @@ def _detect_deadlock():
         # Not executing an event inside another event, so no deadlock
         return
 
-    if gdb_workaround_stop_event == 2:
+    if gdb_workaround_stop_event == DISABLED_DEADLOCK:
         # Skip deadlock detection because this option disables it
         return
 
@@ -160,9 +172,7 @@ To address this, you have three options:
 """
         )
     )
-    import os
-
-    os._exit(1)
+    sys.exit(1)
 
 
 def wrap_safe_event_handler(event_handler: Callable[P, T], event_type: Any) -> Callable[P, T]:
@@ -211,13 +221,26 @@ def wrap_safe_event_handler(event_handler: Callable[P, T], event_type: Any) -> C
         elif event_type == gdb.events.stop:
             # Workaround to issue with gdb `commands \n continue \n end` - Selected thread is running
             # https://github.com/pwndbg/pwndbg/issues/425
-            if gdb_workaround_stop_event == 1:
+            if gdb_workaround_stop_event == ENABLED:
                 gdb.post_event(_loop_until_thread_ok)
                 return
 
             executing_event = True
             gdb.execute("", to_string=True)  # Trigger bug in gdb, it is like 'yield'
             executing_event = False
+        elif event_type in (gdb.events.cont, gdb.events.new_thread):
+            # Workaround for crash in gdb when used: `target extended-remote` + `attach`
+            # https://github.com/pwndbg/pwndbg/issues/3231
+            global workaround_thread_conn
+            conn = gdb.selected_inferior().connection
+            if (
+                isinstance(conn, gdb.RemoteTargetConnection)
+                and conn.type == "extended-remote"
+                and conn.is_valid()
+                and workaround_thread_conn != conn
+            ):
+                gdb.selected_inferior().threads()[0].switch()
+                workaround_thread_conn = conn
 
         while queued_events:
             queued_events.popleft()()
@@ -275,7 +298,7 @@ def connect(
 
     @wraps(func)
     def caller(*a: P.args, **kw: P.kwargs) -> None:
-        if paused[event_handler]:
+        if paused[event_handler] or paused[gdb.events.suspend_all]:
             return None
 
         if debug:
@@ -360,10 +383,11 @@ def invoke_event(event: Any, *args: Any, **kwargs: Any) -> None:
                 f(*args, **kwargs)
 
 
-def after_reload(start: bool = True) -> None:
+def after_reload(fire_start: bool = True) -> None:
     if gdb.selected_inferior().pid:
         invoke_event(gdb.events.stop)
-        invoke_event(gdb.events.start)
+        if fire_start:
+            invoke_event(gdb.events.start)
         invoke_event(gdb.events.new_objfile)
         invoke_event(gdb.events.before_prompt)
 

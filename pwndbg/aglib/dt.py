@@ -1,5 +1,5 @@
 """
-Prints structures in a manner similar to Windbg's "dt" command.
+Prints structures in a manner similar to WinDbg's "dt" command.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def dt(
     obj: pwndbg.dbg_mod.Value | None = None,
 ) -> str:
     """
-    Dump out a structure type Windbg style.
+    Dump out a structure type WinDbg style.
     """
     # Return value is a list of strings.of
     # We concatenate at the end.
@@ -51,15 +51,14 @@ def dt(
         t = pwndbg.aglib.typeinfo.load(name)
 
     if not t:
-        return ""
+        return "Type not found."
 
     # If it's not a struct (e.g. int or char*), bail
-    if t.code not in (
+    if t.strip_typedefs().code not in (
         pwndbg.dbg_mod.TypeCode.STRUCT,
-        pwndbg.dbg_mod.TypeCode.TYPEDEF,
         pwndbg.dbg_mod.TypeCode.UNION,
     ):
-        return f"Not a structure: {t}"
+        return f"Not a structure: {t.strip_typedefs().name_to_human_readable}"
 
     # If an address was specified, create a Value of the
     # specified type at that address.
@@ -72,20 +71,7 @@ def dt(
         header = f"{header} @ {hex(int(obj.address))}"
     rv.append(header)
 
-    if t.strip_typedefs().code == pwndbg.dbg_mod.TypeCode.ARRAY:
-        return "Arrays not supported yet"
-
-    if t.strip_typedefs().code not in (
-        pwndbg.dbg_mod.TypeCode.STRUCT,
-        pwndbg.dbg_mod.TypeCode.UNION,
-    ):
-        newobj = obj
-        if not newobj:
-            newobj = pwndbg.dbg.selected_inferior().create_value(0, t)
-
-        iter_fields = [(field.name, field) for field in newobj.type.fields()]
-    else:
-        iter_fields = [(field.name, field) for field in t.fields()]
+    iter_fields = [(field.name, field) for field in t.fields()]
 
     for field_name, field in iter_fields:
         # Offset into the parent structure
@@ -98,17 +84,20 @@ def dt(
             pwndbg.dbg_mod.TypeCode.STRUCT,
             pwndbg.dbg_mod.TypeCode.UNION,
         ):
-            obj_value = obj[field_name]
-            if ftype.code == pwndbg.dbg_mod.TypeCode.INT:
-                extra = hex(int(obj_value))
-            elif (
-                ftype.code in (pwndbg.dbg_mod.TypeCode.POINTER, pwndbg.dbg_mod.TypeCode.ARRAY)
-                and ftype.target() == pwndbg.aglib.typeinfo.uchar
-            ):
-                data = pwndbg.aglib.memory.read(int(obj_value.address), ftype.sizeof)
-                extra = " ".join("%02x" % b for b in data)
-            else:
-                extra = obj_value.value_to_human_readable()
+            try:
+                obj_value = obj[field_name]
+                if ftype.code == pwndbg.dbg_mod.TypeCode.INT:
+                    extra = hex(int(obj_value))
+                elif (
+                    ftype.code in (pwndbg.dbg_mod.TypeCode.POINTER, pwndbg.dbg_mod.TypeCode.ARRAY)
+                    and ftype.target() == pwndbg.aglib.typeinfo.uchar
+                ):
+                    data = pwndbg.aglib.memory.read(int(obj_value.address), ftype.sizeof)
+                    extra = " ".join("%02x" % b for b in data)
+                else:
+                    extra = obj_value.value_to_human_readable()
+            except pwndbg.dbg_mod.Error as e:
+                return f"{e}\nIs the provided address near a page boundry?"
 
         # Adjust trailing lines in 'extra' to line up
         # This is necessary when there are nested structures.

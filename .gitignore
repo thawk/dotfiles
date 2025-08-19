@@ -4,7 +4,7 @@ __pycache__/
 
 # C extensions
 *.so
-!tests/**/binaries/glibcs/**/*.so
+!tests/binaries/**/glibcs/**/*.so
 
 # Distribution / packaging
 .Python
@@ -54,17 +54,19 @@ coverage.xml
 # Django stuff:
 *.log
 
-# Sphinx documentation
-docs/_build/
-
 # mkdocs
 site/
+
+# Documentation generation artifacts
+scripts/_docs/*_commands.json
+scripts/_docs/*_configuration.json
+scripts/_docs/*_functions.json
 
 # PyBuilder
 target/
 
 npm-debug.log
-.gdb_history
+**/.gdb_history
 
 # PyCharm project files
 .idea/
@@ -72,15 +74,15 @@ venv/
 
 # PyTest files
 .pytest_cache/
-tests/**/binaries/*.o
-tests/**/binaries/*.out
-tests/**/binaries/gosample.x*
-tests/**/binaries/div_zero_binary/core
-tests/**/binaries/div_zero_binary/binary
-!tests/**/binaries/*.go
+tests/binaries/**/*.o
+tests/binaries/**/*.out
+tests/binaries/**/gosample.x*
+tests/binaries/**/div_zero_binary/core
+tests/binaries/**/div_zero_binary/binary
+!tests/binaries/**/*.go
 
 # QEMU test images
-tests/qemu-tests/images
+tests/library/qemu_system/kimages
 
 # VS Code files
 .vscode/

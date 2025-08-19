@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import re
 from asyncio import CancelledError
+from contextlib import contextmanager
 from contextlib import nullcontext
+from pathlib import Path
 from typing import Any
 from typing import Coroutine
 from typing import Generator
+from typing import Iterator
 from typing import List
 from typing import Literal
 from typing import Optional
@@ -14,6 +17,7 @@ from typing import Tuple
 from typing import TypeVar
 
 import gdb
+import gdb.types
 from typing_extensions import Callable
 from typing_extensions import Set
 from typing_extensions import override
@@ -26,36 +30,52 @@ from pwndbg.aglib import load_aglib
 from pwndbg.dbg import selection
 from pwndbg.gdblib import gdb_version
 from pwndbg.gdblib import load_gdblib
+from pwndbg.lib.arch import ArchAttribute
+from pwndbg.lib.arch import ArchDefinition
+from pwndbg.lib.arch import Platform
 from pwndbg.lib.memory import PAGE_MASK
 from pwndbg.lib.memory import PAGE_SIZE
 
 T = TypeVar("T")
 
 
-class GDBArch(pwndbg.dbg_mod.Arch):
-    _endian: Literal["little", "big"]
-    _name: str
-    _ptrsize: int
+# List of supported architectures that GDB recognizes
+# These strings to converted to the Pwndbg-specific name for the architecture
+gdb_architecture_name_fixup_list = (
+    "x86-64",
+    "i386",
+    "i8086",
+    "aarch64",
+    "mips",
+    "rs6000",
+    "powerpc",
+    "sparc",
+    "arm",
+    "iwmmxt",
+    "iwmmxt2",
+    "xscale",
+    "riscv:rv32",
+    "riscv:rv64",
+    "riscv",
+    "loongarch64",
+    "s390:64-bit",
+)
 
-    def __init__(self, endian: Literal["little", "big"], name: str, ptrsize: int):
-        self._endian = endian
-        self._name = name
-        self._ptrsize = ptrsize
-
-    @override
-    @property
-    def endian(self) -> Literal["little", "big"]:
-        return self._endian
-
-    @override
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @override
-    @property
-    def ptrsize(self) -> int:
-        return self._ptrsize
+# `show architecture` returns a string like "mips:isa32r5"
+gdb_mips_to_arch_attribute_map = {
+    "mips5": ArchAttribute.MIPS_ISA_5,
+    "micromips": ArchAttribute.MIPS_ISA_MICRO,
+    "isa32": ArchAttribute.MIPS_ISA_32,
+    "isa32r2": ArchAttribute.MIPS_ISA_32R2,
+    "isa32r3": ArchAttribute.MIPS_ISA_32R3,
+    "isa32r5": ArchAttribute.MIPS_ISA_32R5,
+    "isa32r6": ArchAttribute.MIPS_ISA_32R6,
+    "isa64": ArchAttribute.MIPS_ISA_64,
+    "isa64r2": ArchAttribute.MIPS_ISA_64R2,
+    "isa64r3": ArchAttribute.MIPS_ISA_64R3,
+    "isa64r5": ArchAttribute.MIPS_ISA_64R5,
+    "isa64r6": ArchAttribute.MIPS_ISA_64R6,
+}
 
 
 def parse_and_eval(expression: str, global_context: bool) -> gdb.Value:
@@ -133,7 +153,7 @@ class GDBFrame(pwndbg.dbg_mod.Frame):
 
     @override
     def reg_write(self, name: str, val: int) -> bool:
-        if name not in pwndbg.aglib.regs.all:
+        if name not in pwndbg.aglib.regs:
             return False
 
         with selection(self.inner, lambda: gdb.selected_frame(), lambda f: f.select()):
@@ -196,10 +216,10 @@ class GDBThread(pwndbg.dbg_mod.Thread):
         self.inner = inner
 
     @override
-    def bottom_frame(self) -> pwndbg.dbg_mod.Frame:
+    @contextmanager
+    def bottom_frame(self) -> Iterator[pwndbg.dbg_mod.Frame]:
         with selection(self.inner, lambda: gdb.selected_thread(), lambda t: t.switch()):
-            value = gdb.newest_frame()
-        return GDBFrame(value)
+            yield GDBFrame(gdb.newest_frame())
 
     @override
     def ptid(self) -> int | None:
@@ -212,22 +232,13 @@ class GDBThread(pwndbg.dbg_mod.Thread):
 
 
 class GDBMemoryMap(pwndbg.dbg_mod.MemoryMap):
-    def __init__(self, reliable_perms: bool, qemu: bool, pages: Sequence[pwndbg.lib.memory.Page]):
-        self.reliable_perms = reliable_perms
+    def __init__(self, qemu: bool, pages: Sequence[pwndbg.lib.memory.Page]):
+        super().__init__(pages)
         self.qemu = qemu
-        self.pages = pages
 
     @override
     def is_qemu(self) -> bool:
         return self.qemu
-
-    @override
-    def has_reliable_perms(self) -> bool:
-        return self.reliable_perms
-
-    @override
-    def ranges(self) -> Sequence[pwndbg.lib.memory.Page]:
-        return self.pages
 
 
 # While this implementation allows breakpoints to be deleted, enabled and
@@ -384,59 +395,94 @@ class GDBProcess(pwndbg.dbg_mod.Process):
 
     @override
     def vmmap(self) -> pwndbg.dbg_mod.MemoryMap:
-        import pwndbg.gdblib.vmmap
-        from pwndbg.gdblib import gdb_version
+        import pwndbg.aglib.qemu
+        from pwndbg.aglib.kernel.vmmap import kernel_vmmap
+        from pwndbg.aglib.vmmap_custom import get_custom_pages
+        from pwndbg.gdblib.vmmap import get_known_maps
 
-        pages = pwndbg.gdblib.vmmap.get()
-        qemu = pwndbg.aglib.qemu.is_qemu() and not pwndbg.aglib.qemu.exec_file_supported()
+        qemu = pwndbg.aglib.qemu.is_old_qemu_user()
+        proc_maps = get_known_maps()
+        # The `proc_maps` is usually a tuple of Page objects but it can also be:
+        #   None    - when /proc/$tid/maps does not exist/is not available
+        #   tuple() - when the process has no maps yet which happens only during its very early init
+        #             (usually when we attach to a process)
+        if proc_maps is not None:
+            return GDBMemoryMap(qemu, proc_maps)
 
-        # Only GDB versions >=12 report permission info in info proc mappings.
-        # On older versions, we fallback on "rwx".
-        # See https://github.com/bminor/binutils-gdb/commit/29ef4c0699e1b46d41ade00ae07a54f979ea21cc
-        reliable_perms = not (pwndbg.aglib.qemu.is_qemu_usermode() and gdb_version[0] < 12)
+        pages: List[pwndbg.lib.memory.Page] = []
+        pages.extend(kernel_vmmap())
+        pages.extend(get_custom_pages())
+        pages.sort()
+        return GDBMemoryMap(qemu, pages)
 
-        return GDBMemoryMap(reliable_perms, qemu, pages)
+    def _is_memory_readable(self, addr: int) -> bool:
+        try:
+            gdb.selected_inferior().read_memory(addr, 1)
+            return True
+        except gdb.error:
+            return False
+
+    def _find_memory_last_readable(self, start: int, count: int) -> int:
+        end = start + count
+        result = -1
+
+        if not self._is_memory_readable(start):
+            return result
+
+        while start <= end:
+            mid = (start + end + 1) // 2
+            if self._is_memory_readable(mid):
+                result = mid
+                start = mid + 1
+            else:
+                end = mid - 1
+
+        return result
 
     @override
     def read_memory(self, address: int, size: int, partial: bool = False) -> bytearray:
-        result = b""
         count = max(int(size), 0)
         addr = address
 
         try:
             result = gdb.selected_inferior().read_memory(addr, count)
+            return bytearray(result)
         except gdb.error as e:
             if not partial:
                 raise pwndbg.dbg_mod.Error(e)
 
-            message = str(e)
+            if not pwndbg.aglib.remote.is_remote():
+                message = str(e)
+                match = re.search(r"Memory at address (\w+) unavailable\.", message)
+                if match:
+                    stop_addr = int(match.group(1), 0)
+                else:
+                    stop_addr = int(message.split()[-1], 0)
 
-            stop_addr = addr
-            match = re.search(r"Memory at address (\w+) unavailable\.", message)
-            if match:
-                stop_addr = int(match.group(1), 0)
+                # Handle case of memory read that wraps around the memory space back to 0, where high memory was readable but memory at 0 was not.
+                # Example: 2-byte read at 0xFFFF_FFFF in a 32-bit address space.
+                # GDB returns error: "Cannot access memory at address 0x0"
+                if stop_addr == 0 and stop_addr < addr:
+                    # We could read from the top-portion of memory, but not after wrapping around
+                    # Because we are doing a partial read, read until the max address
+                    return self.read_memory(addr, pwndbg.aglib.arch.ptrmask - addr + 1)
+
+                if stop_addr > addr:
+                    return self.read_memory(addr, stop_addr - addr)
             else:
-                stop_addr = int(message.split()[-1], 0)
+                # Handle the case of remote debugging, where GDB's remote protocol
+                # returns the start address as the failed read address instead of the stop address.
+                # This is a limitation in how GDB handles the remote protocol, and while it could
+                # be fixed, it currently behaves this way.
+                #
+                # To work around this, we perform a binary search in the `_find_memory_last_readable` method
+                # to find the correct stop address that avoids the failure.
+                #
+                # For local debugging, this issue does not occur, and we proceed with the normal flow.
+                if (stop_addr := self._find_memory_last_readable(addr, count)) > 0:
+                    return self.read_memory(addr, stop_addr - addr + 1)
 
-            if stop_addr != addr:
-                return self.read_memory(addr, stop_addr - addr)
-
-            # QEMU will return the start address as the failed
-            # read address.  Try moving back a few pages at a time.
-            stop_addr = addr + count
-
-            # Move the stop address down to the previous page boundary
-            stop_addr &= PAGE_MASK
-            while stop_addr > addr:
-                result = self.read_memory(addr, stop_addr - addr)
-
-                if result:
-                    return bytearray(result)
-
-                # Move down by another page
-                stop_addr -= PAGE_SIZE
-
-        return bytearray(result)
+            raise pwndbg.dbg_mod.Error(e)
 
     @override
     def write_memory(self, address: int, data: bytearray, partial: bool = False) -> int:
@@ -539,9 +585,16 @@ class GDBProcess(pwndbg.dbg_mod.Process):
         return "remote" in gdb.execute("maintenance print target-stack", to_string=True)
 
     @override
-    def send_remote(self, packet: str) -> str:
+    def send_remote(self, packet: str) -> bytes:
+        conn = self.inner.connection
+        assert isinstance(
+            conn, gdb.RemoteTargetConnection
+        ), "Called send_remote() on a local process"
+        assert conn.is_valid(), "connection is invalid"
+
+        # NOTE: `send_packet` don't handle reading multiple responses
         try:
-            return gdb.execute(f"maintenance packet {packet}", to_string=True)
+            return conn.send_packet(packet) or b""
         except gdb.error as e:
             raise pwndbg.dbg_mod.Error(e)
 
@@ -554,6 +607,18 @@ class GDBProcess(pwndbg.dbg_mod.Process):
 
     @override
     def download_remote_file(self, remote_path: str, local_path: str) -> None:
+        import pwndbg.aglib.file
+
+        if pwndbg.aglib.file.is_vfile_qemu_user_bug():
+            with open(local_path, "wb") as fp:
+                try:
+                    for data in pwndbg.aglib.file.vfile_readfile(remote_path):
+                        fp.write(data)
+                    return
+                except OSError as e:
+                    raise pwndbg.dbg_mod.Error(
+                        "Could not download remote file %r:\nError: %s" % (remote_path, str(e))
+                    )
         try:
             error = gdb.execute(f'remote get "{remote_path}" "{local_path}"', to_string=True)
         except gdb.error as e:
@@ -642,7 +707,7 @@ class GDBProcess(pwndbg.dbg_mod.Process):
             return []
 
     @override
-    def arch(self) -> pwndbg.dbg_mod.Arch:
+    def arch(self) -> ArchDefinition:
         ptrsize = pwndbg.aglib.typeinfo.ptrsize
         not_exactly_arch = False
 
@@ -658,8 +723,18 @@ class GDBProcess(pwndbg.dbg_mod.Process):
             arch = gdb.execute("show architecture", to_string=True).strip()
             not_exactly_arch = True
 
+        arch = arch.lower()
+
+        arch_attributes = []
+
+        if arch.startswith("mips:"):
+            isa = arch[5:]
+
+            if (attribute := gdb_mips_to_arch_attribute_map.get(isa)) is not None:
+                arch_attributes.append(attribute)
+
         # Below, we fix the fetched architecture
-        for match in pwndbg.aglib.arch_mod.ARCHS:
+        for match in gdb_architecture_name_fixup_list:
             if match in arch:
                 # Distinguish between Cortex-M and other ARM
                 # When GDB detects correctly Cortex-M processes, it will label them with `arm*-m`, such as armv7e-m
@@ -675,12 +750,31 @@ class GDBProcess(pwndbg.dbg_mod.Process):
                 elif match == "riscv":
                     # If GDB doesn't detect the width, it will just say `riscv`.
                     match = "rv64"
-                return GDBArch(endian, match, ptrsize)
+                elif match == "iwmmxt" or match == "iwmmxt2" or match == "xscale":
+                    match = "arm"
+                elif match == "rs6000":
+                    # The RS/6000 architecture is compatible with the PowerPC common
+                    match = "powerpc"
+                elif match == "s390:64-bit":
+                    match = "s390x"
+                return ArchDefinition(
+                    name=match,  # type: ignore[arg-type]
+                    ptrsize=ptrsize,
+                    endian=endian,
+                    platform=Platform.LINUX,
+                    attributes=arch_attributes,
+                )
 
         if not_exactly_arch:
             raise RuntimeError(f"Could not deduce architecture from: {arch}")
 
-        return GDBArch(endian, arch, ptrsize)
+        return ArchDefinition(
+            name=arch,  # type: ignore[arg-type]
+            ptrsize=ptrsize,
+            endian=endian,
+            platform=Platform.LINUX,
+            attributes=arch_attributes,
+        )
 
     @override
     def break_at(
@@ -833,11 +927,10 @@ class GDBProcess(pwndbg.dbg_mod.Process):
     def main_module_name(self) -> str | None:
         # Can GDB ever return a different value here from what we'd get with
         # `info files`, give or take a "remote:"?
-        if not self.alive():
-            return gdb.current_progspace().filename
-
-        exe = gdb.execute("info proc exe", to_string=True)
-        return exe[exe.find("exe = '") + 7 : exe.rfind("'")]
+        if self.alive() and not pwndbg.aglib.qemu.is_qemu_kernel():
+            exe = gdb.execute("info proc exe", to_string=True)
+            return exe[exe.find("exe = '") + 7 : exe.rfind("'")]
+        return gdb.current_progspace().filename
 
     @override
     def main_module_entry(self) -> int | None:
@@ -887,6 +980,7 @@ class GDBProcess(pwndbg.dbg_mod.Process):
 class GDBExecutionController(pwndbg.dbg_mod.ExecutionController):
     @override
     async def single_step(self):
+        # TODO: disable GDB ugly output
         gdb.execute("si")
 
         # Check if the program stopped because of the step we just took. If it
@@ -897,7 +991,25 @@ class GDBExecutionController(pwndbg.dbg_mod.ExecutionController):
 
     @override
     async def cont(self, until: pwndbg.dbg_mod.StopPoint):
+        # TODO: disable GDB ugly output
         gdb.execute("continue")
+
+        # Check if the program stopped because of the breakpoint we were given,
+        # and, just like for the single step, propagate a cancellation error if
+        # it stopped for any other reason.
+        assert isinstance(until, GDBStopPoint)
+        if f"It stopped at breakpoint {until.inner.number}" not in gdb.execute(
+            "info program", to_string=True
+        ):
+            raise CancelledError()
+
+    @override
+    async def cont_selected_thread(self, until: pwndbg.dbg_mod.StopPoint):
+        from pwndbg.gdblib.scheduler import lock_scheduler
+
+        with lock_scheduler():
+            # TODO: disable GDB ugly output
+            gdb.execute("continue")
 
         # Check if the program stopped because of the breakpoint we were given,
         # and, just like for the single step, propagate a cancellation error if
@@ -941,6 +1053,7 @@ class GDBCommandHandle(pwndbg.dbg_mod.CommandHandle):
 
 class GDBType(pwndbg.dbg_mod.Type):
     CODE_MAPPING = {
+        gdb.TYPE_CODE_BOOL: pwndbg.dbg_mod.TypeCode.BOOL,
         gdb.TYPE_CODE_INT: pwndbg.dbg_mod.TypeCode.INT,
         gdb.TYPE_CODE_UNION: pwndbg.dbg_mod.TypeCode.UNION,
         gdb.TYPE_CODE_STRUCT: pwndbg.dbg_mod.TypeCode.STRUCT,
@@ -1059,6 +1172,21 @@ class GDBType(pwndbg.dbg_mod.Type):
     def keys(self) -> List[str]:
         return list(self.inner.keys())
 
+    @override
+    def offsetof(self, field_name: str) -> int | None:
+        # In LLDB this code don't work
+        value = pwndbg.dbg.selected_inferior().create_value(0, self.pointer())
+        try:
+            addr = value[field_name].address
+        except pwndbg.dbg_mod.Error:
+            # error: `There is no member named field_name`
+            return None
+
+        if addr is None:
+            raise pwndbg.dbg_mod.Error("bug, this should no happen")
+
+        return int(addr)
+
 
 class GDBValue(pwndbg.dbg_mod.Value):
     def __init__(self, inner: gdb.Value):
@@ -1067,7 +1195,10 @@ class GDBValue(pwndbg.dbg_mod.Value):
     @property
     @override
     def address(self) -> pwndbg.dbg_mod.Value | None:
-        return GDBValue(self.inner.address)
+        val = self.inner.address
+        if val is None:
+            return None
+        return GDBValue(val)
 
     @property
     @override
@@ -1181,13 +1312,74 @@ def _gdb_event_class_from_event_type(ty: pwndbg.dbg_mod.EventType) -> Any:
         return gdb.events.memory_changed
     elif ty == pwndbg.dbg_mod.EventType.REGISTER_CHANGED:
         return gdb.events.register_changed
+    elif ty == pwndbg.dbg_mod.EventType.SUSPEND_ALL:
+        assert hasattr(
+            gdb.events, "suspend_all"
+        ), "gdb.events.suspend_all is missing. Did the Pwndbg GDB event code not get loaded?"
+        return gdb.events.suspend_all
 
     raise NotImplementedError(f"unknown event type {ty}")
 
 
 class GDB(pwndbg.dbg_mod.Debugger):
+    def _disable_gdbinit_loading(self) -> Tuple[bool, bool]:
+        import os
+
+        import psutil
+
+        disable_home_gdbinit = 0
+        disable_any_gdbinit = 0
+        proc = psutil.Process(os.getpid())
+        for arg in proc.cmdline():
+            if arg in ("-args", "--args"):
+                break
+            if arg in ("-nh", "--nh"):
+                disable_home_gdbinit += 1
+            elif arg in ("-nx", "--nx", "-n", "--n"):
+                disable_any_gdbinit += 1
+
+        if disable_any_gdbinit == 0:
+            # The `--nx` option is added only in pwndbg-portable mode.
+            # This check allows using OLD syntax, eg: `source /path/to/pwndbg/gdbinit.py`, from ~/.gdbinit
+            return True, True
+
+        return disable_any_gdbinit >= 2, disable_home_gdbinit >= 1
+
+    def _load_gdbinit(self):
+        # Emulate how `gdb` loads `.gdbinit` files (home and local)
+        disable_any, disable_home = self._disable_gdbinit_loading()
+        if disable_any:
+            return
+
+        home_file = Path("~/.gdbinit").expanduser().resolve()
+        local_file = Path("./.gdbinit").resolve()
+
+        def load_source(file_path: str):
+            try:
+                gdb.execute(f"source {file_path}")
+            except gdb.error as e:
+                print(e)
+
+        is_home_loaded = False
+        if not disable_home and home_file.exists():
+            load_source("~/.gdbinit")
+            is_home_loaded = True
+
+        disable_local = not gdb.parameter("auto-load local-gdbinit")
+        should_load_local = (
+            not disable_local
+            and local_file.exists()
+            and not (is_home_loaded and home_file.samefile(local_file))
+        )
+        if should_load_local:
+            load_source("./.gdbinit")
+
     @override
     def setup(self):
+        import pwnlib.update
+
+        pwnlib.update.disabled = True
+
         from pwndbg.commands import load_commands
 
         load_gdblib()
@@ -1204,6 +1396,7 @@ class GDB(pwndbg.dbg_mod.Debugger):
         prompt.set_prompt()
 
         pre_commands = """
+        set auto-load safe-path /
         set confirm off
         set verbose off
         set pagination off
@@ -1216,14 +1409,51 @@ class GDB(pwndbg.dbg_mod.Debugger):
         handle SIGBUS  stop   print nopass
         handle SIGPIPE nostop print nopass
         handle SIGSEGV stop   print nopass
-        """.strip()
-
-        # See https://github.com/pwndbg/pwndbg/issues/808
-        if gdb_version[0] <= 9:
-            pre_commands += "\nset remote search-memory-packet off"
+        """
 
         for line in pre_commands.strip().splitlines():
             gdb.execute(line)
+
+        # See https://github.com/pwndbg/pwndbg/issues/2890#issuecomment-2813047212
+        # Note: Remove this in a late 2025 or 2026 release?
+        for deprecated_cmd in (
+            "vmmap_add",
+            "vmmap_clear",
+            "vmmap_load",
+            "vmmap_explore",
+            "vis_heap_chunks",
+            "heap_config",
+            "stack_explore",
+            "auxv_explore",
+            "log_level",
+            "find_fake_fast",
+            "malloc_chunk",
+            "top_chunk",
+            "try_free",
+            "save_ida",
+            "knft_dump",
+            "knft_list_chains",
+            "knft_list_exprs",
+            "knft_list_flowtables",
+            "knft_list_objects",
+            "knft_list_rules",
+            "knft_list_sets",
+            "knft_list_tables",
+            "patch_list",
+            "patch_revert",
+            "jemalloc_extent_info",
+            "jemalloc_find_extent",
+            "jemalloc_heap",
+        ):
+            fixed_cmd = deprecated_cmd.replace("_", "-")
+            gdb.execute(
+                f"alias -a {deprecated_cmd} = echo Use `{fixed_cmd}` instead (Pwndbg changed `_` to `-` in command names)\\n"
+            )
+
+        for deprecated_cmd, new_cmd in (("pcplist", "buddydump"),):
+            gdb.execute(
+                f"alias -a {deprecated_cmd} = echo deprecation warning for old name, use `{new_cmd}` instead\\n"
+            )
 
         # This may throw an exception, see pwndbg/pwndbg#27
         try:
@@ -1244,9 +1474,12 @@ class GDB(pwndbg.dbg_mod.Debugger):
 
         config_mod.init_params()
 
-        prompt.show_hint()
-
         from pwndbg.dbg.gdb import debug_sym
+
+        self._load_gdbinit()
+
+        # show_hint must be called after loading ~/.gdbinit, this order allow disabling show_hint
+        prompt.show_hint()
 
     @override
     def add_command(
@@ -1278,20 +1511,18 @@ class GDB(pwndbg.dbg_mod.Debugger):
 
             parsed_lines = []
             for line in lines:
-                try:
-                    number_str, command = line.split(maxsplit=1)
-                except ValueError:
-                    # In rare cases GDB stores a number with no command, and the split()
-                    # then only returns one element. We can safely ignore these.
-                    continue
+                num_cmd = line.split(maxsplit=1)
 
                 try:
-                    number = int(number_str)
+                    number = int(num_cmd[0])
                 except ValueError:
                     # In rare cases GDB will output a warning after executing `show commands`
                     # (i.e. "warning: (Internal error: pc 0x0 in read in CU, but not in
                     # symtab.)").
                     return []
+                # In rare cases GDB stores a number with no command, and the split()
+                # then only returns one element. We can safely ignore these.
+                command = num_cmd[1] if len(num_cmd) > 1 else ""
 
                 parsed_lines.append((number, command))
 
@@ -1441,6 +1672,8 @@ class GDB(pwndbg.dbg_mod.Debugger):
             return pwndbg.gdblib.events.mem_changed
         elif ty == pwndbg.dbg_mod.EventType.REGISTER_CHANGED:
             return pwndbg.gdblib.events.reg_changed
+        elif ty == pwndbg.dbg_mod.EventType.SUSPEND_ALL:
+            raise RuntimeError("invalid usage, this event is not supported")
 
     @override
     def suspend_events(self, ty: pwndbg.dbg_mod.EventType) -> None:
@@ -1462,6 +1695,40 @@ class GDB(pwndbg.dbg_mod.Debugger):
     @override
     def supports_breakpoint_creation_during_stop_handler(self) -> bool:
         return False
+
+    @override
+    def breakpoint_locations(self) -> List[pwndbg.dbg_mod.BreakpointLocation]:
+        bps = gdb.breakpoints()
+        locations: List[pwndbg.dbg_mod.BreakpointLocation] = []
+        for bp in bps:
+            if (
+                bp.is_valid()
+                and bp.enabled
+                and bp.type in (gdb.BP_BREAKPOINT, gdb.BP_HARDWARE_BREAKPOINT)
+                and bp.visible
+            ):
+                # GDB 13.1+
+                if hasattr(bp, "locations"):
+                    for location in bp.locations:
+                        locations.append(pwndbg.dbg_mod.BreakpointLocation(location.address))
+                else:
+                    # Num     Type           Disp Enb Address            What
+                    # 1       breakpoint     keep y   0x00007ffff7e90840 in __GI___libc_read at ../sysdeps/unix/sysv/linux/read.c:26
+                    bp_locations = gdb.execute(
+                        f"info breakpoint {bp.number}", to_string=True
+                    ).split("\n")
+                    for line in bp_locations:
+                        try:
+                            address = int(line.split()[4], 16)
+                            locations.append(pwndbg.dbg_mod.BreakpointLocation(address))
+                        except (IndexError, ValueError):
+                            # Ignore lines that don't have an address.
+                            pass
+        return locations
+
+    @override
+    def name(self) -> pwndbg.dbg_mod.DebuggerType:
+        return pwndbg.dbg_mod.DebuggerType.GDB
 
     @override
     def x86_disassembly_flavor(self) -> Literal["att", "intel"]:
@@ -1511,6 +1778,13 @@ class GDB(pwndbg.dbg_mod.Debugger):
             height if height is None else int(height),
             width if width is None else int(width),
         )
+
+    @override
+    @property
+    def pre_ctx_lines(self) -> int:
+        # GDB most often prints one line
+        # as a "0x000055555556fa8f in main ()"-type message
+        return 1
 
     @override
     def set_python_diagnostics(self, enabled: bool) -> None:

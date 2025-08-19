@@ -11,6 +11,7 @@ from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
 from typing import Generator
+from typing import Iterator
 from typing import List
 from typing import Literal
 from typing import Sequence
@@ -19,6 +20,8 @@ from typing import TypedDict
 from typing import TypeVar
 
 import pwndbg.lib.memory
+from pwndbg.lib.arch import PWNDBG_SUPPORTED_ARCHITECTURES_TYPE
+from pwndbg.lib.arch import ArchDefinition
 
 dbg: Debugger = None
 
@@ -67,36 +70,18 @@ class DisassembledInstruction(TypedDict):
     length: int
 
 
-class Arch:
-    """
-    The definition of an architecture.
-    """
-
-    @property
-    def endian(self) -> Literal["little", "big"]:
-        """
-        Wether code in this module is little or big.
-        """
-        raise NotImplementedError()
-
-    @property
-    def name(self) -> str:
-        """
-        Name of the architecture.
-        """
-        raise NotImplementedError()
-
-    @property
-    def ptrsize(self) -> int:
-        """
-        Length of the pointer in this module.
-        """
-        raise NotImplementedError()
+class DebuggerType(Enum):
+    GDB = 1
+    LLDB = 2
 
 
 class StopPoint:
     """
     The handle to either an insalled breakpoint or watchpoint.
+
+    May be used in a `with` statement, in which case the stop point is
+    automatically removed at the end of the statement. This allows for easy
+    implementation of temporary breakpoints.
     """
 
     def remove(self) -> None:
@@ -111,6 +96,15 @@ class StopPoint:
         """
         raise NotImplementedError()
 
+    def __enter__(self) -> StopPoint:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        """
+        Automatic breakpoint removal.
+        """
+        self.remove()
+
 
 class BreakpointLocation:
     """
@@ -121,6 +115,13 @@ class BreakpointLocation:
 
     def __init__(self, address: int):
         self.address = address
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, BreakpointLocation):
+            return self.address == other.address
+        if isinstance(other, int):
+            return self.address == other
+        return False
 
 
 class WatchpointLocation:
@@ -262,7 +263,8 @@ class Frame:
 
 
 class Thread:
-    def bottom_frame(self) -> Frame:
+    @contextlib.contextmanager
+    def bottom_frame(self) -> Iterator[Frame]:
         """
         Frame at the bottom of the call stack for this thread.
         """
@@ -286,15 +288,14 @@ class MemoryMap:
     A wrapper around a sequence of memory ranges
     """
 
+    pages: tuple[pwndbg.lib.memory.Page, ...]
+
+    def __init__(self, pages: Sequence[pwndbg.lib.memory.Page]):
+        self.pages = tuple(pages)
+
     def is_qemu(self) -> bool:
         """
         Returns whether this memory map was generated from a QEMU target.
-        """
-        raise NotImplementedError()
-
-    def has_reliable_perms(self) -> bool:
-        """
-        Returns whether the permissions in this memory map are reliable.
         """
         raise NotImplementedError()
 
@@ -302,7 +303,24 @@ class MemoryMap:
         """
         Returns all ranges in this memory map.
         """
-        raise NotImplementedError()
+        return self.pages
+
+    def lookup_page(self, address: int) -> pwndbg.lib.memory.Page | None:
+        # Binary search for the page
+        lo = 0
+        hi = len(self.pages) - 1
+        while lo <= hi:
+            mid = (hi + lo) // 2
+            page = self.pages[mid]
+            if page.start <= address:
+                if address < page.end:
+                    return page
+
+                lo = mid + 1
+            else:
+                hi = mid - 1
+
+        return None
 
 
 class ExecutionController:
@@ -313,12 +331,28 @@ class ExecutionController:
         Throws `CancelledError` if a breakpoint or watchpoint is hit, the program
         exits, or if any other unexpected event that diverts execution happens
         while fulfulling the step.
+
+        FIXME GDB:
+        On GDB `stepi` will execute other threads. On LLDB not.
+        Please use `set scheduler-locking step`
         """
         raise NotImplementedError()
 
     def cont(self, until: StopPoint) -> Awaitable[None]:
         """
         Continues execution until the given breakpoint or whatchpoint is hit.
+        Continues execution on all threads.
+
+        Throws `CancelledError` if a breakpoint or watchpoint is hit that is not
+        the one given in `until`, the program exits, or if any other unexpected
+        event happens.
+        """
+        raise NotImplementedError()
+
+    def cont_selected_thread(self, until: StopPoint) -> Awaitable[None]:
+        """
+        Continues execution on single thread until the given breakpoint or whatchpoint is hit.
+        Continues execution on selected thread.
 
         Throws `CancelledError` if a breakpoint or watchpoint is hit that is not
         the one given in `until`, the program exits, or if any other unexpected
@@ -409,7 +443,7 @@ class Process:
         """
         raise NotImplementedError()
 
-    def send_remote(self, packet: str) -> str:
+    def send_remote(self, packet: str) -> bytes:
         """
         Sends the given packet to the GDB remote debugging protocol server.
         Should only be called if `is_remote()` is true.
@@ -484,7 +518,7 @@ class Process:
         """
         raise NotImplementedError()
 
-    def arch(self) -> Arch:
+    def arch(self) -> ArchDefinition:
         """
         The default architecture of this process.
         """
@@ -607,6 +641,7 @@ class TypeCode(Enum):
     INT = 6
     ENUM = 7
     FUNC = 8
+    BOOL = 9
 
 
 class TypeField:
@@ -676,6 +711,15 @@ class Type:
         You should not use this function. Only for human eyes.
         """
         raise NotImplementedError()
+
+    @property
+    def array_len(self) -> int:
+        """
+        Get array length of this type.
+        """
+        if self.code == pwndbg.dbg_mod.TypeCode.ARRAY:
+            return self.sizeof // self.target().sizeof
+        return 0
 
     @property
     def sizeof(self) -> int:
@@ -765,6 +809,74 @@ class Type:
         # if there is a better debugger-specific way to do this.
         return [field.name for field in self.fields()]
 
+    def enum_member(self, field_name: str) -> int | None:
+        """
+        Retrieve the integer value of an enum member.
+
+        It returns:
+        - integer value, when found field
+        - returns None, If the field does not exist
+        """
+        if self.code != TypeCode.ENUM:
+            raise TypeError("only enum supported")
+
+        return next((f.enumval for f in self.fields() if f.name == field_name), None)
+
+    def _offsetof(
+        self, field_name: str, *, base_offset_bits: int = 0, nested_cyclic_types: List[Type] = None
+    ) -> int | None:
+        NESTED_TYPES = (TypeCode.STRUCT, TypeCode.UNION)
+        struct_type = self
+        if nested_cyclic_types is None:
+            nested_cyclic_types = []
+
+        if struct_type.code == TypeCode.TYPEDEF:
+            struct_type = struct_type.strip_typedefs()
+
+        if struct_type.code not in NESTED_TYPES:
+            return None
+        elif struct_type in nested_cyclic_types:
+            return None
+
+        # note: lldb.SBType and gdb.Type dont support Sets
+        nested_cyclic_types.append(struct_type)
+
+        for field in struct_type.fields():
+            field_offset_bits = base_offset_bits + field.bitpos
+
+            if field.name == field_name:
+                if field_offset_bits % 8 != 0:
+                    # Possible bit-fields, misaligned struct, or unexpected alignment
+                    # This case is not supported because it introduces complexities
+                    # in handling non-byte-aligned or bit-level field offsets
+                    return None
+                return field_offset_bits // 8
+
+            nested_offset = field.type._offsetof(
+                field_name,
+                base_offset_bits=field_offset_bits,
+                nested_cyclic_types=nested_cyclic_types,
+            )
+            if nested_offset is not None:
+                return nested_offset
+
+        return None
+
+    def offsetof(self, field_name: str) -> int | None:
+        """
+        Calculate the byte offset of a field within a struct or union.
+
+        This method recursively traverses nested structures and unions, and it computes the
+        byte-aligned offset for the specified field.
+
+        It returns:
+        - offset in bytes if found
+        - None if the field doesn't exist or if an unsupported alignment/bit-field is encountered
+        """
+        if self.code == TypeCode.POINTER:
+            return self.target()._offsetof(field_name)
+        return self._offsetof(field_name)
+
     def __eq__(self, rhs: object) -> bool:
         """
         Returns True if types are the same
@@ -810,7 +922,7 @@ class Value:
 
     def dereference(self) -> Value:
         """
-        If this is a poitner value, dereferences the pointer and returns a new
+        If this is a pointer value, dereferences the pointer and returns a new
         instance of Value, containing the value pointed to by this pointer.
         """
         raise NotImplementedError()
@@ -927,6 +1039,7 @@ class EventType(Enum):
           debugged. In GDB terminology, these are called `objfile`s.
     """
 
+    SUSPEND_ALL = -1
     START = 0
     STOP = 1
     EXIT = 2
@@ -1024,6 +1137,19 @@ class Debugger:
         """
         raise NotImplementedError()
 
+    @contextlib.contextmanager
+    def ctx_suspend_events(self, ty: EventType) -> Iterator[None]:
+        """
+        Context manager for temporarily suspending and resuming the delivery of events
+        of a given type.
+        """
+
+        self.suspend_events(ty)
+        try:
+            yield
+        finally:
+            self.resume_events(ty)
+
     def suspend_events(self, ty: EventType) -> None:
         """
         Suspend delivery of all events of the given type until it is resumed
@@ -1061,12 +1187,25 @@ class Debugger:
         """
         raise NotImplementedError()
 
+    def breakpoint_locations(self) -> List[BreakpointLocation]:
+        """
+        Returns a list of all breakpoint locations that are currently
+        installed and enabled in the focused process.
+        """
+        raise NotImplementedError()
+
     # WARNING
     #
     # These are hacky parts of the API that were strictly necessary to bring up
     # pwndbg under LLDB without breaking it under GDB. Expect most of them to be
     # removed or replaced as the porting work continues.
     #
+
+    def name(self) -> DebuggerType:
+        """
+        The type of the current debugger.
+        """
+        raise NotImplementedError()
 
     # We'd like to be able to gate some imports off during porting. This aids in
     # that.
@@ -1091,6 +1230,20 @@ class Debugger:
     def get_cmd_window_size(self) -> Tuple[int, int]:
         """
         The size of the command window, in characters, if available.
+        """
+        raise NotImplementedError()
+
+    @property
+    def pre_ctx_lines(self) -> int:
+        """
+        Our prediction on how many lines of text will be printed as
+        a preamble (right after the prompt, and before the context)
+        the next time the context is printed.
+
+        This includes any lines the underlying debugger generates.
+
+        The user never sees these lines when context-clear-screen
+        is enabled.
         """
         raise NotImplementedError()
 

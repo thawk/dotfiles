@@ -4,14 +4,9 @@ Determine whether the target is being run under QEMU.
 
 from __future__ import annotations
 
-import os
-
-import psutil
-
 import pwndbg
 import pwndbg.aglib.arch
 import pwndbg.lib.cache
-from pwndbg.dbg import EventType
 
 
 @pwndbg.lib.cache.cache_until("stop")
@@ -32,7 +27,7 @@ def is_qemu() -> bool:
     #
     response = inferior.send_remote("Qqemu.sstepbits")
 
-    return "ENABLE=" in response
+    return b"ENABLE=" in response
 
 
 @pwndbg.lib.cache.cache_until("stop")
@@ -48,7 +43,7 @@ def is_usermode() -> bool:
     #    gdb -nx `which ps` -ex 'target remote :1234'
     response = inferior.send_remote("qOffsets")
 
-    return "Text=" in response
+    return b"Text=" in response
 
 
 @pwndbg.lib.cache.cache_until("stop")
@@ -64,6 +59,11 @@ def is_qemu_kernel() -> bool:
     return is_qemu() and not is_usermode()
 
 
+def is_old_qemu_user() -> bool:
+    # qemu-user <8.1
+    return is_qemu_usermode() and not exec_file_supported()
+
+
 @pwndbg.lib.cache.cache_until("stop")
 def exec_file_supported() -> bool:
     """Returns ``True`` if the remote target understands the 'qXfer:exec-file:read' packet.
@@ -71,48 +71,4 @@ def exec_file_supported() -> bool:
     """
     response = pwndbg.dbg.selected_inferior().send_remote("qSupported")
 
-    return "exec-file" in response
-
-
-@pwndbg.dbg.event_handler(EventType.START)
-@pwndbg.lib.cache.cache_until("stop")
-def root() -> str | None:
-    if not is_qemu_usermode():
-        return None
-
-    binfmt_root = f"/etc/qemu-binfmt/{pwndbg.aglib.arch.qemu}/"
-
-    if not os.path.isdir(binfmt_root):
-        return None
-
-    pwndbg.dbg.set_sysroot(binfmt_root)
-
-    return binfmt_root
-
-
-@pwndbg.lib.cache.cache_until("start")
-def pid() -> int:
-    """Find the PID of the qemu usermode binary which we are
-    talking to.
-    """
-    # Find all inodes in our process which are connections.
-    targets = {c.raddr for c in psutil.Process().connections()}
-
-    # No targets? :(
-    if not targets:
-        return 0
-
-    for process in psutil.process_iter():
-        if not process.name().startswith("qemu"):
-            continue
-
-        try:
-            connections = process.connections()
-        except Exception:
-            continue
-
-        for c in connections:
-            if c.laddr in targets:
-                return process.pid
-
-    return 0
+    return b"qXfer:exec-file:read" in response

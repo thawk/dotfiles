@@ -49,8 +49,8 @@ X86_MATH_INSTRUCTIONS = {
 
 # This class handles enhancement for x86 and x86_64. This is because Capstone itself
 # represents both architectures using the same class
-class DisassemblyAssistant(pwndbg.aglib.disasm.arch.DisassemblyAssistant):
-    def __init__(self, architecture: str) -> None:
+class X86DisassemblyAssistant(pwndbg.aglib.disasm.arch.DisassemblyAssistant):
+    def __init__(self, architecture) -> None:
         super().__init__(architecture)
 
         self.annotation_handlers: Dict[int, Callable[[PwndbgInstruction, Emulator], None]] = {
@@ -201,7 +201,7 @@ class DisassemblyAssistant(pwndbg.aglib.disasm.arch.DisassemblyAssistant):
             elif pc_is_at_instruction:
                 # Attempt to read from the top of the stack
                 try:
-                    value = pwndbg.aglib.memory.pvoid(pwndbg.aglib.regs.sp)
+                    value = pwndbg.aglib.memory.read_pointer_width(pwndbg.aglib.regs.sp)
                     instruction.annotation = register_assign(
                         reg_operand.str, MemoryColor.get_address_and_symbol(value)
                     )
@@ -324,12 +324,9 @@ class DisassemblyAssistant(pwndbg.aglib.disasm.arch.DisassemblyAssistant):
         if instruction.id in (X86_INS_JMP, X86_INS_RET, X86_INS_CALL):
             return InstructionCondition.UNDETERMINED
 
-        # We can't reason about anything except the current instruction
-        if instruction.address != pwndbg.aglib.regs.pc:
-            return InstructionCondition.UNDETERMINED
-
-        efl = pwndbg.aglib.regs.eflags
+        efl = self._read_register_name(instruction, "eflags", emu)
         if efl is None:
+            # We can't reason about the value of flags register
             return InstructionCondition.UNDETERMINED
 
         cf = efl & (1 << 0)
@@ -437,7 +434,3 @@ class DisassemblyAssistant(pwndbg.aglib.disasm.arch.DisassemblyAssistant):
             sz += f"{abs(disp):#x}"
 
         return f"[{sz}]"
-
-
-assistant = DisassemblyAssistant("i386")
-assistant = DisassemblyAssistant("x86-64")

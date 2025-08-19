@@ -8,7 +8,6 @@ system has /proc/$$/maps, which backs 'info proc mapping'.
 
 from __future__ import annotations
 
-import bisect
 from typing import List
 from typing import Optional
 from typing import Set
@@ -19,60 +18,13 @@ import gdb
 import pwndbg
 import pwndbg.aglib.elf
 import pwndbg.aglib.file
-import pwndbg.aglib.kernel
-import pwndbg.aglib.memory
 import pwndbg.aglib.proc
 import pwndbg.aglib.qemu
-import pwndbg.aglib.regs
-import pwndbg.aglib.stack
 import pwndbg.auxv
-import pwndbg.color.message as M
-import pwndbg.gdblib.abi
 import pwndbg.gdblib.info
 import pwndbg.lib.cache
 import pwndbg.lib.config
 import pwndbg.lib.memory
-from pwndbg.aglib.kernel.vmmap import kernel_vmmap_via_monitor_info_mem
-from pwndbg.aglib.kernel.vmmap import kernel_vmmap_via_page_tables
-
-# List of manually-explored pages which were discovered
-# by analyzing the stack or register context.
-explored_pages: List[pwndbg.lib.memory.Page] = []
-
-# List of custom pages that can be managed manually by vmmap_* commands family
-custom_pages: List[pwndbg.lib.memory.Page] = []
-
-
-kernel_vmmap_via_pt = pwndbg.config.add_param(
-    "kernel-vmmap-via-page-tables",
-    "deprecated",
-    "the deprecated config of the method get kernel vmmap",
-    help_docstring="Deprecated in favor of `kernel-vmmap`",
-)
-
-kernel_vmmap = pwndbg.config.add_param(
-    "kernel-vmmap",
-    "page-tables",
-    "the method to get vmmap information when debugging via QEMU kernel",
-    help_docstring="""\
-kernel-vmmap can be:
-page-tables    - read /proc/$qemu-pid/mem to parse kernel page tables to render vmmap
-monitor        - use QEMU's `monitor info mem` to render vmmap
-none           - disable vmmap rendering; useful if rendering is particularly slow
-
-Note that the page-tables method will require the QEMU kernel process to be on the same machine and within the same PID namespace. Running QEMU kernel and GDB in different Docker containers will not work. Consider running both containers with --pid=host (meaning they will see and so be able to interact with all processes on the machine).
-""",
-    param_class=pwndbg.lib.config.PARAM_ENUM,
-    enum_sequence=["page-tables", "monitor", "none"],
-)
-
-auto_explore = pwndbg.config.add_param(
-    "auto-explore-pages",
-    "yes",
-    "whether to try to infer page permissions when memory maps missing (can cause errors)",
-    param_class=pwndbg.lib.config.PARAM_ENUM,
-    enum_sequence=["yes", "warn", "no"],
-)
 
 
 @pwndbg.lib.cache.cache_until("objfile", "start")
@@ -91,9 +43,6 @@ def is_corefile() -> bool:
     return "Local core dump file:\n" in pwndbg.gdblib.info.target()
 
 
-inside_no_proc_maps_search = False
-
-
 @pwndbg.lib.cache.cache_until("start", "stop")
 def get_known_maps() -> Tuple[pwndbg.lib.memory.Page, ...] | None:
     """
@@ -108,203 +57,7 @@ def get_known_maps() -> Tuple[pwndbg.lib.memory.Page, ...] | None:
     if is_corefile():
         return tuple(coredump_maps())
 
-    proc_maps = None
-    if pwndbg.aglib.qemu.is_qemu_usermode():
-        # On Qemu < 8.1 info proc maps are not supported. In that case we callback on proc_tid_maps
-        proc_maps = info_proc_maps()
-
-    if not proc_maps:
-        proc_maps = proc_tid_maps()
-
-    return proc_maps
-
-
-@pwndbg.lib.cache.cache_until("start", "stop")
-def get() -> Tuple[pwndbg.lib.memory.Page, ...]:
-    """
-    Returns a tuple of `Page` objects representing the memory mappings of the
-    target, sorted by virtual address ascending.
-    """
-    proc_maps = get_known_maps()
-    if proc_maps is not None:
-        return proc_maps
-
-    # The `proc_maps` is usually a tuple of Page objects but it can also be:
-    #   None    - when /proc/$tid/maps does not exist/is not available
-    #   tuple() - when the process has no maps yet which happens only during its very early init
-    #             (usually when we attach to a process)
-    if proc_maps is not None:
-        return proc_maps
-
-    pages: List[pwndbg.lib.memory.Page] = []
-    if pwndbg.aglib.qemu.is_qemu_kernel() and pwndbg.aglib.arch.current in (
-        "i386",
-        "x86-64",
-        "aarch64",
-        "rv32",
-        "rv64",
-    ):
-        # If kernel_vmmap_via_pt is not set to the default value of "deprecated",
-        # That means the user was explicitly setting it themselves and need to
-        # be warned that the option is deprecated
-        if kernel_vmmap_via_pt != "deprecated":
-            print(
-                M.warn(
-                    "`kernel-vmmap-via-page-tables` is deprecated, please use `kernel-vmmap` instead."
-                )
-            )
-
-        if kernel_vmmap == "page-tables":
-            pages.extend(kernel_vmmap_via_page_tables())
-        elif kernel_vmmap == "monitor":
-            pages.extend(kernel_vmmap_via_monitor_info_mem())
-
-    # TODO/FIXME: Add tests for  QEMU-user targets when this is needed
-    global inside_no_proc_maps_search
-    if not pages and not inside_no_proc_maps_search:
-        inside_no_proc_maps_search = True
-        # If debuggee is launched from a symlink the debuggee memory maps will be
-        # labeled with symlink path while in normal scenario the /proc/pid/maps
-        # labels debuggee memory maps with real path (after symlinks).
-        # This is because the exe path in AUXV (and so `info auxv`) is before
-        # following links.
-        pages.extend(info_auxv())
-
-        if pages:
-            pages.extend(info_sharedlibrary())
-        else:
-            if pwndbg.aglib.qemu.is_qemu():
-                return (pwndbg.lib.memory.Page(0, pwndbg.aglib.arch.ptrmask, 7, 0, "[qemu]"),)
-            pages.extend(info_files())
-
-        pages.extend(pwndbg.aglib.stack.get().values())
-        inside_no_proc_maps_search = False
-
-    pages.extend(explored_pages)
-    pages.extend(custom_pages)
-    pages.sort()
-    return tuple(pages)
-
-
-_warn_cache: Set[int] = set()
-
-
-@pwndbg.gdblib.events.new_objfile
-def clear_warn_cache():
-    _warn_cache.clear()
-
-
-@pwndbg.lib.cache.cache_until("stop")
-def find(
-    address: int | gdb.Value | None, *, should_explore: bool | None = None
-) -> pwndbg.lib.memory.Page | None:
-    if address is None:
-        return None
-
-    address = int(address)
-
-    for page in get():
-        if address in page:
-            return page
-
-    if should_explore is None:
-        if auto_explore.value == "warn":
-            page_start = pwndbg.lib.memory.page_align(address)
-            if page_start not in _warn_cache:
-                _warn_cache.add(page_start)
-                print(
-                    M.warn(
-                        f"Warning: Avoided exploring possible address {address:#x}. You can explicitly explore it with `vmmap_explore {page_start:#x}`"
-                    )
-                )
-        elif auto_explore.value == "yes":
-            return explore(address)
-    elif should_explore and not proc_tid_maps():
-        return explore(address)
-
-    return None
-
-
-@pwndbg.gdblib.abi.LinuxOnly()
-def explore(address_maybe: int) -> pwndbg.lib.memory.Page | None:
-    """
-    Given a potential address, check to see what permissions it has.
-
-    Returns:
-        Page object
-
-    Note:
-        Adds the Page object to a persistent list of pages which are
-        only reset when the process dies.  This means pages which are
-        added this way will not be removed when unmapped.
-
-        Also assumes the entire contiguous section has the same permission.
-    """
-
-    address_maybe = pwndbg.lib.memory.page_align(address_maybe)
-
-    flags = 4 if pwndbg.aglib.memory.peek(address_maybe) else 0
-
-    if not flags:
-        return None
-
-    if pwndbg.aglib.memory.poke(address_maybe):
-        flags |= 2
-    # It's really hard to check for executability, so we just make some guesses:
-    # If it's in the same page as the stack pointer, try to check the NX bit
-    # If it's in the same page as the instruction pointer, assume it's executable
-    # Otherwise, just say it's not executable
-    if address_maybe == pwndbg.lib.memory.page_align(pwndbg.aglib.regs.pc):
-        flags |= 1
-    # TODO: could maybe make this check look at the stacks in pwndbg.aglib.stack.get() but that might have issues
-    elif (
-        address_maybe == pwndbg.lib.memory.page_align(pwndbg.aglib.regs.sp)
-        and pwndbg.aglib.stack.is_executable()
-    ):
-        flags |= 1
-
-    page = find_boundaries(address_maybe)
-    page.objfile = "<explored>"
-    page.flags = flags
-
-    explored_pages.append(page)
-
-    # Clear the "get" cache so pages that are explored in the current step are included
-    get.cache.clear()  # type: ignore[attr-defined]
-
-    return page
-
-
-# Automatically ensure that all registers are explored on each stop
-# @pwndbg.dbg.event_handler(EventType.STOP)
-def explore_registers() -> None:
-    for regname in pwndbg.aglib.regs.common:
-        find(pwndbg.aglib.regs[regname])
-
-
-# @pwndbg.dbg.event_handler(EventType.EXIT)
-def clear_explored_pages() -> None:
-    while explored_pages:
-        explored_pages.pop()
-
-
-def add_custom_page(page: pwndbg.lib.memory.Page) -> None:
-    bisect.insort(custom_pages, page)
-
-    # Reset all the cache
-    # We can not reset get() only, since the result may be used by others.
-    # TODO: avoid flush all caches
-    pwndbg.lib.cache.clear_caches()
-
-
-def clear_custom_page() -> None:
-    while custom_pages:
-        custom_pages.pop()
-
-    # Reset all the cache
-    # We can not reset get() only, since the result may be used by others.
-    # TODO: avoid flush all caches
-    pwndbg.lib.cache.clear_caches()
+    return proc_tid_maps()
 
 
 @pwndbg.lib.cache.cache_until("objfile", "start")
@@ -507,9 +260,9 @@ def proc_tid_maps() -> Tuple[pwndbg.lib.memory.Page, ...] | None:
         /proc/$tid/maps doesn't exist or when we debug a qemu-user target
     """
 
-    # If we debug remotely a qemu-user or qemu-system target,
+    # If we debug remotely a qemu-system target,
     # there is no point of hitting things further
-    if pwndbg.aglib.qemu.is_qemu():
+    if pwndbg.aglib.qemu.is_qemu_kernel():
         return None
 
     # Example /proc/$tid/maps
@@ -535,8 +288,9 @@ def proc_tid_maps() -> Tuple[pwndbg.lib.memory.Page, ...] | None:
 
     tid = pwndbg.aglib.proc.tid
     locations = [
+        # Linux distro
         f"/proc/{tid}/maps",
-        f"/proc/{tid}/map",
+        # Freebsd in some cases
         f"/usr/compat/linux/proc/{tid}/maps",
     ]
 
@@ -544,7 +298,7 @@ def proc_tid_maps() -> Tuple[pwndbg.lib.memory.Page, ...] | None:
         try:
             data = pwndbg.aglib.file.get(location).decode()
             break
-        except (OSError, gdb.error):
+        except OSError:
             continue
     else:
         return None
@@ -694,7 +448,7 @@ def info_auxv(skip_exe: bool = False) -> Tuple[pwndbg.lib.memory.Page, ...]:
     it is not dereferenced by `info auxv` and we also don't dereference it.
 
     Arguments:
-        skip_exe(bool): Do not return any mappings that belong to the exe.
+        skip_exe: Do not return any mappings that belong to the exe.
 
     Returns:
         A list of pwndbg.lib.memory.Page objects.
@@ -727,16 +481,3 @@ def info_auxv(skip_exe: bool = False) -> Tuple[pwndbg.lib.memory.Page, ...]:
         pages.extend(pwndbg.aglib.elf.map(vdso, "[vdso]"))
 
     return tuple(sorted(pages))
-
-
-def find_boundaries(addr: int, name: str = "", min: int = 0) -> pwndbg.lib.memory.Page:
-    """
-    Given a single address, find all contiguous pages
-    which are mapped.
-    """
-    start = pwndbg.aglib.memory.find_lower_boundary(addr)
-    end = pwndbg.aglib.memory.find_upper_boundary(addr)
-
-    start = max(start, min)
-
-    return pwndbg.lib.memory.Page(start, end - start, 4, 0, name)

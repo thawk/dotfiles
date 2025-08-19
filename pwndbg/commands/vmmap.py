@@ -5,6 +5,7 @@ Command to print the virtual memory map a la /proc/self/maps.
 from __future__ import annotations
 
 import argparse
+import os.path
 from typing import Tuple
 
 from elftools.elf.constants import SH_FLAGS
@@ -13,6 +14,9 @@ from elftools.elf.elffile import ELFFile
 import pwndbg.aglib.arch
 import pwndbg.aglib.elf
 import pwndbg.aglib.file
+import pwndbg.aglib.qemu
+import pwndbg.aglib.vmmap
+import pwndbg.aglib.vmmap_custom
 import pwndbg.color.memory as M
 import pwndbg.commands
 from pwndbg.color import cyan
@@ -20,9 +24,6 @@ from pwndbg.color import green
 from pwndbg.color import red
 from pwndbg.commands import CommandCategory
 from pwndbg.lib.memory import Page
-
-if pwndbg.dbg.is_gdblib_available():
-    import pwndbg.gdblib.vmmap
 
 integer_types = (int, pwndbg.dbg_mod.Value)
 
@@ -46,8 +47,11 @@ def print_vmmap_table_header() -> None:
     """
     Prints the table header for the vmmap command.
     """
+    prefer_relpaths = "on" if pwndbg.config.vmmap_prefer_relpaths else "off"
+    width = 2 + 2 * pwndbg.aglib.arch.ptrsize
     print(
-        f"{'Start':>{2 + 2 * pwndbg.aglib.arch.ptrsize}} {'End':>{2 + 2 * pwndbg.aglib.arch.ptrsize}} {'Perm'} {'Size':>8} {'Offset':>6} {'File'}"
+        f"{'Start':>{width}} {'End':>{width}} {'Perm'} {'Size':>8} {'Offset':>7} "
+        f"{'File'} (set vmmap-prefer-relpaths {prefer_relpaths})"
     )
 
 
@@ -148,7 +152,6 @@ def print_vmmap_gaps(pages: Tuple[Page, ...]) -> None:
 
 
 parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawTextHelpFormatter,
     description="""Print virtual memory map pages.
 
 Unnamed mappings are named as [anon_%#x] where %#x is high part of their start address. This is useful for filtering with `vmmap` or `search` commands.
@@ -162,7 +165,7 @@ For coredump debugging, GDB also lacks all vmmap info but we do our best to get 
 
 As a last resort, we sometimes try to explore the addresses in CPU registers and if they are readable by GDB, we determine their bounds and create an "<explored>" vmmap. However, this method is slow and is not used on each GDB stop.
 
-Memory pages can also be added manually with the use of vmmap_add, vmmap_clear and vmmap_load commands. This may be useful for bare metal debugging.
+Memory pages can also be added manually with the use of vmmap-add, vmmap-clear and vmmap-load commands. This may be useful for bare metal debugging.
 
 [0] https://lore.kernel.org/all/20220221030910.3203063-1-dominik.b.czarnota@gmail.com/""",
 )
@@ -191,7 +194,7 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(
+@pwndbg.commands.Command(
     parser, aliases=["lm", "address", "vprot", "libs"], category=CommandCategory.MEMORY
 )
 @pwndbg.commands.OnlyWhenRunning
@@ -279,126 +282,140 @@ def vmmap(
         print(M.get(page.vaddr, text=display_text, prefix=backtrace_prefix))
 
     if vmmap.is_qemu():
-        print("\n[QEMU target detected - vmmap result might not be accurate; see `help vmmap`]")
-
-    if not vmmap.has_reliable_perms():
         print(
-            "\n[GDB <12.1 detected - vmmap cannot fetch permission information, defaulting to rwx]"
+            "\n[QEMU <8.1 target detected - vmmap result might not be accurate; see `help vmmap`]"
         )
 
 
-if pwndbg.dbg.is_gdblib_available():
-    parser = argparse.ArgumentParser(description="Add virtual memory map page.")
-    parser.add_argument("start", help="Starting virtual address")
-    parser.add_argument("size", help="Size of the address space, in bytes")
-    parser.add_argument(
-        "flags",
-        nargs="?",
-        type=str,
-        default="",
-        help="Flags set by the ELF file, see PF_X, PF_R, PF_W",
-    )
-    parser.add_argument(
-        "offset",
-        nargs="?",
-        default=0,
-        help="Offset into the original ELF file that the data is loaded from",
-    )
+parser = argparse.ArgumentParser(description="Add virtual memory map page.")
+parser.add_argument("start", type=int, help="Starting virtual address")
+parser.add_argument("size", type=int, help="Size of the address space, in bytes")
+parser.add_argument(
+    "flags",
+    nargs="?",
+    type=str,
+    default="",
+    help="Flags set by the ELF file (r - read, w - write, x - executable)",
+)
+parser.add_argument(
+    "offset",
+    type=int,
+    nargs="?",
+    default=0,
+    help="Offset into the original ELF file that the data is loaded from",
+)
 
-    @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
-    @pwndbg.commands.OnlyWhenRunning
-    def vmmap_add(start, size, flags, offset) -> None:
-        page_flags = {
-            "r": pwndbg.aglib.elf.PF_R,
-            "w": pwndbg.aglib.elf.PF_W,
-            "x": pwndbg.aglib.elf.PF_X,
-        }
-        perm = 0
-        for flag in flags:
-            flag_val = page_flags.get(flag, None)
-            if flag_val is None:
-                print('Invalid page flag "%s"', flag)
-                return
-            perm |= flag_val
 
-        page = pwndbg.lib.memory.Page(start, size, perm, offset)
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.OnlyWhenRunning
+def vmmap_add(start: int, size: int, flags: str, offset: int) -> None:
+    page_flags = {
+        "r": pwndbg.aglib.elf.PF_R,
+        "w": pwndbg.aglib.elf.PF_W,
+        "x": pwndbg.aglib.elf.PF_X,
+    }
+    perm = 0
+    for flag in flags:
+        flag_val = page_flags.get(flag, None)
+        if flag_val is None:
+            print('Invalid page flag "%s"', flag)
+            return
+        perm |= flag_val
 
-        pwndbg.gdblib.vmmap.add_custom_page(page)
+    page = pwndbg.lib.memory.Page(start, size, perm, offset)
+    pwndbg.aglib.vmmap_custom.add_custom_page(page)
 
+    print("%r added" % page)
+
+
+parser = argparse.ArgumentParser(description="Explore a page, trying to guess permissions.")
+parser.add_argument(
+    "address", type=pwndbg.commands.sloppy_gdb_parse, help="Address of the page to explore"
+)
+
+
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.OnlyWhenRunning
+def vmmap_explore(address: int) -> None:
+    if not isinstance(address, int):
+        print("Address is not a valid integer.")
+        return
+
+    old_value = pwndbg.config.auto_explore_pages.value
+    pwndbg.config.auto_explore_pages.value = "yes"
+    try:
+        pwndbg.aglib.vmmap.find.cache.clear()  # type: ignore[attr-defined]
+        page = pwndbg.aglib.vmmap.find(address)
+    finally:
+        pwndbg.config.auto_explore_pages.value = old_value
+
+    if page is None:
+        print("Exploration failed. Maybe the address isn't readable?")
+        return
+
+    print_vmmap_table_header()
+    print(page)
+
+
+@pwndbg.commands.Command(
+    "Clear the vmmap cache.", category=CommandCategory.MEMORY
+)  # TODO is this accurate?
+@pwndbg.commands.OnlyWhenRunning
+def vmmap_clear() -> None:
+    pwndbg.aglib.vmmap_custom.clear_custom_page()
+
+
+parser = argparse.ArgumentParser(description="Load virtual memory map pages from ELF file.")
+parser.add_argument(
+    "filename",
+    nargs="?",
+    type=str,
+    help="ELF filename, by default uses current loaded filename.",
+)
+
+
+@pwndbg.commands.Command(parser, category=CommandCategory.MISC)
+@pwndbg.commands.OnlyWhenRunning
+def vmmap_load(filename) -> None:
+    if filename is None:
+        filename = pwndbg.aglib.file.get_proc_exe_file()
+
+    print(f'Load "{filename}" ...')
+    file_basename = os.path.basename(filename)
+
+    # TODO: Add an argument to let use to choose loading the page information from sections or segments
+
+    # Use section information to recover the segment information.
+    # The entry point of bare metal environment is often at the first segment.
+    # For example, assume the entry point is at 0x8000.
+    # In most of case, link will create a segment and starts from 0x0.
+    # This cause all values less than 0x8000 be considered as a valid pointer.
+    pages = []
+    with open(filename, "rb") as f:
+        elffile = ELFFile(f)
+
+        for section in elffile.iter_sections():
+            vaddr = section["sh_addr"]
+            memsz = section["sh_size"]
+            sh_flags = section["sh_flags"]
+            offset = section["sh_offset"]
+
+            # Don't add the sections that aren't mapped into memory
+            if not sh_flags & SH_FLAGS.SHF_ALLOC:
+                continue
+
+            # Guess the segment flags from section flags
+            flags = pwndbg.aglib.elf.PF_R
+            if sh_flags & SH_FLAGS.SHF_WRITE:
+                flags |= pwndbg.aglib.elf.PF_W
+            if sh_flags & SH_FLAGS.SHF_EXECINSTR:
+                flags |= pwndbg.aglib.elf.PF_X
+
+            page = pwndbg.lib.memory.Page(
+                vaddr, memsz, flags, offset, f"[{section.name}]: {file_basename}"
+            )
+            pages.append(page)
+
+    for page in pages:
+        pwndbg.aglib.vmmap_custom.add_custom_page(page)
         print("%r added" % page)
-
-    parser = argparse.ArgumentParser(description="Explore a page, trying to guess permissions.")
-    parser.add_argument(
-        "address", type=pwndbg.commands.sloppy_gdb_parse, help="Address of the page to explore"
-    )
-
-    @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
-    @pwndbg.commands.OnlyWhenRunning
-    def vmmap_explore(address: int) -> None:
-        if not isinstance(address, int):
-            print("Address is not a valid integer.")
-            return
-        page = pwndbg.gdblib.vmmap.explore(address)
-        if page is None:
-            print("Exploration failed. Maybe the address isn't readable?")
-            return
-        print_vmmap_table_header()
-        print(page)
-
-    @pwndbg.commands.ArgparsedCommand(
-        "Clear the vmmap cache.", category=CommandCategory.MEMORY
-    )  # TODO is this accurate?
-    @pwndbg.commands.OnlyWhenRunning
-    def vmmap_clear() -> None:
-        pwndbg.gdblib.vmmap.clear_custom_page()
-
-    parser = argparse.ArgumentParser(description="Load virtual memory map pages from ELF file.")
-    parser.add_argument(
-        "filename",
-        nargs="?",
-        type=str,
-        help="ELF filename, by default uses current loaded filename.",
-    )
-
-    @pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
-    @pwndbg.commands.OnlyWhenRunning
-    def vmmap_load(filename) -> None:
-        if filename is None:
-            filename = pwndbg.aglib.file.get_proc_exe_file()
-
-        print(f'Load "{filename}" ...')
-
-        # TODO: Add an argument to let use to choose loading the page information from sections or segments
-
-        # Use section information to recover the segment information.
-        # The entry point of bare metal environment is often at the first segment.
-        # For example, assume the entry point is at 0x8000.
-        # In most of case, link will create a segment and starts from 0x0.
-        # This cause all values less than 0x8000 be considered as a valid pointer.
-        pages = []
-        with open(filename, "rb") as f:
-            elffile = ELFFile(f)
-
-            for section in elffile.iter_sections():
-                vaddr = section["sh_addr"]
-                memsz = section["sh_size"]
-                sh_flags = section["sh_flags"]
-                offset = section["sh_offset"]
-
-                # Don't add the sections that aren't mapped into memory
-                if not sh_flags & SH_FLAGS.SHF_ALLOC:
-                    continue
-
-                # Guess the segment flags from section flags
-                flags = pwndbg.aglib.elf.PF_R
-                if sh_flags & SH_FLAGS.SHF_WRITE:
-                    flags |= pwndbg.aglib.elf.PF_W
-                if sh_flags & SH_FLAGS.SHF_EXECINSTR:
-                    flags |= pwndbg.aglib.elf.PF_X
-
-                page = pwndbg.lib.memory.Page(vaddr, memsz, flags, offset, filename)
-                pages.append(page)
-
-        for page in pages:
-            pwndbg.gdblib.vmmap.add_custom_page(page)
-            print("%r added" % page)

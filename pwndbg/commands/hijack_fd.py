@@ -31,8 +31,10 @@ class ShellcodeRegs(NamedTuple):
 
 
 def get_shellcode_regs() -> ShellcodeRegs:
-    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.current]
-    syscall_abi = pwndbg.lib.abi.ABI.syscall()
+    register_set = pwndbg.lib.regs.reg_sets[pwndbg.aglib.arch.name]
+    syscall_abi = pwndbg.aglib.arch.syscall_abi
+    if syscall_abi is None:
+        raise pwndbg.dbg_mod.Error("Syscall ABI not defined for current architecture")
 
     # pickup free register what is not used for syscall abi
     newfd_reg = next(
@@ -40,17 +42,21 @@ def get_shellcode_regs() -> ShellcodeRegs:
             reg_name
             for reg_name in register_set.gpr
             if reg_name not in syscall_abi.register_arguments
+            and reg_name != syscall_abi.syscall_register
         )
     )
     assert (
         newfd_reg is not None
-    ), f"architecture {pwndbg.aglib.arch.current} don't have unused register..."
+    ), f"architecture {pwndbg.aglib.arch.name} don't have unused register..."
 
     return ShellcodeRegs(newfd_reg, register_set.retval, register_set.stack)
 
 
 def stack_size_alignment(s: int) -> int:
-    syscall_abi = pwndbg.lib.abi.ABI.syscall()
+    syscall_abi = pwndbg.aglib.arch.syscall_abi
+    if syscall_abi is None:
+        raise pwndbg.dbg_mod.Error("Syscall ABI not defined for current architecture")
+
     return s + (syscall_abi.arg_alignment - (s % syscall_abi.arg_alignment))
 
 
@@ -124,9 +130,7 @@ async def exec_shellcode_with_stack(ec: pwndbg.dbg_mod.ExecutionController, blob
     original_stack = pwndbg.aglib.memory.read(stack_start, stack_size)
 
     try:
-        async with pwndbg.aglib.shellcode.exec_shellcode(
-            ec, blob, restore_context=True, disable_breakpoints=True
-        ):
+        async with pwndbg.aglib.shellcode.exec_shellcode(ec, blob):
             stack_diff_size = stack_start_diff - pwndbg.aglib.regs.sp
 
             # Make sure stack is not corrupted somehow
@@ -140,21 +144,14 @@ async def exec_shellcode_with_stack(ec: pwndbg.dbg_mod.ExecutionController, blob
 
 
 parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawTextHelpFormatter,
     description="""Replace a file descriptor of a debugged process.
 
 The new file descriptor can point to:
+
 - a file
 - a pipe
 - a socket
 - a device, etc.
-
-Examples:
-1. Redirect STDOUT to a file:
-   `hijack-fd 1 /dev/null`
-
-2. Redirect STDERR to a socket:
-   `hijack-fd 2 tcp://localhost:8888`
 """,
 )
 
@@ -266,7 +263,17 @@ For sockets, the following formats are allowed:
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MISC, command_name="hijack-fd")
+@pwndbg.commands.Command(
+    parser,
+    category=CommandCategory.MISC,
+    examples="""
+1. Redirect STDOUT to a file:
+   `hijack-fd 1 /dev/null`
+
+2. Redirect STDERR to a socket:
+   `hijack-fd 2 tcp://localhost:8888`
+    """,
+)
 @pwndbg.commands.OnlyWhenRunning
 @pwndbg.commands.OnlyWhenUserspace
 def hijack_fd(fdnum: int, newfile: PARSED_FILE_ARG) -> None:

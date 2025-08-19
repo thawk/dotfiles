@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 
 import pwndbg
 import pwndbg.aglib.arch
@@ -13,6 +12,7 @@ import pwndbg.color.memory as M
 import pwndbg.commands
 import pwndbg.wrappers
 from pwndbg.commands import CommandCategory
+from pwndbg.lib.memory import Page
 
 parser = argparse.ArgumentParser(
     description="Shows offsets of the specified address from various useful locations."
@@ -26,7 +26,7 @@ def print_line(name, addr, first, second, op, width=20) -> None:
     )
 
 
-def xinfo_stack(page, addr) -> None:
+def xinfo_stack(page: Page, addr: int) -> None:
     # If it's a stack address, print offsets to top and bottom of stack, as
     # well as offsets to current stack and base pointer (if used by debuggee)
 
@@ -55,27 +55,25 @@ def xinfo_stack(page, addr) -> None:
             print_line("Next Stack Canary", addr, nxt, nxt - addr, "-")
 
 
-def xinfo_mmap_file(page, addr) -> None:
+def xinfo_mmap_file(page: Page, addr: int) -> None:
     # If it's an address pointing into a memory mapped file, print offsets
     # to beginning of file in memory and on disk
 
     file_name = page.objfile
-    # Check if the file exists on the local system, as we may be attached to a gdb-server or qemu.
-    # Even so, the file might exist locally, if we are doing `target remote localhost:1234`
-    if not os.path.exists(file_name):
-        return None
 
-    objpages = filter(lambda p: p.objfile == file_name, pwndbg.aglib.vmmap.get())
-    first = sorted(objpages, key=lambda p: p.vaddr)[0]
+    region_start = pwndbg.aglib.vmmap.addr_region_start(addr)
+    if region_start is None:
+        print("The file is not contiguous in memory.")
+        return
 
     # print offset from ELF base load address
-    rva = addr - first.vaddr
-    print_line("File (Base)", addr, first.vaddr, rva, "+")
+    rva = addr - region_start
+    print_line("File (Base)", addr, region_start, rva, "+")
 
     # find possible LOAD segments that designate memory and file backings
     containing_loads = [
         seg
-        for seg in pwndbg.aglib.elf.get_containing_segments(file_name, first.vaddr, addr)
+        for seg in pwndbg.aglib.elf.get_containing_segments(file_name, region_start, addr)
         if seg["p_type"] == "PT_LOAD"
     ]
 
@@ -93,19 +91,19 @@ def xinfo_mmap_file(page, addr) -> None:
     else:
         print(f"{'File (Disk)'.rjust(20)} {M.get(addr)} = [not file backed]")
 
-    containing_sections = pwndbg.aglib.elf.get_containing_sections(file_name, first.vaddr, addr)
+    containing_sections = pwndbg.aglib.elf.get_containing_sections(file_name, region_start, addr)
     if len(containing_sections) > 0:
         print("\n Containing ELF sections:")
         for sec in containing_sections:
             print_line(sec["x_name"], addr, sec["sh_addr"], addr - sec["sh_addr"], "+")
 
 
-def xinfo_default(page, addr) -> None:
+def xinfo_default(page: Page, addr: int) -> None:
     # Just print the distance to the beginning of the mapping
     print_line("Mapped Area", addr, page.vaddr, addr - page.vaddr, "+")
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
 @pwndbg.commands.OnlyWhenRunning
 def xinfo(address=None) -> None:
     address = address.cast(

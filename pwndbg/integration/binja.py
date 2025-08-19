@@ -20,7 +20,6 @@ from typing import List
 from typing import Tuple
 from typing import TypeVar
 
-import gdb
 import pygments
 import pygments.formatters
 import pygments.style
@@ -43,7 +42,9 @@ from pwndbg.aglib.nearpc import c as nearpc_color
 from pwndbg.aglib.nearpc import ljust_padding
 from pwndbg.color import message
 from pwndbg.color import theme
+from pwndbg.dbg import BreakpointLocation
 from pwndbg.dbg import EventType
+from pwndbg.dbg import StopPoint
 from pwndbg.lib.functions import Argument
 from pwndbg.lib.functions import Function
 
@@ -85,6 +86,9 @@ def init_bn_rpc_client() -> None:
 
     if pwndbg.integration.provider_name.value != "binja":
         return
+
+    xmlrpc.client.MAXINT = 10**100  # type: ignore[misc]
+    xmlrpc.client.MININT = -(10**100)  # type: ignore[misc]
 
     now = time.time()
     if _bn is None and (now - _bn_last_connection_check) < int(bn_timeout) + 5:
@@ -188,17 +192,11 @@ def can_connect() -> bool:
 
 
 def l2r(addr: int) -> int:
-    exe = pwndbg.aglib.elf.exe()
-    if not exe:
-        raise Exception("Can't find EXE base")
     result = (addr - pwndbg.aglib.proc.binary_base_addr + base()) & pwndbg.aglib.arch.ptrmask
     return result
 
 
 def r2l(addr: int) -> int:
-    exe = pwndbg.aglib.elf.exe()
-    if not exe:
-        raise Exception("Can't find EXE base")
     result = (addr - base() + pwndbg.aglib.proc.binary_base_addr) & pwndbg.aglib.arch.ptrmask
     return result
 
@@ -219,7 +217,7 @@ def auto_update_pc() -> None:
     _bn.update_pc_tag(l2r(pc))
 
 
-_managed_bps: Dict[int, gdb.Breakpoint] = {}
+_managed_bps: Dict[int, StopPoint] = {}
 
 
 @pwndbg.dbg.event_handler(EventType.START)
@@ -232,9 +230,12 @@ def auto_update_bp() -> None:
     bps: List[int] = _bn.get_bp_tags()
     binja_bps = {r2l(addr) for addr in bps}
     for k in _managed_bps.keys() - binja_bps:
-        _managed_bps.pop(k).delete()
+        bp = _managed_bps.pop(k)
+        bp.remove()
+
+    inf = pwndbg.dbg.selected_inferior()
     for k in binja_bps - _managed_bps.keys():
-        bp = gdb.Breakpoint("*" + hex(k))
+        bp = inf.break_at(BreakpointLocation(k))
         _managed_bps[k] = bp
 
 
@@ -379,7 +380,9 @@ themes["light"] = LightTheme
 style = theme.add_param(
     "bn-decomp-style",
     "dark",
-    f"Decompilation highlight theme for Binary Ninja (valid values are {', '.join(themes.keys())})",
+    "decompilation highlight theme for Binary Ninja",
+    param_class=pwndbg.lib.config.PARAM_ENUM,
+    enum_sequence=list(themes.keys()),
 )
 
 
@@ -527,7 +530,7 @@ class BinjaProvider(pwndbg.integration.IntegrationProvider):
         newest = True
         # try to find the oldest frame that's earlier than the address
         while True:
-            upper = gdb_frame_to_dbg(dbg_frame_to_gdb(cur).older())
+            upper = cur.parent()
             if upper is None:
                 break
 
@@ -556,21 +559,3 @@ class BinjaProvider(pwndbg.integration.IntegrationProvider):
             return f"{var}{suffix}"
         else:
             return f"{func}:{var}{suffix}"
-
-
-def dbg_frame_to_gdb(d: pwndbg.dbg_mod.Frame) -> gdb.Frame:
-    # TODO: fix later to aglib
-    from pwndbg.dbg.gdb import GDBFrame
-
-    assert isinstance(d, GDBFrame)
-    return d.inner
-
-
-def gdb_frame_to_dbg(d: gdb.Frame | None) -> pwndbg.dbg_mod.Frame | None:
-    # TODO: fix later to aglib
-    from pwndbg.dbg.gdb import GDBFrame
-
-    if d is None:
-        return None
-
-    return GDBFrame(d)

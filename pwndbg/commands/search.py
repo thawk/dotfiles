@@ -7,11 +7,10 @@ import os
 import struct
 from typing import Set
 
-import pwnlib
-
 import pwndbg
 import pwndbg.aglib.arch
-import pwndbg.aglib.disasm
+import pwndbg.aglib.asm
+import pwndbg.aglib.disasm.disassembly
 import pwndbg.aglib.vmmap
 import pwndbg.color.memory as M
 import pwndbg.commands
@@ -26,11 +25,11 @@ if pwndbg.dbg.is_gdblib_available():
 saved: Set[int] = set()
 
 
-def print_search_hit(address) -> None:
+def print_search_hit(address: int) -> None:
     """Prints out a single search hit.
 
     Arguments:
-        address(int): Address to print
+        address: Address to print
     """
     if not address:
         return
@@ -53,7 +52,6 @@ auto_save = pwndbg.config.add_param(
     "auto-save-search", False, 'automatically pass --save to "search" command'
 )
 parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawTextHelpFormatter,
     description="""Search memory for byte sequences, strings, pointers, and integer values.
 
 By default search results are cached. If you want to cache all results, but only print a subset, use --trunc-out. If you want to cache only a subset of results, and print the results immediately, use --limit. The latter is specially useful if you're searching a huge section of memory.
@@ -117,12 +115,6 @@ parser.add_argument(
     help="Search for an assembly instruction",
 )
 parser.add_argument(
-    "--arch",
-    choices=pwnlib.context.context.architectures.keys(),
-    type=str,
-    help="Target architecture",
-)
-parser.add_argument(
     "--asmbp", action="store_true", help="Set breakpoint for found assembly instruction"
 )
 parser.add_argument(
@@ -177,11 +169,10 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.Command(parser, category=CommandCategory.MEMORY)
 @pwndbg.commands.OnlyWhenRunning
 def search(
     type,
-    arch,
     asmbp,
     hex,
     executable,
@@ -202,9 +193,6 @@ def search(
         )
         next = False
         save = True
-
-    if not arch:
-        arch = pwnlib.context.context.arch
 
     # Initialize is_pointer to track whether the search type is a pointer
     is_pointer = None
@@ -255,8 +243,7 @@ def search(
         value += b"\x00"
 
     elif type == "asm" or asmbp:
-        bits_for_arch = pwnlib.context.context.architectures.get(arch, {}).get("bits")
-        value = pwnlib.asm.asm(value, arch=arch, bits=bits_for_arch)
+        value = pwndbg.aglib.asm.asm(value)
 
     # `pwndbg.search.search` expects a `bytes` object for its pattern. Convert the string pattern we
     # were given to a bytes object by encoding it as an UTF-8 byte sequence. This matches the behavior
@@ -348,7 +335,7 @@ def search(
                 gdb.Breakpoint("*%#x" % address, temporary=False)
             else:
                 print(
-                    f"breakpoints are not supported outside of GDB yet, would be set at {address:#x}"
+                    f"Breakpoints are not supported outside of GDB yet, would be set at {address:#x}"
                 )
 
         if not trunc_out or i < 20:

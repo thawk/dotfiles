@@ -4,6 +4,7 @@ import os
 import random
 import string
 import subprocess
+import sys
 import tempfile
 from typing import List
 from typing import Tuple
@@ -17,11 +18,76 @@ from pt.pt_x86_64_parse import PT_x86_64_Backend
 import pwndbg
 import pwndbg.aglib.arch
 import pwndbg.aglib.kernel
+import pwndbg.aglib.kernel.paging
 import pwndbg.aglib.qemu
 import pwndbg.aglib.regs
+import pwndbg.aglib.vmmap
 import pwndbg.color.message as M
 import pwndbg.lib.cache
 import pwndbg.lib.memory
+
+
+class KernelVmmap:
+    def __init__(self, pages: Tuple[pwndbg.lib.memory.Page, ...]):
+        self.pages = pages
+        self.sections = None
+        self.pi = pwndbg.aglib.kernel.arch_paginginfo()
+        if self.pi and not pwndbg.aglib.kernel.has_debug_symbols():
+            return
+        self.sections = self.pi.markers()
+
+    def get_name(self, addr: int) -> str:
+        if addr is None or self.sections is None:
+            return None
+        for i in range(len(self.sections) - 1):
+            name, cur = self.sections[i]
+            _, next = self.sections[i + 1]
+            if cur is None or next is None:
+                continue
+            if addr >= cur and addr < next:
+                return name
+        return None
+
+    def adjust(self):
+        if self.pages is None or len(self.pages) == 0:
+            return
+        for i, page in enumerate(self.pages):
+            name = self.get_name(page.start)
+            if name is not None:
+                page.objfile = name
+        self.handle_user_pages()
+        self.pi.handle_kernel_pages(self.pages)
+        self.handle_offsets()
+
+    def handle_user_pages(self):
+        base_offset = self.pages[0].start
+        for i in range(len(self.pages)):
+            page = self.pages[i]
+            if page.objfile != self.pi.USERLAND:
+                break
+            diff = page.start - base_offset
+            if diff > 0x100000:
+                if diff > 0x100000000000:
+                    if page.execute:
+                        page.objfile = "userland [library]"
+                    elif page.rw:
+                        page.objfile = "userland [stack]"
+                else:
+                    page.objfile = "userland [heap]"
+            else:
+                # page.objfile += f"_{hex(i)[2:]}"
+                base_offset = page.start
+
+    def handle_offsets(self):
+        prev_objfile, base = "", 0
+        for page in self.pages:
+            # the check on KERNELRO is to make getting offsets for symbols such as `init_creds` more convinient
+            if page.objfile != self.pi.KERNELRO and prev_objfile != page.objfile:
+                prev_objfile = page.objfile
+                base = page.start
+            page.offset = page.start - base
+            if len(hex(page.offset)) > 9:
+                page.offset = 0
 
 
 # Most of QemuMachine code was inherited from gdb-pt-dump thanks to Martin Radev (@martinradev)
@@ -30,8 +96,8 @@ import pwndbg.lib.memory
 class QemuMachine(Machine):
     def __init__(self):
         super().__init__()
-        self.pid = QemuMachine.get_qemu_pid()
         self.file = None
+        self.pid = QemuMachine.get_qemu_pid()
         self.file = os.open(f"/proc/{self.pid}/mem", os.O_RDONLY)
 
     def __del__(self):
@@ -57,11 +123,16 @@ class QemuMachine(Machine):
 
     @staticmethod
     def get_qemu_pid():
-        out = subprocess.check_output(["pgrep", "qemu-system"], encoding="utf8")
-        pids = out.strip().split("\n")
+        try:
+            out = subprocess.check_output(["pgrep", "qemu-system"], encoding="utf8")
+            pids = out.strip().split("\n")
 
-        if len(pids) == 1:
-            return int(pids[0], 10)
+            if len(pids) == 1:
+                return int(pids[0], 10)
+        except subprocess.CalledProcessError:
+            # If no process with the name `qemu-system` is found, fallback to alternative methods,
+            # as the binary name may vary (e.g., `qemu_system`).
+            pass
 
         # We add a chardev file backend (we dont add a fronted, so it doesn't affect
         # the guest). We can then look through proc to find which process has the file
@@ -75,7 +146,7 @@ class QemuMachine(Machine):
             pwndbg.dbg.selected_inferior().send_monitor(f"chardev-remove {chardev_id}")
 
         if not pid_found:
-            raise Exception("Could not find qemu pid")
+            raise ProcessLookupError("Could not find qemu-system pid")
 
         return int(pid_found, 10)
 
@@ -109,6 +180,10 @@ def kernel_vmmap_via_page_tables() -> Tuple[pwndbg.lib.memory.Page, ...]:
     if not pwndbg.aglib.qemu.is_qemu_kernel():
         return ()
 
+    if sys.platform != "linux":
+        # QemuMachine requires access to /proc/{qemu-pid}/mem, which is only available on Linux
+        return ()
+
     try:
         machine_backend = QemuMachine()
     except PermissionError:
@@ -120,13 +195,22 @@ def kernel_vmmap_via_page_tables() -> Tuple[pwndbg.lib.memory.Page, ...]:
             )
         )
         return ()
+    except ProcessLookupError:
+        print(
+            M.error(
+                "Could not find the PID for process named `qemu-system`.\n"
+                "This might happen if pwndbg is running on a different machine than `qemu-system`,\n"
+                "or if the `qemu-system` binary has a different name."
+            )
+        )
+        return ()
 
-    arch = pwndbg.aglib.arch.current
+    arch = pwndbg.aglib.arch.name
     if arch == "aarch64":
         arch_backend = PT_Aarch64_Backend(machine_backend)
-    elif arch == "i386" in arch:
+    elif arch == "i386":
         arch_backend = PT_x86_64_Backend(machine_backend)
-    elif arch == "x86-64" in arch:
+    elif arch == "x86-64":
         arch_backend = PT_x86_64_Backend(machine_backend)
     elif arch == "rv64":
         arch_backend = PT_RiscV64_Backend(machine_backend)
@@ -158,7 +242,6 @@ def kernel_vmmap_via_page_tables() -> Tuple[pwndbg.lib.memory.Page, ...]:
             flags |= 1
         objfile = f"[pt_{hex(start)[2:-3]}]"
         retpages.append(pwndbg.lib.memory.Page(start, size, flags, 0, objfile))
-
     return tuple(retpages)
 
 
@@ -221,13 +304,17 @@ def kernel_vmmap_via_monitor_info_mem() -> Tuple[pwndbg.lib.memory.Page, ...]:
     global monitor_info_mem_not_warned
     pages: List[pwndbg.lib.memory.Page] = []
     for line in lines:
-        dash_idx = line.index("-")
-        space_idx = line.index(" ")
-        rspace_idx = line.rindex(" ")
+        try:
+            dash_idx = line.index("-")
+            space_idx = line.index(" ")
+            rspace_idx = line.rindex(" ")
 
-        start = int(line[:dash_idx], 16)
-        end = int(line[dash_idx + 1 : space_idx], 16)
-        size = int(line[space_idx + 1 : rspace_idx], 16)
+            start = int(line[:dash_idx], 16)
+            end = int(line[dash_idx + 1 : space_idx], 16)
+            size = int(line[space_idx + 1 : rspace_idx], 16)
+        except Exception:
+            # invalid format
+            continue
         if end - start != size and monitor_info_mem_not_warned:
             print(
                 M.warn(
@@ -248,10 +335,62 @@ def kernel_vmmap_via_monitor_info_mem() -> Tuple[pwndbg.lib.memory.Page, ...]:
             flags |= 4
         if "w" in perm:
             flags |= 2
-        # QEMU does not expose X/NX bit, see #685
-        # if 'x' in perm: flags |= 1
-        flags |= 1
-
+        if "x" in perm:
+            flags |= 1
         pages.append(pwndbg.lib.memory.Page(start, size, flags, 0, "<qemu>"))
+
+    return tuple(pages)
+
+
+kernel_vmmap_mode = pwndbg.config.add_param(
+    "kernel-vmmap",
+    "page-tables",
+    "the method to get vmmap information when debugging via QEMU kernel",
+    help_docstring="""\
+Values explained:
+
++ `page-tables` - read /proc/$qemu-pid/mem to parse kernel page tables to render vmmap
++ `monitor` - use QEMU's `monitor info mem` to render vmmap
++ `none` - disable vmmap rendering; useful if rendering is particularly slow
+
+Note that the page-tables method will require the QEMU kernel process to be on the same machine and within the same PID namespace. Running QEMU kernel and GDB in different Docker containers will not work. Consider running both containers with --pid=host (meaning they will see and so be able to interact with all processes on the machine).
+""",
+    param_class=pwndbg.lib.config.PARAM_ENUM,
+    enum_sequence=["page-tables", "monitor", "none"],
+)
+
+
+def kernel_vmmap(process_pages=True) -> Tuple[pwndbg.lib.memory.Page, ...]:
+    if not pwndbg.aglib.qemu.is_qemu_kernel():
+        return ()
+
+    if pwndbg.aglib.arch.name not in (
+        "i386",
+        "x86-64",
+        "aarch64",
+        "rv32",
+        "rv64",
+    ):
+        return ()
+
+    pages = None
+    if kernel_vmmap_mode == "page-tables":
+        pages = kernel_vmmap_via_page_tables()
+    elif kernel_vmmap_mode == "monitor":
+        pages = kernel_vmmap_via_monitor_info_mem()
+    if pages is None:
+        return ()
+    if process_pages:
+        kv = KernelVmmap(pages)
+        kv.adjust()
+        if kernel_vmmap_mode == "monitor" and pwndbg.aglib.arch.name == "x86-64":
+            # TODO: check version here when QEMU displays the x bit for x64
+            for page in pages:
+                if page.objfile == kv.pi.ESPSTACK:
+                    continue
+                _, pgwalk_res = pwndbg.aglib.kernel.pagewalk(page.start)
+                entry, _ = pgwalk_res[0]
+                if entry and entry >> 63 == 0:
+                    page.flags |= 1
 
     return tuple(pages)

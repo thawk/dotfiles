@@ -1,6 +1,7 @@
 """
-Given an address in memory which does not contain a pointer elsewhere
-into memory, attempt to describe the data as best as possible.
+Attempt to describe the data at a memory address as best as possible.
+
+Only when the data is not a pointer.
 
 Currently prints out code, integers, or strings, in a best-effort manner
 dependent on page permissions, the contents of the data, and any
@@ -14,7 +15,7 @@ from typing import Tuple
 
 import pwndbg
 import pwndbg.aglib.arch
-import pwndbg.aglib.disasm
+import pwndbg.aglib.disasm.disassembly
 import pwndbg.aglib.memory
 import pwndbg.aglib.strings
 import pwndbg.aglib.typeinfo
@@ -74,10 +75,10 @@ def enhance(
     determine which order to print the fields.
 
     Arguments:
-        value(obj): Value to enhance
-        code(bool): Hint that indicates the value may be an instruction
-        safe_linking(bool): Whether this chain use safe-linking
-        enhance_string_len(int): The length of string to display for enhancement of the last pointer
+        value: Value to enhance
+        code: Hint that indicates the value may be an instruction
+        safe_linking: Whether this chain use safe-linking
+        enhance_string_len: The length of string to display for enhancement of the last pointer
     """
     value = int(value)
 
@@ -112,8 +113,9 @@ def enhance(
         rwx = exe = False
 
     if exe:
-        pwndbg_instr = pwndbg.aglib.disasm.one(value)
+        pwndbg_instr = pwndbg.aglib.disasm.disassembly.one_raw(value)
         if pwndbg_instr:
+            pwndbg.aglib.disasm.arch.basic_enhance(pwndbg_instr)
             # For telescoping, we don't want the extra spaces between the mnemonic and operands
             # which are baked in during enhancement. This removes those spaces.
             instr = " ".join(pwndbg_instr.asm_string.split())
@@ -127,7 +129,7 @@ def enhance(
     if value + pwndbg.aglib.arch.ptrsize > page.end:
         return E.integer(int_str(value))
 
-    intval = int(pwndbg.aglib.memory.get_typed_pointer_value(pwndbg.aglib.typeinfo.pvoid, value))
+    intval = pwndbg.aglib.memory.read_pointer_width(value)
     if safe_linking:
         intval ^= value >> 12
     intval0 = intval

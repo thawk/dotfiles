@@ -5,6 +5,7 @@ Reading, writing, and describing memory.
 from __future__ import annotations
 
 import os
+from os.path import relpath
 
 import pwndbg.aglib.arch
 
@@ -59,6 +60,12 @@ class Page:
     flags = 0  #: Flags set by the ELF file, see PF_X, PF_R, PF_W
     offset = 0  #: Offset into the original ELF file that the data is loaded from
     objfile = ""  #: Path to the ELF on disk
+    """
+    Possible non-empty values of `objfile`:
+    - Contains square brackets "[]" if it's not a memory mapped file.
+        Examples: [stack], [vsyscall], [heap], [vdso]
+    - A path to a file, such as `/usr/lib/libc.so.6`
+    """
 
     def __init__(self, start: int, size: int, flags: int, offset: int, objfile: str = "") -> None:
         self.vaddr = start
@@ -87,7 +94,7 @@ class Page:
 
     @property
     def is_stack(self) -> bool:
-        return self.objfile == "[stack]"
+        return self.objfile.startswith("[stack")
 
     @property
     def is_memory_mapped_file(self) -> bool:
@@ -134,7 +141,14 @@ class Page:
         )
 
     def __str__(self) -> str:
-        return f"{self.vaddr:#{2 + 2 * pwndbg.aglib.arch.ptrsize}x} {self.vaddr + self.memsz:#{2 + 2 * pwndbg.aglib.arch.ptrsize}x} {self.permstr} {self.memsz:8x} {self.offset:6x} {self.objfile or ''}"
+        if pwndbg.config.vmmap_prefer_relpaths:
+            rel = relpath(self.objfile)
+            # Keep the origin path when relative paths are longer than absolute ones.
+            objfile = self.objfile if len(rel) > len(self.objfile) else rel
+        else:
+            objfile = self.objfile
+        width = 2 + 2 * pwndbg.aglib.arch.ptrsize
+        return f"{self.vaddr:#{width}x} {self.vaddr + self.memsz:#{width}x} {self.permstr} {self.memsz:8x} {self.offset:7x} {objfile or ''}"
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.__str__()!r})"

@@ -10,6 +10,7 @@ from typing import Dict
 from typing import List
 
 import pwndbg
+import pwndbg.aglib.memory
 import pwndbg.aglib.vmmap
 import pwndbg.color.memory as M
 import pwndbg.commands
@@ -54,18 +55,18 @@ def dbg_print_map(maps) -> None:
 
 
 parser = argparse.ArgumentParser(
-    formatter_class=argparse.RawTextHelpFormatter,
     description="""
 Attempt to find a leak chain given a starting address.
-Scans memory near the given address, looks for pointers, and continues that process to attempt to find leaks.
 
-Example: leakfind $rsp --page_name=filename --max_offset=0x48 --max_depth=6. This would look for any chains of leaks \
-that point to a section in filename which begin near $rsp, are never 0x48 bytes further from a known pointer, \
-and are a maximum length of 6.
+Scans memory near the given address, looks for pointers, and continues that process to attempt to find leaks.
 """,
 )
 parser.add_argument(
-    "address", nargs="?", default="$sp", help="Starting address to find a leak chain from"
+    "address",
+    type=pwndbg.commands.AddressExpr,
+    nargs="?",
+    default="$sp",
+    help="Starting address to find a leak chain from",
 )
 parser.add_argument(
     "-p",
@@ -108,7 +109,16 @@ parser.add_argument(
 )
 
 
-@pwndbg.commands.ArgparsedCommand(parser, category=CommandCategory.MEMORY)
+@pwndbg.commands.Command(
+    parser,
+    category=CommandCategory.MEMORY,
+    examples="""
+pwndbg> leakfind $rsp --page_name=filename --max_offset=0x48 --max_depth=6.
+This would look for any chains of leaks that point to a section in filename
+which begin near $rsp, are never 0x48 bytes further from a known pointer,
+and are a maximum length of 6.
+""",
+)
 @pwndbg.commands.OnlyWhenRunning
 def leakfind(
     address=None,
@@ -119,17 +129,12 @@ def leakfind(
     negative_offset: int = 0x0,
 ):
     if address is None:
-        raise argparse.ArgumentTypeError("No starting address provided.")
-
-    address = int(address)
-
-    foundPages = pwndbg.aglib.vmmap.find(address)
-
-    if not foundPages:
-        raise argparse.ArgumentTypeError("Starting address is not mapped.")
+        print("No start address provided.")
+        return
 
     if not pwndbg.aglib.memory.peek(address):
-        raise argparse.ArgumentTypeError("Unable to read from starting address.")
+        print("Unable to read from starting address.")
+        return
 
     # Just warn the user that a large depth might be slow.
     # Probably worth checking offset^depth < threshold. Do this when more benchmarking is established.
@@ -143,9 +148,9 @@ def leakfind(
     # parent_start_address is an address that a previous address pointed to.
     # We need to store both so that we can nicely create our leak chain.
     visited_map = {}
-    visited_set = {int(address)}
+    visited_set = {address}
     address_queue: "queue.Queue[int]" = queue.Queue()
-    address_queue.put(int(address))
+    address_queue.put(address)
     depth = 0
     time_to_depth_increase = 0
 
@@ -163,7 +168,7 @@ def leakfind(
         ):
             try:
                 cur_addr &= pwndbg.aglib.arch.ptrmask
-                result = int(pwndbg.aglib.memory.pvoid(cur_addr))
+                result = int(pwndbg.aglib.memory.read_pointer_width(cur_addr))
                 if result in visited_map or result in visited_set:
                     continue
                 visited_map[result] = (

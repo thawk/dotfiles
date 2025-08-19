@@ -1,3 +1,7 @@
+"""
+Ghidra integration.
+"""
+
 from __future__ import annotations
 
 import os
@@ -16,7 +20,11 @@ if pwndbg.dbg.is_gdblib_available():
 from pwndbg.color import message
 
 r2decompiler = pwndbg.config.add_param(
-    "r2decompiler", "radare2", "framework that your ghidra plugin installed (radare2/rizin)"
+    "r2decompiler",
+    "radare2",
+    "framework that your ghidra plugin installed",
+    param_class=pwndbg.lib.config.PARAM_ENUM,
+    enum_sequence=["radare2", "rizin"],
 )
 
 
@@ -48,13 +56,12 @@ def decompile(func=None):
             # Outputs for example: pdc\npdg
             if "pdg" not in r2.cmd("LD").split("\n"):
                 raise Exception("radare2 plugin r2ghidra must be installed and available from r2")
-        elif r2decompiler == "rizin":
+        else:
+            assert r2decompiler == "rizin"
             r2 = pwndbg.rizin.rzpipe()
             # Lc -> list core plugins
             if "ghidra" not in r2.cmd("Lc"):
                 raise Exception("rizin plugin rzghidra must be installed and available from rz")
-        else:
-            raise Exception(f"{r2decompiler} not support. Plz select from (radare2/rizin)")
     except ImportError:
         raise Exception("r2pipe or rzpipe not available, but required for r2/rz->ghidra bridge")
 
@@ -101,7 +108,7 @@ def decompile(func=None):
         if pwndbg.dbg.is_gdblib_available():
             src_filename = pwndbg.gdblib.symbol.selected_frame_source_absolute_filename()
         if not src_filename:
-            filename = pwndbg.dbg.selected_inferior().main_module_name()
+            filename = pwndbg.aglib.proc.exe
             src_filename = filename + ".c" if os.path.basename(filename).find(".") < 0 else filename
         source = H.syntax_highlight(source, src_filename)
 

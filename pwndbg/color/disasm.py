@@ -13,6 +13,8 @@ from pwndbg.color import ColorConfig
 from pwndbg.color import ColorParamSpec
 from pwndbg.color import ljust_colored
 from pwndbg.color import strip
+from pwndbg.color import theme
+from pwndbg.color.message import off
 from pwndbg.color.message import on
 
 c = ColorConfig(
@@ -20,6 +22,13 @@ c = ColorConfig(
     [
         ColorParamSpec("branch", "bold", "color for disasm (branch/call instruction)"),
     ],
+)
+
+config_branch_on = theme.add_param(
+    "disasm-branch-on", "✔", "marker for branches that WILL be taken"
+)
+config_branch_off = theme.add_param(
+    "disasm-branch-off", "✘", "marker for branches that will NOT be taken"
 )
 
 
@@ -40,9 +49,11 @@ def one_instruction(ins: PwndbgInstruction) -> str:
 
     # If we know the conditional is taken, mark it as taken.
     if ins.condition == InstructionCondition.TRUE or ins.is_conditional_jump_taken:
-        asm = on("✔ ") + asm
+        asm = on(f"{config_branch_on} ") + asm
+    elif ins.condition == InstructionCondition.FALSE:
+        asm = off(f"{config_branch_off} ") + asm
     else:
-        asm = "  " + asm
+        asm = f"  {asm}"
 
     return asm
 
