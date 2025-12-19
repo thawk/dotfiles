@@ -74,3 +74,9 @@ private:
 - 文件名：`class_name.h` / `class_name.cpp`
 - 类中元素按public/protected/private顺序排列
 - C++文档使用javadoc风格（使用`@`字符）的doxygen格式
+- 行末没有多余的空格
+
+## Python编码规范
+
+- 行末没有多余空格
+- 使用logging进行日志记录

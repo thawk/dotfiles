@@ -57,3 +57,5 @@
     sdiff = "!f(){ git diff $@ && git submodule foreach \"git diff $@\";}; f"
     # 清理已经合并的本地分支，排除当前分支（带*）和主分支
     bclean = "!git branch --merged | grep -E -v '^[*+]|^\\s*(master|main)\\b' | xargs -r git branch -d"
+    #显示每个 submodule 所属分支，分辨有没有变化
+    sm-status =!"git submodule foreach --quiet 'indexed=$(git -C \"$toplevel\" ls-tree HEAD \"$path\" | awk \"{print $3}\"); actual=$(git rev-parse HEAD); if [[ \"$indexed\" == \"$actual\"]]; then echo \"[基线] $path @ $actual\"; else branch=$(git symbolic-ref --short HEAD 2>/dev/null); if [[ -n \"$branch\" ]]; then echo \"[开发］$path @ $actual (on $branch)\"; else echo \"[更新] $path @ $actual\"; fi; fi'"
