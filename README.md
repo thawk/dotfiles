@@ -83,6 +83,7 @@ git clone https://github.com/thawk/dotfiles.git ~/.dotfiles
 
 * ``DOTFILES_SRC_ROOT``: 代码库的根。如``$HOME/workspace``
 * ``MY_SOCKS5_PROXY``: 设置SOCK5代理的地址和端口，用于``ap``和``setproxy``。缺省为``127.0.0.1:1080``
+* ``MY_HTTP_PROXY``: 设置HTTP代理的地址和端口，用于``ap``和``setproxy``。缺省为空。如不为空，会设置`http_proxy`和`https_proxy`
 * ``DOTFILES_ENV``: 运行环境。部分功能只在特定环境提供。缺省为`inet`环境，表示互联网
 
 ## 暴露环境变量
