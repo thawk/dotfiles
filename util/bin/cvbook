@@ -5,13 +5,12 @@ VERBOSE=
 METHOD=calibre
 
 TMPDIR="$(mktemp -d cvbook.XXXXXX)"
-trap "rm -rf '$TMPDIR'" 0               # EXIT
-trap "rm -rf '$TMPDIR'; exit 1" 2       # INT
-trap "rm -rf '$TMPDIR'; exit 1" 1 15    # HUP TERM
+trap "rm -rf '$TMPDIR'" 0            # EXIT
+trap "rm -rf '$TMPDIR'; exit 1" 2    # INT
+trap "rm -rf '$TMPDIR'; exit 1" 1 15 # HUP TERM
 
-EchoUsage()
-{
-    echo "
+EchoUsage() {
+  echo "
 Usage: $(basename "$0") [options] [--] <filename>...
 
     Options:
@@ -22,134 +21,141 @@ Usage: $(basename "$0") [options] [--] <filename>...
 }
 
 gen_pandoc_meta() {
-    title="$1"
-    author="$2"
-    cover="$3"
+  title="$1"
+  author="$2"
+  cover="$3"
 
-    echo "---"
-    echo "title: $title"
-    echo "author: $author"
+  echo "---"
+  echo "title: $title"
+  echo "author: $author"
 
-    if [[ -n "$cover" ]]; then
-        echo "cover-image: $cover"
-    fi
+  if [[ -n "$cover" ]]; then
+    echo "cover-image: $cover"
+  fi
 
-    echo "---"
+  echo "---"
 }
 
 convert_book_pandoc() {
-    src_file="$1"
-    epub_file="$2"
-    title="$3"
-    author="$4"
-    cover="$5"
+  src_file="$1"
+  epub_file="$2"
+  title="$3"
+  author="$4"
+  cover="$5"
 
-    verbose=
+  verbose=
 
-    if [[ -n "$VERBOSE" ]]; then
-        verbose="--verbose"
+  if [[ -n "$VERBOSE" ]]; then
+    verbose="--verbose"
+  fi
+
+  if [[ -n "$cover" ]]; then
+    old_cover="$cover"
+    cover="$TMPDIR/cover.${cover##*.}"
+
+    if [[ $cover == *.webp ]] && type convert &>/dev/null; then
+      cover="${cover%.*}.png"
+      convert "$old_cover" "$cover"
+    else
+      cp "$old_cover" "$cover"
     fi
+  fi
 
-    if [[ -n "$cover" ]]; then
-        old_cover="$cover"
-        cover="$TMPDIR/cover.${cover##*.}"
-
-        if [[ $cover == *.webp ]] && type convert &> /dev/null; then
-            cover="${cover%.*}.png"
-            convert "$old_cover" "$cover"
-        else
-            cp "$old_cover" "$cover"
-        fi
-    fi
-
-    pandoc \
-        -o "$epub_file" \
-        $verbose \
-        <(gen_pandoc_meta "$title" "$author" "$cover") \
-        "$src_file"
+  pandoc \
+    -o "$epub_file" \
+    $verbose \
+    <(gen_pandoc_meta "$title" "$author" "$cover") \
+    "$src_file"
 }
 
 convert_book_calibre() {
-    src_file="$1"
-    epub_file="$2"
-    title="$3"
-    author="$4"
-    cover="$5"
-    verbose=
+  src_file="$1"
+  epub_file="$2"
+  title="$3"
+  author="$4"
+  cover="$5"
+  verbose=
 
-    if [[ -n "$VERBOSE" ]]; then
-        verbose=--verbose
-    fi
+  if [[ -n "$VERBOSE" ]]; then
+    verbose=--verbose
+  fi
 
-    ebook-convert "$src_file" "$epub_file"  --level1-toc="//h:h1" --level2-toc="//h:h2" --level3-toc="//h:h3" --title="$title" --authors="$author" --cover="$cover" $verbose
+  ebook-convert \
+    "$src_file" \
+    "$epub_file" \
+    --level1-toc="//h:h1" \
+    --level2-toc="//h:h2" \
+    --level3-toc="//h:h3" \
+    --title="$title" \
+    --authors="$author" \
+    --cover="$cover" \
+    --dont-split-on-page-breaks \
+    --disable-font-rescaling \
+    $verbose
 }
 
 convert_book() {
-    src_file="$1"
-    title="$2"
-    author="$3"
-    cover="$4"
-    epub_file="${src_file%.*}.epub"
-    epub_file=$(basename "${epub_file}")
-    
-    "convert_book_${METHOD}" "$src_file" "$epub_file" "$title" "$author" "$cover"
+  src_file="$1"
+  title="$2"
+  author="$3"
+  cover="$4"
+  epub_file="${src_file%.*}.epub"
+  epub_file=$(basename "${epub_file}")
 
-    # kindlegen "${book%.*}.epub"
+  "convert_book_${METHOD}" "$src_file" "$epub_file" "$title" "$author" "$cover"
+
+  # kindlegen "${book%.*}.epub"
 }
 
 convert_one() {
-    book="$1"
+  book="$1"
 
-    name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
-    author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
-    if [[ -z "$name" ]] || [[ -z "$author" ]]
-    then
-        echo "!!! Failed to parse '$book' !!!"
-        return
+  name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
+  author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
+  if [[ -z "$name" ]] || [[ -z "$author" ]]; then
+    echo "!!! Failed to parse '$book' !!!"
+    return
+  fi
+
+  cover="${book%.*}.jpg"
+  for ext in jpg jpeg png webp; do
+    if [[ -f "${book%.*}.${ext}" ]]; then
+      cover="${book%.*}.${ext}"
+      break
     fi
+  done
 
-    cover="${book%.*}.jpg"
-    for ext in jpg jpeg png webp; do
-        if [[ -f "${book%.*}.${ext}" ]]; then
-            cover="${book%.*}.${ext}"
-            break
-        fi
-    done
-
-    convert_book "$book" "$name" "$author" "$cover"
+  convert_book "$book" "$name" "$author" "$cover"
 }
 
 while getopts ":hvm:" opt; do
-    case $opt in
-        h|help)
-            EchoUsage
-            exit 0
-            ;;
-        v|verbose)
-            VERBOSE="${VERBOSE}1"
-            ;;
-        m|method)
-            METHOD=$OPTARG
-            ;;
-        * )
-            echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
-            EchoUsage
-            exit 1
-            ;;
-    esac
-done
-shift $((OPTIND-1))
-
-# 参数个数最少为1
-if [ $# -lt 1 ]
-then
+  case $opt in
+  h | help)
+    EchoUsage
+    exit 0
+    ;;
+  v | verbose)
+    VERBOSE="${VERBOSE}1"
+    ;;
+  m | method)
+    METHOD=$OPTARG
+    ;;
+  *)
+    echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
     EchoUsage
     exit 1
+    ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+# 参数个数最少为1
+if [ $# -lt 1 ]; then
+  EchoUsage
+  exit 1
 fi
 
-while [[ -n "$1" ]]
-do
-    convert_one "$1"
-    shift
+while [[ -n "$1" ]]; do
+  convert_one "$1"
+  shift
 done
-
