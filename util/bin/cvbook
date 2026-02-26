@@ -89,9 +89,12 @@ convert_book_calibre() {
     --title="$title" \
     --authors="$author" \
     --cover="$cover" \
-    --dont-split-on-page-breaks \
     --disable-font-rescaling \
+    --epub-max-image-size 1200x1800 \
     $verbose
+
+  #--chapter-mark=pagebreak \
+  #--dont-split-on-page-breaks \
 }
 
 convert_book() {
