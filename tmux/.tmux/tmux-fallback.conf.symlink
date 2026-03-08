@@ -1,6 +1,7 @@
 set-option -g history-limit 50000
 set-option -g default-terminal "screen-256color"
 unbind-key C-b
+set-option -g prefix C-a
 bind-key C-a send-prefix
 bind-key a last-window
 bind-key C-p previous-window
