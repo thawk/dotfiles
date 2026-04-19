@@ -107,9 +107,9 @@ def analyze_markdown(file_path, wpm):
 
         # 字数与时间计算
         word_count = count_words_unicode(body_text)
-        section_seconds = (word_count / wpm) * 60
+        section_seconds = word_count * 60 / wpm
         total_words += word_count
-        running_total_seconds += section_seconds
+        running_total_seconds = total_words * 60 / wpm
         
         # 标题长度截断处理 (根据 COL_CONFIG 中的第二列宽度)
         max_title_w = COL_CONFIG[1][1]
