@@ -35,14 +35,14 @@ fi
 # key-bindings.zsh: Up -> History search!
 # history.zsh: History defaults
 # directories.zsh: Adds useful aliases for things dealing with directories
-zi wait lucid for \
-    OMZ::lib/git.zsh \
-    OMZ::lib/completion.zsh \
-    OMZ::lib/key-bindings.zsh \
-    OMZ::lib/history.zsh \
-    OMZ::lib/directories.zsh \
-    OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh \
-    atload"unalias grv" OMZ::plugins/git/git.plugin.zsh
+#zi wait lucid for \
+#    OMZ::lib/git.zsh \
+#    OMZ::lib/completion.zsh \
+#    OMZ::lib/key-bindings.zsh \
+#    OMZ::lib/history.zsh \
+#    OMZ::lib/directories.zsh \
+#    OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh \
+#    atload"unalias grv" OMZ::plugins/git/git.plugin.zsh
 
 zi ice wait"0" blockf lucid
 zi light zsh-users/zsh-completions
