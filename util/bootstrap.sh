@@ -56,3 +56,8 @@ elif type vi &> /dev/null ; then
     echo "export EDITOR='vi'" >> "${editor_file}"
 fi
 
+unalias fd
+if ! type fd &> /dev/null && type fdfind &> /dev/null; then
+    echo "alias fd=fdfind" >> "${alias_file}"
+fi
+
