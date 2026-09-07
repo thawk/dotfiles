@@ -1,5 +1,7 @@
 # vim: set fenc=utf-8 foldmethod=marker ft=tmux
 
+setenv -g TMUX_PLUGIN_MANAGER_PATH $HOME/.tmux/plugins/
+
 # prefix + I — fetch the plugin.
 # prefix + alt + u — remove the plugin.
 # prefix + U — updates plugin(s).
