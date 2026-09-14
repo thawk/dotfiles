@@ -1,7 +1,7 @@
 # If not running interactively, don't do anything
 case $- in
-    *i*) ;;
-      *) return;;
+*i*) ;;
+*) return ;;
 esac
 
 [[ "$SHELL" =~ bash ]] || export SHELL=$(which bash)
@@ -18,42 +18,41 @@ export DOTFILES_LOCAL="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-    debian_chroot=$(cat /etc/debian_chroot)
+  debian_chroot=$(cat /etc/debian_chroot)
 fi
 
 # 在顶层shell中不会执行到后面的内容，所以专门source一些需要在顶层载入的内容
-if [ "$SHLVL" -eq 1 ]
-then
-    [ -f ~/.localrc ] && . ~/.localrc top
-    [ -f ~/.bashrc.local ] && . ~/.bashrc.local top
+if [ "$SHLVL" -eq 1 ]; then
+  [ -f ~/.localrc ] && . ~/.localrc top
+  [ -f ~/.bashrc.local ] && . ~/.bashrc.local top
 
-    [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
+  [ -f "$DOTFILES_LOCAL/stage0.bash" ] && source "$DOTFILES_LOCAL/stage0.bash"
 
-    # 在顶层SHELL中恢复base16的配色
-    # [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
+  # 在顶层SHELL中恢复base16的配色
+  # [ -e "$DOTFILES_ROOT/base-16/env.sh" ] && source "$DOTFILES_ROOT/base-16/env.sh"
 
-    # Fix problem that SSH_AUTH_SOCK not updated in tmux
-    if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ] ; then
-        unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
-        ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
-        export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+  # Fix problem that SSH_AUTH_SOCK not updated in tmux
+  if [ ! -z "$SSH_AUTH_SOCK" -a "$SSH_AUTH_SOCK" != "$HOME/.ssh/ssh_auth_sock" -a -d "$HOME/.ssh" ]; then
+    unlink "$HOME/.ssh/ssh_auth_sock" 2>/dev/null
+    ln -s "$SSH_AUTH_SOCK" "$HOME/.ssh/ssh_auth_sock"
+    export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+  fi
+
+  case "$TERM_PROGRAM" in
+  vscode)
+    ;;
+  *)
+    # 自动打开或恢复tmux
+    if type tmux &>/dev/null; then
+      command tmux attach
+
+      # Failed to attach, start new session
+      if [[ $? -ne 0 ]]; then
+        command tmux new-session
+      fi
     fi
-
-    case "$TERM_PROGRAM" in
-        vscode)
-            ;;
-        *)
-            # 自动打开或恢复tmux
-            if type tmux &> /dev/null ; then
-                command tmux attach
-
-                # Failed to attach, start new session
-                if [[ $? -ne 0 ]]; then
-                    command tmux new-session
-                fi
-            fi
-            ;;
-    esac
+    ;;
+  esac
 fi
 
 # enable programmable completion features (you don't need to enable
@@ -79,9 +78,8 @@ BEL="\007"
 DSC="${ESC}P"
 OSC="${ESC}]"
 
-if [ -z "$TMUX" ]; then
-    export PS1="$PS1\[${OSC}1337;CurrentDir=$(pwd)${BEL}\]"
-else
-    export PS1="$PS1\[${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\]"
-fi
-. "$HOME/.cargo/env"
+#if [ -z "$TMUX" ]; then
+export PS1="$PS1\[${OSC}1337;CurrentDir=$(pwd)${BEL}\]"
+#else
+#    export PS1="$PS1\[${DSC}tmux;${ESC}${OSC}1337;CurrentDir=$(pwd)${BEL}${ESC}\]"
+#fi
