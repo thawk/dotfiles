@@ -8,3 +8,13 @@ gdb/repos/gdb-colour-filter https://github.com/thawk/gdb-colour-filter master
 gdb/repos/pwndbg https://github.com/pwndbg/pwndbg dev
 myrepos/src https://github.com/thawk/myrepos.git master
 percol/src https://github.com/mooz/percol.git master
+tmux/.tmux/plugins/tpm https://github.com/tmux-plugins/tpm.git master
+tmux/.tmux/plugins/tmux-sensible https://github.com/tmux-plugins/tmux-sensible.git master
+tmux/.tmux/plugins/vim-tmux-navigator https://github.com/christoomey/vim-tmux-navigator.git master
+tmux/.tmux/plugins/tmux-prefix-highlight https://github.com/tmux-plugins/tmux-prefix-highlight.git master
+tmux/.tmux/plugins/tmux-yank https://github.com/tmux-plugins/tmux-yank.git master
+tmux/.tmux/plugins/tmux-sessionist https://github.com/tmux-plugins/tmux-sessionist.git master
+tmux/.tmux/plugins/tmux-pain-control https://github.com/tmux-plugins/tmux-pain-control.git master
+tmux/.tmux/plugins/tmux-cpu https://github.com/tmux-plugins/tmux-cpu.git master
+tmux/.tmux/plugins/tmux-fpp https://github.com/tmux-plugins/tmux-fpp.git master
+tmux/.tmux/plugins/tmux-logging https://github.com/tmux-plugins/tmux-logging.git master
