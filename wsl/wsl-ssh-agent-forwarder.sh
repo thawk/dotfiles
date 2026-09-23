@@ -52,7 +52,7 @@ owner=true
 have_flock=false
 if type flock > /dev/null 2>&1; then
     have_flock=true
-    if ! exec 9>"$LOCK_FILE" 2>/dev/null; then
+    if ! exec 9>"$LOCK_FILE"; then
         have_flock=false
     fi
 fi
