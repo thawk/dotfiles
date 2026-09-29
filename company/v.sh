@@ -9,7 +9,11 @@ LP_PORT=10808   # 本机暴露端口(WSL 内, Windows 用 localhost 访问)
 GIT_SERVER=172.31.0.72
 GIT_PORT=22
 SSH_LP_PORT=10022
+WEBDAV_SERVER=172.31.0.192
+WEBDAV_PORT=8080
+WEBDAV_LP_PORT=8080   # 本机暴露端口(WSL 内, Windows 用 localhost 访问)
 cd "$P"
+SELF="$(readlink -f "$0")"
 
 cmd="${1:-vpn}"
 
@@ -35,11 +39,17 @@ run_git() {
   exec socat TCP-LISTEN:"$SSH_LP_PORT",fork,reuseaddr TCP:"$GIT_SERVER:$GIT_PORT"
 }
 
+run_webdav() {
+  echo "webdav forward"
+  exec socat TCP-LISTEN:"$WEBDAV_LP_PORT",fork,reuseaddr TCP:"$WEBDAV_SERVER:$WEBDAV_PORT"
+}
+
 if [[ -n "$TMUX" ]] && [[ "$(tmux display-message -p '#S')" == "$S" ]]; then
   case "$cmd" in
   vpn) run_vpn ;;
   socat) run_socat ;;
   git) run_git ;;
+  webdav) run_webdav ;;
   *)
     echo "unknown cmd: $cmd"
     exit 1
@@ -54,9 +64,10 @@ if tmux has-session -t "$S" 2>/dev/null; then
   exit $?
 fi
 
-tmux new-session -d -s "$S" "$HOME/bin/v.sh vpn"
-tmux new-window -d -t "$S" "$HOME/bin/v.sh socat"
-tmux new-window -d -t "$S" "$HOME/bin/v.sh git"
+tmux new-session -d -s "$S" "$SELF vpn"
+tmux new-window -d -t "$S" "$SELF socat"
+tmux new-window -d -t "$S" "$SELF git"
+tmux new-window -d -t "$S" "$SELF webdav"
 tmux select-window -t "$S:0"
 echo "started in tmux session '$S', switching..."
 go_to_session
