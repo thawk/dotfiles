@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Time: 2020-08-21 23:08:42
+
+# Usage: version-cmp.sh <operator> <target_version>
+#   operator: eq ne ge gt le lt
+#   exit 0 (true)  if tmux version matches operator vs target_version
+#   exit 1 (false) otherwise
+
+operator=$1
+target_version=$2
+tmux_version="$(tmux -V | sed -En "s/^tmux[[:space:]]+([^[:space:]]+[[:space:]]+)?([.0-9]+).*/\2/p")"
+
+[[ -z "$target_version" ]] && exit 0
+
+IFS=. read -ra a <<< "$tmux_version"
+IFS=. read -ra b <<< "$target_version"
+n=${#a[@]}; (( ${#b[@]} > n )) && n=${#b[@]}
+cmp=0
+for ((i=0; i<n; i++)); do
+  x=${a[i]:-0}; y=${b[i]:-0}
+  x=$((10#$x)); y=$((10#$y))
+  if (( x < y )); then cmp=-1; break; fi
+  if (( x > y )); then cmp=1; break; fi
+done
+
+case "$operator" in
+  eq) (( cmp == 0 )) ;;
+  ne) (( cmp != 0 )) ;;
+  ge) (( cmp >= 0 )) ;;
+  gt) (( cmp > 0 )) ;;
+  le) (( cmp <= 0 )) ;;
+  lt) (( cmp < 0 )) ;;
+  *) exit 1 ;;
+esac
