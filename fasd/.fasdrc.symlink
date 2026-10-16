@@ -4,7 +4,12 @@ projects() {
     find "$HOME/.SpaceVim/bundle" -depth 1 -type d -exec echo "{}|1" \; 2> /dev/null
     find "$HOME/.cache/vimfiles/repos" -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
     find "$GOPATH/src"                 -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplugin/snippets"     -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplugin/plugins"      -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.zplug/repos"          -mindepth 2 -maxdepth 2 -type d -exec echo "{}|1" \; 2> /dev/null
+    # Neovim (lazy.nvim / LazyVim) plugins
+    find "$HOME/.local/share/nvim/lazy" -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    # tmux plugins (tpm)
+    find "$HOME/.tmux/plugins"          -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    # zi (z-shell/zi) plugins
+    find "$HOME/.zi/plugins"            -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    # zi (z-shell/zi) snippets
+    find "$HOME/.zi/snippets"           -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
 }
