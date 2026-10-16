@@ -11,7 +11,7 @@ GIT_PORT=22
 SSH_LP_PORT=10022
 WEBDAV_SERVER=172.31.0.192
 WEBDAV_PORT=8080
-WEBDAV_LP_PORT=8080   # 本机暴露端口(WSL 内, Windows 用 localhost 访问)
+WEBDAV_LP_PORT=8080 # 本机暴露端口(WSL 内, Windows 用 localhost 访问)
 cd "$P"
 SELF="$(readlink -f "$0")"
 
@@ -59,7 +59,7 @@ if [[ -n "$TMUX" ]] && [[ "$(tmux display-message -p '#S')" == "$S" ]]; then
 fi
 
 if tmux has-session -t "$S" 2>/dev/null; then
-  echo "tmux session '$S' already exists, switching..."
+  #echo "tmux session '$S' already exists, switching..."
   go_to_session
   exit $?
 fi
@@ -69,5 +69,5 @@ tmux new-window -d -t "$S" "$SELF socat"
 tmux new-window -d -t "$S" "$SELF git"
 tmux new-window -d -t "$S" "$SELF webdav"
 tmux select-window -t "$S:0"
-echo "started in tmux session '$S', switching..."
+#echo "started in tmux session '$S', switching..."
 go_to_session
