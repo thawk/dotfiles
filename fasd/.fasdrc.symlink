@@ -1,15 +1,15 @@
 _FASD_BACKENDS="native current"
 
 projects() {
-    find "$HOME/.SpaceVim/bundle" -depth 1 -type d -exec echo "{}|1" \; 2> /dev/null
-    find "$HOME/.cache/vimfiles/repos" -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
-    find "$GOPATH/src"                 -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null
     # Neovim (lazy.nvim / LazyVim) plugins
-    find "$HOME/.local/share/nvim/lazy" -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.local/share/nvim/lazy" -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null | sort
     # tmux plugins (tpm)
-    find "$HOME/.tmux/plugins"          -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.tmux/plugins"          -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null | sort
     # zi (z-shell/zi) plugins
-    find "$HOME/.zi/plugins"            -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.zi/plugins"            -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null | sort
     # zi (z-shell/zi) snippets
-    find "$HOME/.zi/snippets"           -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null
+    find "$HOME/.zi/snippets"           -mindepth 1 -maxdepth 1 -type d -exec echo "{}|1" \; 2> /dev/null | sort
+    find "$GOPATH/src"                 -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null | sort
+    find "$HOME/.SpaceVim/bundle" -depth 1 -type d -exec echo "{}|1" \; 2> /dev/null | sort
+    find "$HOME/.cache/vimfiles/repos" -mindepth 3 -maxdepth 3 -type d -exec echo "{}|1" \; 2> /dev/null | sort
 }
