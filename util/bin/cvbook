@@ -1,164 +1,469 @@
-#!/usr/bin/env bash
-# Time: 2021-02-02 13:53:59
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""cvbook —— 把 Markdown 小说转换成 EPUB。
 
-VERBOSE=
-METHOD=calibre
+书名/作者优先取文件头部的 YAML frontmatter（title / authors / author / creator），
+frontmatter 里的 comments（或 description）写成书籍简介（dc:description），
+frontmatter 本身会在转换前剥离，不会出现在正文里；字段缺失时回退到文件名解析
+（《书名》作者：xxx.md）。
 
-TMPDIR="$(mktemp -d cvbook.XXXXXX)"
-trap "rm -rf '$TMPDIR'" 0            # EXIT
-trap "rm -rf '$TMPDIR'; exit 1" 2    # INT
-trap "rm -rf '$TMPDIR'; exit 1" 1 15 # HUP TERM
+用法:
+    cvbook [-v] [-m calibre|pandoc] [--] <filename>...
+"""
 
-EchoUsage() {
-  echo "
-Usage: $(basename "$0") [options] [--] <filename>...
+import argparse
+import atexit
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
 
-    Options:
-        -h|help       Display this message
-        -v|verbose    Display more verbose log
-        -m|method <val> pandoc/calibre, defaults to calibre
-" >&2
+METHODS = ('calibre', 'pandoc')
+COVER_EXTS = ('jpg', 'jpeg', 'png', 'webp')
+
+KEY_RE = re.compile(r'^([A-Za-z][A-Za-z0-9_.-]*)[ \t]*:[ \t]*(.*)$')
+LIST_ITEM_RE = re.compile(r'^\s*-\s+(.*)$')
+FILENAME_TITLE_RE = re.compile(r'^.*《([^》]*)》')
+FILENAME_AUTHOR_RE = re.compile(r'^.*作者[:：][ \t]*(.*)')
+
+CLOSING_DELIMS = (b'---', b'...')
+# frontmatter 不会很大，超过这个大小多半是正文里的 --- 水平分割线
+MAX_FM_BYTES = 256 * 1024
+RECOGNIZED_KEYS = {
+    'title', 'author', 'authors', 'creator',
+    'comments', 'description', 'abstract', 'summary',
 }
 
-gen_pandoc_meta() {
-  title="$1"
-  author="$2"
-  cover="$3"
+TMPDIR = tempfile.mkdtemp(prefix='cvbook.')
+atexit.register(shutil.rmtree, TMPDIR, ignore_errors=True)
 
-  echo "---"
-  echo "title: $title"
-  echo "author: $author"
 
-  if [[ -n "$cover" ]]; then
-    echo "cover-image: $cover"
-  fi
+class NoFrontMatter(Exception):
+    """文件里没有 frontmatter（或者看起来不是 frontmatter）。"""
 
-  echo "---"
-}
 
-convert_book_pandoc() {
-  src_file="$1"
-  epub_file="$2"
-  title="$3"
-  author="$4"
-  cover="$5"
+class BookInfo(object):
+    """从 frontmatter 里取到的书籍信息。"""
 
-  verbose=
+    def __init__(self):
+        self.title = ''
+        self.authors = []
+        self.comments = ''
 
-  if [[ -n "$VERBOSE" ]]; then
-    verbose="--verbose"
-  fi
+    @property
+    def author(self):
+        """calibre 用 " & " 分隔多作者。"""
+        return ' & '.join(self.authors)
 
-  if [[ -n "$cover" ]]; then
-    old_cover="$cover"
-    cover="$TMPDIR/cover.${cover##*.}"
 
-    if [[ $cover == *.webp ]] && type convert &>/dev/null; then
-      cover="${cover%.*}.png"
-      convert "$old_cover" "$cover"
-    else
-      cp "$old_cover" "$cover"
-    fi
-  fi
+def warn(message):
+    print(message, file=sys.stderr)
 
-  pandoc \
-    -o "$epub_file" \
-    $verbose \
-    <(gen_pandoc_meta "$title" "$author" "$cover") \
-    "$src_file"
-}
 
-convert_book_calibre() {
-  src_file="$1"
-  epub_file="$2"
-  title="$3"
-  author="$4"
-  cover="$5"
-  verbose=
+# ---------------------------------------------------------------------------
+# frontmatter 解析
+#
+# 不依赖 PyYAML：不少工具生成的 frontmatter 并不严格合法（块标量内容未缩进、
+# 字段之间空行等），而 calibre / pandoc 自带的解析器碰到这些写法会放弃解析，
+# 把整段 frontmatter 当正文。这里做容错解析。
+# ---------------------------------------------------------------------------
 
-  if [[ -n "$VERBOSE" ]]; then
-    verbose=--verbose
-  fi
+def split_frontmatter(raw):
+    """返回 (frontmatter 文本, 正文 bytes)，没有 frontmatter 时抛 NoFrontMatter。"""
+    if raw.startswith(b'\xef\xbb\xbf'):
+        raw = raw[3:]
 
-  ebook-convert \
-    "$src_file" \
-    "$epub_file" \
-    --level1-toc="//h:h1" \
-    --level2-toc="//h:h2" \
-    --level3-toc="//h:h3" \
-    --title="$title" \
-    --authors="$author" \
-    --cover="$cover" \
-    --disable-font-rescaling \
-    --epub-max-image-size 1200x1800 \
-    $verbose
+    nl = raw.find(b'\n')
+    if nl == -1 or raw[:nl].rstrip(b'\r \t') != b'---':
+        raise NoFrontMatter()
 
-  #--chapter-mark=pagebreak \
-  #--dont-split-on-page-breaks \
-}
+    fm_start = nl + 1
+    pos = fm_start
+    close_start = close_end = None
+    while pos < len(raw):
+        nl = raw.find(b'\n', pos)
+        if nl == -1:
+            line, nxt = raw[pos:], len(raw)
+        else:
+            line, nxt = raw[pos:nl], nl + 1
+        if line.rstrip(b'\r \t') in CLOSING_DELIMS:
+            close_start, close_end = pos, nxt
+            break
+        if pos - fm_start > MAX_FM_BYTES:
+            raise NoFrontMatter()
+        pos = nxt
 
-convert_book() {
-  src_file="$1"
-  title="$2"
-  author="$3"
-  cover="$4"
-  epub_file="${src_file%.*}.epub"
-  epub_file=$(basename "${epub_file}")
+    if close_start is None:
+        raise NoFrontMatter()
 
-  "convert_book_${METHOD}" "$src_file" "$epub_file" "$title" "$author" "$cover"
+    fm_bytes = raw[fm_start:close_start]
+    for encoding in ('utf-8', 'gb18030'):
+        try:
+            return fm_bytes.decode(encoding), raw[close_end:]
+        except UnicodeDecodeError:
+            continue
+    raise NoFrontMatter()
 
-  # kindlegen "${book%.*}.epub"
-}
 
-convert_one() {
-  book="$1"
+def unquote(value):
+    """去掉标量两侧的引号并还原常见转义。"""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+        inner = value[1:-1]
+        if value[0] == '"':
+            inner = (inner.replace('\\n', '\n')
+                          .replace('\\t', '\t')
+                          .replace('\\"', '"')
+                          .replace('\\\\', '\\'))
+        else:
+            inner = inner.replace("''", "'")
+        return inner
+    return value
 
-  name=$(echo "$book" | sed -n -e '/^.*《\([^》]*\)》.*$/{s//\1/;p;}')
-  author=$(echo "${book%.*}" | sed -n -e '/^.*作者[:：][ \t]*\(.*\)/{s//\1/;p;}')
-  if [[ -z "$name" ]] || [[ -z "$author" ]]; then
-    echo "!!! Failed to parse '$book' !!!"
-    return
-  fi
 
-  cover="${book%.*}.jpg"
-  for ext in jpg jpeg png webp; do
-    if [[ -f "${book%.*}.${ext}" ]]; then
-      cover="${book%.*}.${ext}"
-      break
-    fi
-  done
+def parse_meta(text):
+    """把 frontmatter 文本解析成 {key: str 或 [str]}。"""
+    meta = {}
+    lines = text.splitlines()
+    i, total = 0, len(lines)
 
-  convert_book "$book" "$name" "$author" "$cover"
-}
+    while i < total:
+        line = lines[i]
+        if not line.strip():
+            i += 1
+            continue
 
-while getopts ":hvm:" opt; do
-  case $opt in
-  h | help)
-    EchoUsage
-    exit 0
-    ;;
-  v | verbose)
-    VERBOSE="${VERBOSE}1"
-    ;;
-  m | method)
-    METHOD=$OPTARG
-    ;;
-  *)
-    echo -e "\n  Option does not exist : '$OPTARG' at position $OPTIND\n"
-    EchoUsage
-    exit 1
-    ;;
-  esac
-done
-shift $((OPTIND - 1))
+        matched = KEY_RE.match(line)
+        if not matched:                # 不认识的写法，跳过
+            i += 1
+            continue
 
-# 参数个数最少为1
-if [ $# -lt 1 ]; then
-  EchoUsage
-  exit 1
-fi
+        key, value = matched.group(1).lower(), matched.group(2)
+        i += 1
+        marker = value.strip()
 
-while [[ -n "$1" ]]; do
-  convert_one "$1"
-  shift
-done
+        # 块标量: | |+ |- > >+ >-
+        if marker in ('|', '|+', '|-', '>', '>+', '>-'):
+            folded = marker[0] == '>'
+            block = []
+            while i < total:
+                nxt = lines[i]
+                # 顶格出现的 "key: value" 视为下一个字段
+                if nxt[:1] not in (' ', '\t') and KEY_RE.match(nxt):
+                    break
+                block.append(nxt)
+                i += 1
+            while block and not block[0].strip():
+                block.pop(0)
+            while block and not block[-1].strip():
+                block.pop()
+            # 允许内容未缩进
+            content = [b.strip() for b in block]
+            meta[key] = (' ' if folded else '\n').join(content)
+            continue
+
+        # 列表: key:\n  - a\n  - b   或   key: [a, b]
+        if not marker:
+            items = []
+            while i < total:
+                nxt = lines[i]
+                item = LIST_ITEM_RE.match(nxt)
+                if item:
+                    items.append(unquote(item.group(1)))
+                    i += 1
+                elif not nxt.strip():
+                    i += 1
+                else:
+                    break
+            meta[key] = items if items else ''
+            continue
+
+        if marker.startswith('[') and marker.endswith(']'):
+            meta[key] = [unquote(x) for x in marker[1:-1].split(',') if x.strip()]
+            continue
+
+        meta[key] = unquote(marker)
+
+    return meta
+
+
+def one_line(value):
+    return ' '.join(str(value).split())
+
+
+def as_text(value):
+    if not value:
+        return ''
+    if isinstance(value, list):
+        return '\n\n'.join(str(v).strip() for v in value if str(v).strip())
+    return str(value).strip()
+
+
+def as_lines(value):
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [one_line(v) for v in value if one_line(v)]
+    line = one_line(value)
+    return [line] if line else []
+
+
+def first_value(meta, *keys):
+    for key in keys:
+        if meta.get(key):
+            return meta[key]
+    return None
+
+
+def read_frontmatter(raw):
+    """解析文件头部的 frontmatter，返回 (BookInfo, 正文 bytes)。"""
+    text, body = split_frontmatter(raw)
+
+    # 安全性检查：第一处非空行必须是 key: value，避免把正文里的 --- 误判成
+    # frontmatter；同时至少要有一个已知字段
+    first_line = next((line for line in text.splitlines() if line.strip()), '')
+    if not KEY_RE.match(first_line):
+        raise NoFrontMatter()
+
+    meta = parse_meta(text)
+    if not (set(meta) & RECOGNIZED_KEYS):
+        raise NoFrontMatter()
+
+    info = BookInfo()
+    info.title = one_line(as_text(first_value(meta, 'title')))
+    info.authors = as_lines(first_value(meta, 'authors', 'author', 'creator'))
+    info.comments = as_text(
+        first_value(meta, 'comments', 'description', 'abstract', 'summary'))
+    return info, body
+
+
+# ---------------------------------------------------------------------------
+# 文件名解析（frontmatter 缺字段时的兜底）
+# ---------------------------------------------------------------------------
+
+def filename_title(path):
+    matched = FILENAME_TITLE_RE.search(os.path.basename(path))
+    return matched.group(1).strip() if matched else ''
+
+
+def filename_author(path):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    matched = FILENAME_AUTHOR_RE.search(stem)
+    return matched.group(1).strip() if matched else ''
+
+
+def find_cover(path):
+    stem = os.path.splitext(path)[0]
+    for ext in COVER_EXTS:
+        cover = '%s.%s' % (stem, ext)
+        if os.path.isfile(cover):
+            return cover
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 转换
+# ---------------------------------------------------------------------------
+
+def run(cmd):
+    if VERBOSE:
+        warn('+ ' + ' '.join(shlex.quote(c) for c in cmd))
+    try:
+        returncode = subprocess.call(cmd)
+    except FileNotFoundError:
+        warn("!!! 找不到命令 '%s'，请先安装" % cmd[0])
+        return False
+    if returncode != 0:
+        warn("!!! '%s' 退出码 %d" % (cmd[0], returncode))
+        return False
+    return True
+
+
+def make_body_file(src, body):
+    """把正文写进源文件同目录的临时文件，保证插图的相对路径仍然有效。
+
+    源目录不可写时退回系统临时目录，此时相对路径可能失效。
+    """
+    src_dir = os.path.dirname(os.path.abspath(src))
+    ext = os.path.splitext(src)[1].lstrip('.') or 'md'
+    suffix = '.' + ext
+
+    try:
+        fd, path = tempfile.mkstemp(prefix='.cvbook-body.', suffix=suffix,
+                                    dir=src_dir)
+    except OSError:
+        warn("!!! 无法在 '%s' 中创建临时文件，改用临时目录（相对图片链接可能失效）"
+             % src_dir)
+        fd, path = tempfile.mkstemp(prefix='.cvbook-body.', suffix=suffix,
+                                    dir=TMPDIR)
+
+    with os.fdopen(fd, 'wb') as file:
+        file.write(body)
+    return path
+
+
+def convert_calibre(src, out, info, cover):
+    args = [
+        'ebook-convert', src, out,
+        '--level1-toc=//h:h1',
+        '--level2-toc=//h:h2',
+        '--level3-toc=//h:h3',
+        '--disable-font-rescaling',
+        '--epub-max-image-size=1200x1800',
+    ]
+    if info.title:
+        args.append('--title=%s' % info.title)
+    if info.authors:
+        args.append('--authors=%s' % info.author)
+    if cover:
+        args.append('--cover=%s' % cover)
+    if info.comments:
+        args.append('--comments=%s' % info.comments)
+    if VERBOSE:
+        args.append('--verbose')
+    return run(args)
+
+
+def yaml_scalar(value):
+    """转成 YAML 双引号标量，供 pandoc 的 metadata 使用。"""
+    value = (value.replace('\\', '\\\\')
+                  .replace('"', '\\"')
+                  .replace('\r', '')
+                  .replace('\n', '\\n'))
+    return '"%s"' % value
+
+
+def write_pandoc_metadata(info, cover):
+    lines = ['title: %s' % yaml_scalar(info.title)]
+    if info.authors:
+        lines.append('author:')
+        lines.extend('  - %s' % yaml_scalar(a) for a in info.authors)
+    if info.comments:
+        lines.append('description: %s' % yaml_scalar(info.comments))
+    if cover:
+        lines.append('cover-image: %s' % yaml_scalar(cover))
+
+    path = os.path.join(TMPDIR, 'metadata.yaml')
+    with open(path, 'w', encoding='utf-8') as file:
+        file.write('\n'.join(lines) + '\n')
+    return path
+
+
+def prepare_pandoc_cover(cover):
+    """pandoc 需要封面在临时目录里，webp 有 ImageMagick 时转成 png。"""
+    ext = os.path.splitext(cover)[1].lstrip('.').lower() or 'jpg'
+
+    if ext == 'webp' and shutil.which('convert'):
+        target = os.path.join(TMPDIR, 'cover.png')
+        if subprocess.call(['convert', cover, target]) == 0:
+            return target
+        warn('!!! webp 封面转换失败，直接使用原文件')
+
+    target = os.path.join(TMPDIR, 'cover.' + ext)
+    shutil.copyfile(cover, target)
+    return target
+
+
+def convert_pandoc(src, out, info, cover):
+    cover_path = prepare_pandoc_cover(cover) if cover else None
+    metadata = write_pandoc_metadata(info, cover_path)
+
+    args = ['pandoc', '-o', out, '--metadata-file=%s' % metadata]
+    if VERBOSE:
+        args.append('--verbose')
+    args.append(src)
+    return run(args)
+
+
+def convert_one(path):
+    try:
+        with open(path, 'rb') as file:
+            raw = file.read()
+    except OSError as error:
+        warn("!!! 读取 '%s' 失败: %s" % (path, error))
+        return False
+
+    info = BookInfo()
+    convert_src = path
+    body_path = None
+
+    try:
+        info, body = read_frontmatter(raw)
+    except NoFrontMatter:
+        pass
+    else:
+        convert_src = body_path = make_body_file(path, body)
+        if VERBOSE:
+            warn("frontmatter: title=%r authors=%r"
+                 % (info.title, info.author))
+
+    # frontmatter 里缺的字段用文件名兜底，再回填到 info 供转换函数使用
+    info.title = info.title or filename_title(path)
+    if not info.authors:
+        author = filename_author(path)
+        if author:
+            info.authors = [author]
+
+    if not info.title or not info.authors:
+        warn("!!! Failed to parse '%s' !!!" % path)
+        if body_path:
+            os.unlink(body_path)
+        return False
+
+    cover = find_cover(path)
+    out = os.path.basename(os.path.splitext(path)[0] + '.epub')
+
+    try:
+        if METHOD == 'pandoc':
+            return convert_pandoc(convert_src, out, info, cover)
+        return convert_calibre(convert_src, out, info, cover)
+    finally:
+        if body_path:
+            try:
+                os.unlink(body_path)
+            except OSError:
+                pass
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser(
+        prog=os.path.basename(sys.argv[0]),
+        description='把 Markdown 小说转换成 EPUB。'
+                    '书名/作者优先取文件头部的 YAML frontmatter'
+                    '（title / authors），comments 作为简介；'
+                    'frontmatter 会从正文中剥离。',
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='输出更多日志')
+    parser.add_argument('-m', '--method', choices=METHODS, default='calibre',
+                        help='转换引擎，默认 calibre')
+    parser.add_argument('files', nargs='+', metavar='<filename>')
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    global VERBOSE, METHOD
+
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+    VERBOSE = args.verbose
+    METHOD = args.method
+
+    failed = [path for path in args.files if not convert_one(path)]
+    if failed:
+        warn('!!! %d 个文件转换失败: %s' % (len(failed), ', '.join(failed)))
+        return 1
+    return 0
+
+
+VERBOSE = False
+METHOD = 'calibre'
+
+if __name__ == '__main__':
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        warn('已中断')
+        sys.exit(130)
