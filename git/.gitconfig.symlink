@@ -23,9 +23,11 @@
     # only merges
     lgm= lg --merges
     # two lines format
-    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n          %C(white)%s%C(reset) %C(blue)- %an%C(reset)' --all
+    lg2 = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n          %C(white)%s%C(reset) %C(blue)- %an%C(reset)'
+    lg2a = lg2 --all
     # show commit Body
-    lgb = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n%C(white)%s%C(reset) %C(blue)- %an%C(reset)%n%n%-b' --all
+    lgb = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(cyan)%aD%C(reset) %C(green)(%ar)%C(reset)%C(auto)%d%C(reset)%n%C(white)%s%C(reset) %C(blue)- %an%C(reset)%n%n%-b'
+    lgba = lgb --all
     # log with stat
     lgst = log --pretty=tformat:'%n%C(yellow)%s%C(auto)%d%n%C(white)%an %C(blue)at %ar %C(red)(%ad)%n%Creset%Cgreen%H' --graph --stat --topo-order --color-words --decorate
     # log with stat and patch
@@ -38,6 +40,8 @@
     lgg = "!f(){ git lg --glob=\"*$1*\";}; f"
     # lgs with glob
     lgsg = "!f(){ git lgs --glob=\"*$1*\";}; f"
+    lgv = log --graph --abbrev-commit --decorate --format=format:'%C(red)%h%C(reset) - %C(green)(%as)%C(reset) %C(250)%s%C(reset) %C(blue)- %an%C(reset)%C(auto)%d%C(reset)%w(0,0,4)%+b'
+    lgva = lgv --all
     type = cat-file -t
     dump = cat-file -p
     #https://stackoverflow.com/questions/8475448/find-merge-commit-which-include-a-specific-commit/8492711)
