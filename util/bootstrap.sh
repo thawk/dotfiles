@@ -19,7 +19,7 @@ proxy_alias() {
   name="$2"
   proxy="$3"
 
-  echo "alias ${name}='env all_proxy=socks5://\${${proxy}:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand=\\\"${netcat} -x \${${proxy}:-127.0.0.1:1080} %h %p\\\"\"'"
+  echo "alias ${name}='env all_proxy=socks5h://\${${proxy}:-127.0.0.1:1080} GIT_SSH_COMMAND=\"ssh -o ProxyCommand=\\\"${netcat} -x \${${proxy}:-127.0.0.1:1080} %h %p\\\"\"'"
 }
 
 if [[ -n "$netcat" ]]; then
