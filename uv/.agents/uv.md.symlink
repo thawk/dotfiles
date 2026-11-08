@@ -1,0 +1,26 @@
+# Python / uv 环境
+
+本机已用 `uv` 进行环境管理。AI 专用虚拟环境 `llm` 位于 `~/.virtualenvs/llm/`，不要污染系统/全局 Python。
+
+## 基本用法
+
+- 解释器：`~/.virtualenvs/llm/bin/python`
+- pip：`~/.virtualenvs/llm/bin/pip`（或 `~/.virtualenvs/llm/bin/python -m pip`）
+- 每个 shell 调用都是独立的，`source ~/.virtualenvs/llm/bin/activate` 不会延续到下一次调用，因此优先使用上面的绝对路径。
+
+## 安装包
+
+```bash
+uv pip install --python ~/.virtualenvs/llm/bin/python <包名>
+```
+
+除非用户明确要求，不要向全局或其他虚拟环境安装包。
+
+## 已安装的常用工具
+
+### markitdown
+
+Microsoft 的 `markitdown`，可将 PDF/Word/Excel/PPT/图片/音频/HTML 等多种格式转换为 Markdown。
+
+- 命令行：`~/.virtualenvs/llm/bin/markitdown <输入文件> -o <输出.md>`（或 `~/.virtualenvs/llm/bin/python -m markitdown <输入文件> -o <输出.md>`）
+- Python 中：`from markitdown import MarkItDown`
