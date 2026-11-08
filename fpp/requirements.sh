@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-type python &> /dev/null
+type python3 &>/dev/null
