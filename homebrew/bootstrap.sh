@@ -17,5 +17,12 @@ if test -d /home/linuxbrew/.linuxbrew ; then
 fi
 
 eval "$shellenv" | grep -v "\bPATH=" > "${env_file}"
-eval "$shellenv" | grep "\bPATH=" > "${top_file}"
+
+brew_path_line="$(eval "$shellenv" | grep "\bPATH=")"
+if [ -n "${brew_path_line}" ]; then
+    brew_bin="${brew_path_line#*PATH=\"}"
+    brew_bin="${brew_bin%%:*}"
+    # shellcheck disable=SC2016
+    printf 'if [[ ":$PATH:" != *":%s:"* ]]; then %s fi\n' "${brew_bin}" "${brew_path_line}" > "${top_file}"
+fi
 

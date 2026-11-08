@@ -6,5 +6,7 @@ path_file="$(create_plugin_file path.sh)"
 
 #Not work at macos
 
-echo "export PATH=$(python -m site --user-base)/bin:\${PATH}" >> "${path_file}"
+pip_bin="$(python -m site --user-base)/bin"
+# shellcheck disable=SC2016
+printf 'if [[ ":$PATH:" != *":%s:"* ]]; then export PATH="%s:$PATH"; fi\n' "${pip_bin}" "${pip_bin}" >> "${path_file}"
 

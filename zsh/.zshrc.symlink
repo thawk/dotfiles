@@ -80,8 +80,11 @@ DISABLE_AUTO_UPDATE=true
 [[ -a ~/.localrc ]] && source ~/.localrc
 [[ -a ~/.zshrc.local ]] && source ~/.zshrc.local
 
-[ -f "$DOTFILES_LOCAL/stage0.zsh" ] && source "$DOTFILES_LOCAL/stage0.zsh"
-[ -f "$DOTFILES_LOCAL/stage1.zsh" ] && source "$DOTFILES_LOCAL/stage1.zsh"
+if [[ "$SHLVL" -ne 1 ]]; then
+    [[ -f "$DOTFILES_LOCAL/stage0.zsh" ]] && source "$DOTFILES_LOCAL/stage0.zsh"
+fi
+
+[[ -f "$DOTFILES_LOCAL/stage1.zsh" ]] && source "$DOTFILES_LOCAL/stage1.zsh"
  
 source "$DOTFILES_ROOT/zsh/scripts/zi.plugins.zsh"
 
@@ -98,8 +101,6 @@ precmd () {
     fi
 }
 
-[ -f "$DOTFILES_LOCAL/stage2.zsh" ] && source "$DOTFILES_LOCAL/stage2.zsh"
-
 # compsys initialization once per 24 hours
 autoload -Uz compinit
 setopt EXTENDEDGLOB
@@ -108,5 +109,8 @@ for dump in ~/.zcompdump(N.mh+24); do
 done
 unsetopt EXTENDEDGLOB
 compinit -C
+
+# stage2 中的 completion 脚本依赖 compdef，必须在 compinit 之后加载
+[ -f "$DOTFILES_LOCAL/stage2.zsh" ] && source "$DOTFILES_LOCAL/stage2.zsh"
 
 #zprof

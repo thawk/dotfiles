@@ -5,5 +5,6 @@ if [[ -x "$HOME/.opencode/bin/opencode" ]]; then
   init_plugin "opencode"
   path_file="$(create_plugin_file path.sh)"
 
-  echo "export PATH=$HOME/.opencode/bin:\${PATH}" >>"${path_file}"
+  # shellcheck disable=SC2016
+  echo 'if [[ ":$PATH:" != *":$HOME/.opencode/bin:"* ]]; then export PATH="$HOME/.opencode/bin:$PATH"; fi' >>"${path_file}"
 fi

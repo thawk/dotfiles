@@ -211,9 +211,9 @@ create_symlinks () {
 }
 
 generate_source_list () {
-    local f dir shell orig_nullglob
+    local f dir shell orig_nullglob path_dir
     local path_env fpath_env
-    local -a path_sh env_sh completion_sh others_sh top_sh_sh
+    local -a path_sh env_sh completion_sh others_sh top_sh_sh path_dirs
 
     shell="$1"
 
@@ -227,8 +227,7 @@ generate_source_list () {
     shopt nullglob > /dev/null && orig_nullglob=1
     shopt -s nullglob
 
-    # shellcheck disable=SC2016
-    path_env='export PATH=$PATH'
+    path_env=
     # shellcheck disable=SC2016
     fpath_env='export fpath=($fpath'
 
@@ -240,7 +239,7 @@ generate_source_list () {
         debug "      Handling subdir ${SUCCESS_FORMAT}${dir}${RESET_FORMAT}..."
 
         if [ -d "${DOTFILES_ROOT}/${dir}/bin" ]; then
-            path_env="${path_env}:${DOTFILES_ROOT}/${dir}/bin"
+            path_dirs[${#path_dirs[*]}]="${DOTFILES_ROOT}/${dir}/bin"
             debug "        Add ${INFO_FORMAT}${dir}/bin${RESET_FORMAT} to ${INFO_FORMAT}\$PATH${RESET_FORMAT}..."
         fi
 
@@ -284,6 +283,16 @@ generate_source_list () {
 
     # reset nullglob if original value is false
     [ -z "$orig_nullglob" ] && shopt -u nullglob
+
+    if [ ${#path_dirs[@]} -gt 0 ]; then
+        # shellcheck disable=SC2016
+        path_env='for _dotfiles_dir in'
+        for path_dir in "${path_dirs[@]}"; do
+            path_env="${path_env} \"${path_dir}\""
+        done
+        # shellcheck disable=SC2016
+        path_env="${path_env}; do case \":\$PATH:\" in *\":\$_dotfiles_dir:\"*) ;; *) export PATH=\"\$PATH:\$_dotfiles_dir\" ;; esac; done; unset _dotfiles_dir"
+    fi
 
     # stage0 - for top shell, SHLVL=1
     info "      ${stage0_file%/*}/${HIGHLIGHT2_FORMAT}${stage0_file##*/}${RESET_FORMAT}"

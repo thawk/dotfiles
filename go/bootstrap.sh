@@ -22,10 +22,12 @@ echo "export GOROOT=${go_root}" >> "${env_file}"
 
 if [ -d "${go_root}/bin" ]
 then
-    echo "export PATH=\$PATH:${go_root}/bin" >> "${path_file}"
+    # shellcheck disable=SC2016
+    printf 'if [[ ":$PATH:" != *":%s:"* ]]; then export PATH="$PATH:%s"; fi\n' "${go_root}/bin" "${go_root}/bin" >> "${path_file}"
 fi
 
 if [ "${go_path}" != "${go_root}" ] && [ -d "${go_path}/bin" ]
 then
-    echo "export PATH=\$PATH:${go_path}/bin" >> "${path_file}"
+    # shellcheck disable=SC2016
+    printf 'if [[ ":$PATH:" != *":%s:"* ]]; then export PATH="$PATH:%s"; fi\n' "${go_path}/bin" "${go_path}/bin" >> "${path_file}"
 fi

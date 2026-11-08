@@ -7,11 +7,9 @@ then
 
     if find "$HOME/libexec" -name "*.so" -quit
     then
-        if [ -z "$LD_LIBRARY_PATH" ]
+        if [[ ":$LD_LIBRARY_PATH:" != *":$HOME/libexec:"* ]]
         then
-            export LD_LIBRARY_PATH="$HOME/libexec"
-        else
-            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$HOME/libexec"
+            export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:+$LD_LIBRARY_PATH:}$HOME/libexec"
         fi
     fi
 fi

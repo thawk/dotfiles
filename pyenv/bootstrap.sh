@@ -11,7 +11,7 @@ PATH=$HOME/.pyenv/bin:$PATH
 # shellcheck disable=SC2016
 echo 'export PYENV_ROOT="$HOME/.pyenv"' >> "${env_file}"
 # shellcheck disable=SC2016
-echo 'export PATH="$HOME/.pyenv/bin:$PATH"' >> "${path_file}"
+echo 'if [[ ":$PATH:" != *":$HOME/.pyenv/bin:"* ]]; then export PATH="$HOME/.pyenv/bin:$PATH"; fi' >> "${path_file}"
 
 pyenv init --path >> "${path_file}"
 
