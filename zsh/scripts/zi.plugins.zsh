@@ -86,9 +86,11 @@ zi snippet https://github.com/docker/cli/raw/master/contrib/completion/zsh/_dock
 # H-S-MW: history-search-multi-word
 zi wait"1" lucid light-mode for \
     djui/alias-tips \
-    atload"_zsh_autosuggest_start" zsh-users/zsh-autosuggestions \
     z-shell/H-S-MW \
     atinit"ZI[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" z-shell/F-Sy-H
+
+zi wait"1" lucid light-mode for \
+    atload"_zsh_autosuggest_start" zsh-users/zsh-autosuggestions
 
 ## Utils
 #zi ice wait"1" lucid mv"httpstat.sh -> httpstat" pick"httpstat" as"program"
