@@ -22,14 +22,14 @@ autoload -Uz _zi
 #zi ice svn if'[[ -n "$commands[tmux]" ]]' lucid
 #zi snippet OMZ::plugins/tmux
 
-# OS specific plugins
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    # zi ice wait"0" lucid atinit"local ZSH=\$PWD" \
-    #     atclone"mkdir -p plugins; cd plugins; ln -sfn ../. osx"
-    # zi snippet OMZ::plugins/osx
-    zi wait"0" lucid for \
-        OMZ::plugins/iterm2/iterm2.plugin.zsh
-fi
+## OS specific plugins
+#if [[ "$OSTYPE" == "darwin"* ]]; then
+#    # zi ice wait"0" lucid atinit"local ZSH=\$PWD" \
+#    #     atclone"mkdir -p plugins; cd plugins; ln -sfn ../. osx"
+#    # zi snippet OMZ::plugins/osx
+#    zi wait"0" lucid for \
+#        OMZ::plugins/iterm2/iterm2.plugin.zsh
+#fi
 
 # completion.zsh: Load completion library for those sweet [tab] squares
 # key-bindings.zsh: Up -> History search!
@@ -65,15 +65,6 @@ zi light zsh-users/zsh-history-substring-search
 # OS - thefuck
 #zi ice wait"0" if'[[ -n "$commands[fuck]" ]]' lucid
 #zi snippet OMZ::plugins/thefuck/thefuck.plugin.zsh
-
-# Python
-zi wait"0" lucid for \
-    if'[[ -n "$commands[pip]" ]]' OMZ::plugins/pip/pip.plugin.zsh \
-    if'[[ -n "$commands[python]" ]]' OMZ::plugins/python/python.plugin.zsh
-
-zi wait"0" lucid if'type workon &> /dev/null' for \
-    atload"unset VIRTUAL_ENV_DISABLE_PROMPT" OMZ::plugins/virtualenv/virtualenv.plugin.zsh \
-    OMZ::plugins/virtualenvwrapper/virtualenvwrapper.plugin.zsh
 
 # docker
 zi ice wait as"completion" if'[[ -n "$commands[docker]" ]]' lucid
