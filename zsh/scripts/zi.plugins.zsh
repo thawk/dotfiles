@@ -55,7 +55,7 @@ zi wait"1" lucid light-mode for \
 
 # git dsf 显示更友好的diff信息。
 # 也可把diff重定向到diff-so-fancy获得友好的diff信息。
-if ! (( $+commands[git] )); then
+if (( $+commands[git] )); then
     zi ice as'null' sbin'bin/*'
     zi light z-shell/zsh-diff-so-fancy
 fi
