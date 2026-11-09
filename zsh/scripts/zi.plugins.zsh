@@ -53,6 +53,13 @@ zi wait"1" lucid light-mode for \
 zi wait"1" lucid light-mode for \
     supercrabtree/k
 
+# git dsf 显示更友好的diff信息。
+# 也可把diff重定向到diff-so-fancy获得友好的diff信息。
+if ! (( $+commands[git] )); then
+    zi ice as'null' sbin'bin/*'
+    zi light z-shell/zsh-diff-so-fancy
+fi
+
 ## Theme
 setopt promptsubst
 PS1="READY >" # provide a nice prompt till the theme loads
