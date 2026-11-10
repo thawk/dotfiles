@@ -55,10 +55,8 @@ zi wait"1" lucid light-mode for \
 
 # git dsf 显示更友好的diff信息。
 # 也可把diff重定向到diff-so-fancy获得友好的diff信息。
-if (( $+commands[diff-so-fancy] )); then
-    zi ice as'program' pick'bin/*'
-    zi light z-shell/zsh-diff-so-fancy
-fi
+zi ice as'program' pick'bin/*'
+zi light z-shell/zsh-diff-so-fancy
 
 ## Theme
 setopt promptsubst
