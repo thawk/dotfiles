@@ -23,6 +23,7 @@ else
 fi
 
 echo "alias ll='ls -l'" >>"${alias_file}"
+echo "alias la='ls -a'" >>"${alias_file}"
 
 if [[ "$OSTYPE" = "cygwin" ]]; then
   echo "alias cyg='apt-cyg mirror http://mirrors.163.com/cygwin/'" >>"${alias_file}"
